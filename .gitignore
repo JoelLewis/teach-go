@@ -1,0 +1,30 @@
+# Rust
+/target
+Cargo.lock
+
+# Node
+node_modules/
+dist/
+
+# Tauri
+src-tauri/target/
+src-tauri/binaries/katago*
+!src-tauri/binaries/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.*
+
+# KataGo models (large files)
+*.bin.gz
+*.gz

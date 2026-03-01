@@ -1,0 +1,14 @@
+[package]
+name = "gosensei-coaching"
+description = "Coaching pipeline: error classification and template-based messaging"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+gosensei-core = { path = "../gosensei-core" }
+gosensei-katago = { path = "../gosensei-katago" }

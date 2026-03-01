@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+:root {
+  --board-wood: #dcb35c;
+  --board-line: #2c1810;
+  --stone-black: #1a1a1a;
+  --stone-white: #f5f5f5;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}

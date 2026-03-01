@@ -1,0 +1,13 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicobatista/tauri-v2-schemas/refs/heads/main/capability.json",
+  "identifier": "default",
+  "description": "Default capabilities for GoSensei",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "shell:allow-spawn",
+    "shell:allow-stdin-write",
+    "fs:allow-read-text-file",
+    "fs:allow-write-text-file"
+  ]
+}

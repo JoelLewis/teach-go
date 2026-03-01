@@ -1,0 +1,15 @@
+[package]
+name = "gosensei-katago"
+description = "KataGo Analysis Engine process manager and protocol client"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true }
+gosensei-core = { path = "../gosensei-core" }
