@@ -92,6 +92,10 @@ impl Game {
         self.result.as_ref()
     }
 
+    pub fn komi(&self) -> f32 {
+        self.komi
+    }
+
     pub fn play(&mut self, point: Point) -> Result<Vec<Point>, MoveError> {
         if self.phase == GamePhase::Finished {
             return Err(MoveError::GameOver);

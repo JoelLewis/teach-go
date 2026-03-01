@@ -4,8 +4,9 @@ import type { GameResult, GameState, Settings } from "./types";
 export async function newGame(
   boardSize: number,
   komi?: number,
+  playerColor?: "black" | "white",
 ): Promise<GameState> {
-  return invoke("new_game", { boardSize, komi });
+  return invoke("new_game", { boardSize, komi, playerColor });
 }
 
 export async function playMove(row: number, col: number): Promise<GameState> {
@@ -30,6 +31,10 @@ export async function startEngine(): Promise<string> {
 
 export async function stopEngine(): Promise<void> {
   return invoke("stop_engine");
+}
+
+export async function requestAiMove(): Promise<GameState> {
+  return invoke("request_ai_move");
 }
 
 export async function getSettings(): Promise<Settings> {

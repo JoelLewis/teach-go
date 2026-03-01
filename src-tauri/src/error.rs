@@ -18,6 +18,12 @@ pub enum AppError {
     Other(String),
 }
 
+impl From<gosensei_katago::client::ClientError> for AppError {
+    fn from(err: gosensei_katago::client::ClientError) -> Self {
+        AppError::KataGo(err.to_string())
+    }
+}
+
 // Tauri commands need errors to be serializable
 impl Serialize for AppError {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

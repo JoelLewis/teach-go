@@ -1,4 +1,5 @@
 mod commands;
+mod convert;
 mod db;
 mod error;
 mod state;
@@ -19,6 +20,7 @@ pub fn run() {
             commands::game::undo_move,
             commands::katago::start_engine,
             commands::katago::stop_engine,
+            commands::katago::request_ai_move,
             commands::coaching::get_coaching_feedback,
             commands::settings::get_settings,
             commands::settings::update_settings,

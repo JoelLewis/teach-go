@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import BoardCanvas from "../lib/board/BoardCanvas.svelte";
   import GameControls from "../components/GameControls.svelte";
   import MoveHistory from "../components/MoveHistory.svelte";
@@ -6,6 +7,8 @@
   import ScoreBar from "../components/ScoreBar.svelte";
   import { gameStore } from "../lib/stores/game.svelte";
   import { coachingStore } from "../lib/stores/coaching.svelte";
+  import { engineStore } from "../lib/stores/engine.svelte";
+  import { onEngineStatus, onAiThinking } from "../lib/api/events";
   import * as api from "../lib/api/commands";
   import type { StoneColor } from "../lib/api/types";
 
@@ -16,44 +19,80 @@
   let { onGoHome }: Props = $props();
 
   let boardSize = $state(9);
+  let playerColor = $state<StoneColor>("black");
+  let unlisteners: Array<() => void> = [];
 
-  // Initialize game on mount
-  $effect(() => {
+  onMount(() => {
+    // Subscribe to backend events
+    onEngineStatus((status) => engineStore.setStatus(status)).then((u) =>
+      unlisteners.push(u),
+    );
+    onAiThinking((thinking) => engineStore.setAiThinking(thinking)).then((u) =>
+      unlisteners.push(u),
+    );
+
     startNewGame();
+
+    return () => {
+      for (const unlisten of unlisteners) unlisten();
+    };
   });
 
   async function startNewGame() {
     try {
-      const state = await api.newGame(boardSize);
+      const state = await api.newGame(boardSize, undefined, playerColor);
       gameStore.set(state);
       coachingStore.clear();
+      // If player is white, AI (black) moves first
+      if (playerColor === "white") {
+        await triggerAiMove();
+      }
     } catch (e) {
       gameStore.setError(String(e));
     }
   }
 
+  async function triggerAiMove() {
+    if (!gameStore.state || gameStore.state.phase === "Finished") return;
+
+    const aiColor = playerColor === "black" ? "white" : "black";
+    if (gameStore.state.current_color !== aiColor) return;
+
+    try {
+      const state = await api.requestAiMove();
+      gameStore.set(state);
+    } catch (e) {
+      // Non-fatal — show as warning, game continues as human-vs-human
+      console.warn("AI move failed:", e);
+    }
+  }
+
   async function handleIntersectionClick(row: number, col: number) {
     if (!gameStore.state || gameStore.state.phase === "Finished") return;
+    if (engineStore.aiThinking) return;
 
     try {
       const state = await api.playMove(row, col);
       gameStore.set(state);
+      await triggerAiMove();
     } catch (e) {
-      // Ignore illegal move errors silently — the board just won't change
       console.warn("Move rejected:", e);
     }
   }
 
   async function handlePass() {
+    if (engineStore.aiThinking) return;
     try {
       const state = await api.passTurn();
       gameStore.set(state);
+      await triggerAiMove();
     } catch (e) {
       gameStore.setError(String(e));
     }
   }
 
   async function handleResign() {
+    if (engineStore.aiThinking) return;
     try {
       const [state] = await api.resign();
       gameStore.set(state);
@@ -63,6 +102,7 @@
   }
 
   async function handleUndo() {
+    if (engineStore.aiThinking) return;
     try {
       const state = await api.undoMove();
       gameStore.set(state);
@@ -107,6 +147,15 @@
         &mdash; Move {gameStore.state.move_number}
       </div>
 
+      {#if engineStore.aiThinking}
+        <div
+          class="flex items-center gap-2 rounded bg-blue-900/40 p-2 text-sm text-blue-200"
+        >
+          <span class="inline-block h-3 w-3 animate-spin rounded-full border-2 border-blue-400 border-t-transparent"></span>
+          AI is thinking&hellip;
+        </div>
+      {/if}
+
       <ScoreBar
         capturesBlack={gameStore.state.captures_black}
         capturesWhite={gameStore.state.captures_white}
@@ -117,7 +166,8 @@
         onResign={handleResign}
         onUndo={handleUndo}
         onNewGame={startNewGame}
-        disabled={gameStore.state.phase === "Finished"}
+        disabled={gameStore.state.phase === "Finished" ||
+          engineStore.aiThinking}
       />
 
       <MoveHistory game={gameStore.state} />
@@ -125,15 +175,21 @@
       <CoachingPanel messages={coachingStore.messages} />
 
       {#if gameStore.state.phase === "Finished"}
-        <div class="rounded bg-amber-900/50 p-3 text-center text-sm text-amber-200">
+        <div
+          class="rounded bg-amber-900/50 p-3 text-center text-sm text-amber-200"
+        >
           Game Over
           {#if gameStore.state.result}
             {#if gameStore.state.result === "Draw"}
               &mdash; Draw
             {:else if typeof gameStore.state.result === "object" && "Resignation" in gameStore.state.result}
-              &mdash; {gameStore.state.result.Resignation.winner === "black" ? "Black" : "White"} wins by resignation
+              &mdash; {gameStore.state.result.Resignation.winner === "black"
+                ? "Black"
+                : "White"} wins by resignation
             {:else if typeof gameStore.state.result === "object" && "Score" in gameStore.state.result}
-              &mdash; {gameStore.state.result.Score.winner === "black" ? "Black" : "White"} wins by {gameStore.state.result.Score.margin}
+              &mdash; {gameStore.state.result.Score.winner === "black"
+                ? "Black"
+                : "White"} wins by {gameStore.state.result.Score.margin}
             {/if}
           {/if}
         </div>

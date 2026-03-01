@@ -1,5 +1,5 @@
 use gosensei_core::game::{Game, GameState};
-use gosensei_core::types::{BoardSize, GameResult, Point};
+use gosensei_core::types::{BoardSize, Color, GameResult, Point};
 use tauri::State;
 
 use crate::error::AppError;
@@ -10,11 +10,20 @@ pub fn new_game(
     state: State<'_, AppState>,
     board_size: u8,
     komi: Option<f32>,
+    player_color: Option<String>,
 ) -> Result<GameState, AppError> {
     let size = BoardSize::try_from(board_size).map_err(|e| AppError::Other(e))?;
     let game = Game::new(size, komi.unwrap_or(6.5));
     let game_state = game.to_state();
     *state.game.lock().unwrap() = Some(game);
+
+    let ai_color = player_color.and_then(|c| match c.as_str() {
+        "black" => Some(Color::White),
+        "white" => Some(Color::Black),
+        _ => None,
+    });
+    *state.ai_color.lock().unwrap() = ai_color;
+
     Ok(game_state)
 }
 
