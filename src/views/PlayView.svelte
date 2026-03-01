@@ -74,7 +74,8 @@
     try {
       const state = await api.playMove(row, col);
       gameStore.set(state);
-      await triggerAiMove();
+      triggerCoaching();
+      triggerAiMove();
     } catch (e) {
       console.warn("Move rejected:", e);
     }
@@ -85,9 +86,18 @@
     try {
       const state = await api.passTurn();
       gameStore.set(state);
-      await triggerAiMove();
+      triggerAiMove();
     } catch (e) {
       gameStore.setError(String(e));
+    }
+  }
+
+  async function triggerCoaching() {
+    try {
+      const feedback = await api.getCoachingFeedback();
+      if (feedback) coachingStore.add(feedback);
+    } catch (e) {
+      console.warn("Coaching unavailable:", e);
     }
   }
 
