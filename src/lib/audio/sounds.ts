@@ -1,9 +1,11 @@
-type SoundName = "stone" | "capture" | "pass";
+type SoundName = "stone" | "capture" | "pass" | "correct" | "wrong";
 
 const SOUND_PATHS: Record<SoundName, string> = {
   stone: "/sounds/stone.wav",
   capture: "/sounds/capture.wav",
   pass: "/sounds/pass.wav",
+  correct: "/sounds/correct.wav",
+  wrong: "/sounds/wrong.wav",
 };
 
 let enabled = true;

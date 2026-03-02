@@ -3,10 +3,16 @@ import type {
   CoachingMessage,
   GameResult,
   GameState,
+  HintData,
+  ProblemState,
+  ProblemStats,
+  ProblemSummary,
   ReviewData,
   ReviewProgress,
   SavedGame,
   Settings,
+  SkillProfile,
+  SolveMoveResult,
 } from "./types";
 
 export async function newGame(
@@ -87,4 +93,53 @@ export async function getReviewData(): Promise<ReviewData> {
 
 export async function getReviewPosition(moveNumber: number): Promise<GameState> {
   return invoke("get_review_position", { moveNumber });
+}
+
+export async function getOwnershipAt(moveNumber: number): Promise<number[] | null> {
+  return invoke("get_ownership_at", { moveNumber });
+}
+
+export async function getSkillProfile(): Promise<SkillProfile> {
+  return invoke("get_skill_profile");
+}
+
+// --- Problem Training ---
+
+export async function listProblems(
+  category?: string,
+  limit?: number,
+): Promise<ProblemSummary[]> {
+  return invoke("list_problems", { category: category ?? null, limit: limit ?? null });
+}
+
+export async function startProblem(problemId: number): Promise<ProblemState> {
+  return invoke("start_problem", { problemId });
+}
+
+export async function solveMove(row: number, col: number): Promise<SolveMoveResult> {
+  return invoke("solve_move", { row, col });
+}
+
+export async function getHint(level: string): Promise<HintData> {
+  return invoke("get_hint", { level });
+}
+
+export async function skipProblem(): Promise<void> {
+  return invoke("skip_problem");
+}
+
+export async function getProblemState(): Promise<ProblemState | null> {
+  return invoke("get_problem_state");
+}
+
+export async function getRecommendedProblem(): Promise<ProblemState> {
+  return invoke("get_recommended_problem");
+}
+
+export async function getProblemStats(): Promise<ProblemStats> {
+  return invoke("get_problem_stats");
+}
+
+export async function generateProblemsFromGame(threshold?: number): Promise<number> {
+  return invoke("generate_problems_from_game", { threshold: threshold ?? null });
 }

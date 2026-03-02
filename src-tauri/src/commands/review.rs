@@ -62,6 +62,7 @@ pub async fn start_review(
             komi,
             total_positions,
             results: vec![None; total_positions as usize],
+            ownership: vec![None; total_positions as usize],
             is_complete: false,
         });
     }
@@ -106,6 +107,7 @@ pub async fn start_review(
                         komi,
                         REVIEW_VISITS,
                         None, // Full strength for review analysis
+                        Some(true), // Request ownership data for territory overlay
                     );
 
                     match client.query_fire(query).await {
@@ -186,11 +188,25 @@ pub async fn start_review(
                     best_variation,
                 };
 
-                // Store result
+                // Normalize ownership to Black's perspective (same convention as winrate)
+                let normalized_ownership: Vec<f32> = if !response.ownership.is_empty() {
+                    if is_black_to_move {
+                        response.ownership.clone()
+                    } else {
+                        response.ownership.iter().map(|v| -v).collect()
+                    }
+                } else {
+                    vec![]
+                };
+
+                // Store result and ownership
                 {
                     let mut review = review_state.lock().await;
                     if let Some(session) = review.as_mut() {
                         session.results[i] = Some(analysis);
+                        if !normalized_ownership.is_empty() {
+                            session.ownership[i] = Some(normalized_ownership);
+                        }
                     }
                 }
 
@@ -363,6 +379,22 @@ pub async fn get_review_position(
     Ok(game.to_state())
 }
 
+#[tauri::command]
+pub async fn get_ownership_at(
+    state: State<'_, AppState>,
+    move_number: u16,
+) -> Result<Option<Vec<f32>>, AppError> {
+    let review = state.review.lock().await;
+    let session = review
+        .as_ref()
+        .ok_or(AppError::Other("No review in progress".into()))?;
+    let idx = move_number as usize;
+    if idx >= session.ownership.len() {
+        return Err(AppError::Other("Move number out of range".into()));
+    }
+    Ok(session.ownership[idx].clone())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -404,6 +436,7 @@ mod tests {
             board_size: 9,
             komi: 6.5,
             total_positions: 3,
+            ownership: vec![None; 3],
             results: vec![
                 Some(MoveAnalysis {
                     move_number: 0,
@@ -460,6 +493,32 @@ mod tests {
         // For White: curr(-3.2) - prev(-3.0) = -0.2, max(0) = 0.0 — good move
         let loss2 = session.results[2].as_ref().unwrap().score_loss;
         assert!(loss2 < 0.01);
+    }
+
+    #[test]
+    fn ownership_normalization_black_to_move() {
+        // Position 0 (even index) = Black to move: values stay as-is
+        let raw_ownership = vec![0.8, -0.5, 0.0, 0.3];
+        let is_black_to_move = true;
+        let normalized: Vec<f32> = if is_black_to_move {
+            raw_ownership.clone()
+        } else {
+            raw_ownership.iter().map(|v| -v).collect()
+        };
+        assert_eq!(normalized, vec![0.8, -0.5, 0.0, 0.3]);
+    }
+
+    #[test]
+    fn ownership_normalization_white_to_move() {
+        // Position 1 (odd index) = White to move: values negated
+        let raw_ownership = vec![0.8, -0.5, 0.0, 0.3];
+        let is_black_to_move = false;
+        let normalized: Vec<f32> = if is_black_to_move {
+            raw_ownership.clone()
+        } else {
+            raw_ownership.iter().map(|v| -v).collect()
+        };
+        assert_eq!(normalized, vec![-0.8, 0.5, -0.0, -0.3]);
     }
 
     #[test]

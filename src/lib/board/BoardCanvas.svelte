@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { BoardRenderer } from "./renderer";
+  import { BoardRenderer, type Highlight } from "./renderer";
   import type { StoneColor, StonePosition } from "../api/types";
 
   type Props = {
@@ -8,10 +8,12 @@
     currentColor: StoneColor;
     lastMove: [number, number] | null;
     showCoordinates?: boolean;
+    ownership?: number[] | null;
+    highlights?: Highlight[];
     onIntersectionClick: (row: number, col: number) => void;
   };
 
-  let { boardSize, stones, currentColor, lastMove, showCoordinates = false, onIntersectionClick }: Props = $props();
+  let { boardSize, stones, currentColor, lastMove, showCoordinates = false, ownership = null, highlights = [], onIntersectionClick }: Props = $props();
 
   let canvasEl: HTMLCanvasElement;
   let renderer: BoardRenderer | null = null;
@@ -40,6 +42,16 @@
     if (!renderer) return;
     renderer.setHoverColor(currentColor);
     renderer.drawStones(stones, lastMove);
+  });
+
+  $effect(() => {
+    if (!renderer) return;
+    renderer.drawOwnership(ownership ?? null, boardSize);
+  });
+
+  $effect(() => {
+    if (!renderer) return;
+    renderer.drawHighlights(highlights);
   });
 </script>
 

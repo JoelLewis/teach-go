@@ -12,17 +12,18 @@
   import * as sounds from "../lib/audio/sounds";
   import { onEngineStatus, onAiThinking } from "../lib/api/events";
   import * as api from "../lib/api/commands";
-  import type { StoneColor } from "../lib/api/types";
+  import type { StoneColor, NewGameConfig } from "../lib/api/types";
 
   type Props = {
+    config?: NewGameConfig;
     onGoHome: () => void;
     onStartReview: () => void;
   };
 
-  let { onGoHome, onStartReview }: Props = $props();
+  let { config, onGoHome, onStartReview }: Props = $props();
 
-  let boardSize = $state(9);
-  let playerColor = $state<StoneColor>("black");
+  let boardSize = $state(config?.boardSize ?? settingsStore.value.board_size);
+  let playerColor = $state<StoneColor>(config?.playerColor ?? "black");
   let unlisteners: Array<() => void> = [];
 
   // Keep sound state in sync with settings
@@ -48,7 +49,7 @@
 
   async function startNewGame() {
     try {
-      const state = await api.newGame(boardSize, undefined, playerColor);
+      const state = await api.newGame(boardSize, settingsStore.value.komi, playerColor);
       gameStore.set(state);
       coachingStore.clear();
       // If player is white, AI (black) moves first

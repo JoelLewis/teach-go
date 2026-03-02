@@ -36,6 +36,10 @@ fn auto_save_if_finished(state: &AppState, game: &Game) {
         "INSERT INTO games (board_size, sgf, result) VALUES (?1, ?2, ?3)",
         rusqlite::params![board_size, sgf, result_str],
     );
+
+    // Update skill profile from accumulated coaching errors
+    let errors: Vec<_> = std::mem::take(&mut *state.game_errors.lock().unwrap());
+    let _ = crate::skill::update_skill_after_game(&db, &errors);
 }
 
 #[tauri::command]
@@ -49,6 +53,7 @@ pub fn new_game(
     let game = Game::new(size, komi.unwrap_or(6.5));
     let game_state = game.to_state();
     *state.game.lock().unwrap() = Some(game);
+    state.game_errors.lock().unwrap().clear();
 
     let ai_color = player_color.and_then(|c| match c.as_str() {
         "black" => Some(Color::White),

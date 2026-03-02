@@ -20,6 +20,8 @@
   let boardState = $state<GameState | null>(null);
   let error = $state<string | null>(null);
   let unlisteners: Array<() => void> = [];
+  let generatingProblems = $state(false);
+  let generatedCount = $state<number | null>(null);
 
   onMount(() => {
     startReview();
@@ -94,8 +96,39 @@
     }
   }
 
+  // Reactively fetch ownership when toggle is on and move changes
+  $effect(() => {
+    const move = reviewStore.currentMove;
+    const show = reviewStore.showOwnership;
+    if (show && reviewStore.data) {
+      fetchOwnership(move);
+    } else {
+      reviewStore.setOwnership(null);
+    }
+  });
+
+  async function fetchOwnership(moveNumber: number) {
+    try {
+      const data = await api.getOwnershipAt(moveNumber);
+      reviewStore.setOwnership(data);
+    } catch (e) {
+      console.warn("Failed to fetch ownership:", e);
+    }
+  }
+
   function handleMoveSelect(move: number) {
     reviewStore.goToMove(move);
+  }
+
+  async function handleGenerateProblems() {
+    generatingProblems = true;
+    try {
+      const count = await api.generateProblemsFromGame();
+      generatedCount = count;
+    } catch (e) {
+      error = String(e);
+    }
+    generatingProblems = false;
   }
 
   function handleGoHome() {
@@ -131,6 +164,7 @@
         currentColor={boardState.current_color as StoneColor}
         lastMove={boardState.last_move}
         showCoordinates={settingsStore.value.show_coordinates}
+        ownership={reviewStore.showOwnership ? reviewStore.ownership : null}
         onIntersectionClick={noop}
       />
     {:else}
@@ -198,6 +232,16 @@
         onNextMistake={() => reviewStore.nextMistake()}
       />
 
+      <!-- Territory toggle -->
+      <button
+        onclick={() => reviewStore.toggleOwnership()}
+        class="rounded px-3 py-1.5 text-sm font-medium {reviewStore.showOwnership
+          ? 'bg-emerald-700 text-emerald-100'
+          : 'bg-stone-700 text-stone-300 hover:bg-stone-600'}"
+      >
+        {reviewStore.showOwnership ? 'Hide' : 'Show'} Territory
+      </button>
+
       <!-- Move annotation panel -->
       <ReviewMovePanel analysis={reviewStore.currentAnalysis} />
 
@@ -206,6 +250,19 @@
         <div class="rounded bg-stone-800 p-2 text-xs text-stone-400">
           Top mistakes at moves: {reviewStore.data.top_mistakes.join(", ")}
         </div>
+
+        <!-- Generate problems from mistakes -->
+        <button
+          onclick={handleGenerateProblems}
+          disabled={generatingProblems}
+          class="rounded bg-teal-800 px-3 py-1.5 text-sm font-medium text-teal-100 transition hover:bg-teal-700 disabled:opacity-50"
+        >
+          {generatingProblems
+            ? "Generating..."
+            : generatedCount !== null
+              ? `Generated ${generatedCount} problems`
+              : "Generate Practice Problems"}
+        </button>
       {/if}
     {:else if !isAnalyzing && !error}
       <div class="text-sm text-stone-500">Starting analysis...</div>

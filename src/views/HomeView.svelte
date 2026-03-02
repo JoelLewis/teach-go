@@ -1,16 +1,21 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import NewGameDialog from "../components/NewGameDialog.svelte";
+  import { settingsStore } from "../lib/stores/settings.svelte";
   import * as api from "../lib/api/commands";
-  import type { SavedGame } from "../lib/api/types";
+  import type { SavedGame, NewGameConfig } from "../lib/api/types";
 
   type Props = {
-    onStartGame: () => void;
+    onStartGame: (config: NewGameConfig) => void;
     onLoadGame: (gameId: number) => void;
     onStartReview: (gameId: number) => void;
+    onShowDashboard: () => void;
+    onStartProblems: () => void;
   };
 
-  let { onStartGame, onLoadGame, onStartReview }: Props = $props();
+  let { onStartGame, onLoadGame, onStartReview, onShowDashboard, onStartProblems }: Props = $props();
 
+  let showNewGameDialog = $state(false);
   let recentGames = $state<SavedGame[]>([]);
 
   onMount(async () => {
@@ -36,16 +41,29 @@
     <p class="mt-2 text-lg text-stone-400">Your AI Go tutor</p>
   </div>
 
-  <button
-    onclick={onStartGame}
-    class="rounded-lg bg-amber-700 px-8 py-4 text-lg font-semibold text-white shadow-lg transition hover:bg-amber-600 hover:shadow-xl"
-  >
-    New Game
-  </button>
+  <div class="flex flex-col items-center gap-3">
+    <button
+      onclick={() => (showNewGameDialog = true)}
+      class="rounded-lg bg-amber-700 px-8 py-4 text-lg font-semibold text-white shadow-lg transition hover:bg-amber-600 hover:shadow-xl"
+    >
+      New Game
+    </button>
+    <button
+      onclick={onStartProblems}
+      class="rounded-lg bg-teal-700 px-8 py-4 text-lg font-semibold text-white shadow-lg transition hover:bg-teal-600 hover:shadow-xl"
+    >
+      Practice Problems
+    </button>
+    <button
+      onclick={onShowDashboard}
+      class="rounded-lg bg-stone-700 px-6 py-2 text-sm font-semibold text-stone-200 transition hover:bg-stone-600"
+    >
+      Progress
+    </button>
+  </div>
 
   <p class="max-w-md text-center text-sm text-stone-500">
-    Start with a 9x9 board to learn the fundamentals.
-    GoSensei will guide you through each move.
+    Choose your board size and color, then let GoSensei guide you.
   </p>
 
   {#if recentGames.length > 0}
@@ -73,5 +91,16 @@
         {/each}
       </div>
     </div>
+  {/if}
+
+  {#if showNewGameDialog}
+    <NewGameDialog
+      settings={settingsStore.value}
+      onClose={() => (showNewGameDialog = false)}
+      onStart={(config) => {
+        showNewGameDialog = false;
+        onStartGame(config);
+      }}
+    />
   {/if}
 </div>

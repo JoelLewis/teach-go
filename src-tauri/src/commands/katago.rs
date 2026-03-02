@@ -176,7 +176,7 @@ pub async fn request_ai_move(
 
     // Build and send query (async — no std mutex held)
     let query_id = format!("ai-move-{}", history.len());
-    let query = convert::build_query(query_id, &history, board_size, komi, MAX_VISITS, profile);
+    let query = convert::build_query(query_id, &history, board_size, komi, MAX_VISITS, profile, None);
 
     let response = {
         let katago = state.katago.lock().await;

@@ -50,7 +50,7 @@ pub async fn get_coaching_feedback(
     // Build pre-move query (history excluding the last move)
     let pre_move_history = &history[..history.len() - 1];
     let query_id = format!("coaching-{move_number}");
-    let query = convert::build_query(query_id, pre_move_history, board_size, komi, COACHING_VISITS, None);
+    let query = convert::build_query(query_id, pre_move_history, board_size, komi, COACHING_VISITS, None, None);
 
     let response = client.query(query).await?;
     drop(katago);
@@ -67,6 +67,13 @@ pub async fn get_coaching_feedback(
 
     let error_class = classify::classify_error(move_number, board_size, point.row, point.col, score_loss);
     let suggested = response.move_infos.first().map(|m| m.mv.clone());
+
+    // Accumulate error for skill model update at game end
+    if let Some(ec) = error_class {
+        state.game_errors.lock().unwrap().push(
+            crate::skill::GameError { error_class: ec, score_loss },
+        );
+    }
 
     let message = templates::generate_message(severity, error_class, score_loss, suggested, move_number);
 

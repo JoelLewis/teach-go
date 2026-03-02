@@ -2,7 +2,12 @@ mod commands;
 mod convert;
 mod db;
 mod error;
+mod generate;
+mod problem;
 mod review;
+mod skill;
+mod solver;
+mod srs;
 mod state;
 
 use state::AppState;
@@ -19,6 +24,7 @@ pub fn run() {
             std::fs::create_dir_all(&data_dir)?;
             let db_path = data_dir.join("gosensei.db");
             let conn = db::init_db(&db_path.to_string_lossy())?;
+            problem::seed_problems_if_empty(&conn)?;
             app.manage(AppState::with_db(conn));
             Ok(())
         })
@@ -42,6 +48,17 @@ pub fn run() {
             commands::review::get_review_progress,
             commands::review::get_review_data,
             commands::review::get_review_position,
+            commands::review::get_ownership_at,
+            commands::skill::get_skill_profile,
+            commands::problem::list_problems,
+            commands::problem::start_problem,
+            commands::problem::solve_move,
+            commands::problem::get_hint,
+            commands::problem::skip_problem,
+            commands::problem::get_problem_state,
+            commands::problem::get_recommended_problem,
+            commands::problem::get_problem_stats,
+            commands::problem::generate_problems_from_game,
         ])
         .run(tauri::generate_context!())
         .expect("error while running GoSensei");

@@ -5,6 +5,12 @@ import { type BoardTheme, defaultTheme, starPoints } from "./themes";
 
 const COLUMN_LETTERS = "ABCDEFGHJKLMNOPQRST";
 
+export type Highlight =
+  | { type: "area"; minRow: number; maxRow: number; minCol: number; maxCol: number }
+  | { type: "candidates"; points: [number, number][] }
+  | { type: "answer"; point: [number, number] }
+  | { type: "flash"; point: [number, number]; color: "correct" | "wrong" };
+
 export type BoardRendererOptions = {
   boardSize: number;
   canvasSize: number;
@@ -27,6 +33,8 @@ export class BoardRenderer {
   private hoverLayer: Graphics;
   private indicatorLayer: Graphics;
   private coordinateLayer: Container;
+  private ownershipLayer: Graphics;
+  private highlightLayer: Graphics;
 
   private hoverPoint: { row: number; col: number } | null = null;
   private hoverColor: StoneColor = "black";
@@ -48,6 +56,8 @@ export class BoardRenderer {
     this.hoverLayer = new Graphics();
     this.indicatorLayer = new Graphics();
     this.coordinateLayer = new Container();
+    this.ownershipLayer = new Graphics();
+    this.highlightLayer = new Graphics();
   }
 
   async init(canvas: HTMLCanvasElement): Promise<void> {
@@ -63,6 +73,8 @@ export class BoardRenderer {
 
     this.app.stage.addChild(this.boardLayer);
     this.app.stage.addChild(this.coordinateLayer);
+    this.app.stage.addChild(this.ownershipLayer);
+    this.app.stage.addChild(this.highlightLayer);
     this.app.stage.addChild(this.stoneLayer);
     this.app.stage.addChild(this.hoverLayer);
     this.app.stage.addChild(this.indicatorLayer);
@@ -203,6 +215,71 @@ export class BoardRenderer {
       const indicatorColor =
         lastStone?.color === "black" ? 0xffffff : 0x000000;
       g.circle(x, y, stoneRadius * 0.3).fill(indicatorColor);
+    }
+  }
+
+  drawOwnership(ownership: number[] | null, boardSize: number): void {
+    this.ownershipLayer.clear();
+    if (!ownership || ownership.length === 0) return;
+
+    const squareSize = this.cellSize * 0.85;
+    const halfSquare = squareSize / 2;
+
+    for (let row = 0; row < boardSize; row++) {
+      for (let col = 0; col < boardSize; col++) {
+        const value = ownership[row * boardSize + col];
+        const absValue = Math.abs(value);
+        if (absValue < 0.1) continue;
+
+        const { x, y } = intersectionToPixel(row, col, this.cellSize, this.padding);
+        const color = value > 0 ? 0x1a1a3a : 0xf0f0e0;
+        const alpha = ((absValue - 0.1) / 0.9) * 0.5;
+
+        this.ownershipLayer
+          .rect(x - halfSquare, y - halfSquare, squareSize, squareSize)
+          .fill({ color, alpha });
+      }
+    }
+  }
+
+  drawHighlights(highlights: Highlight[]): void {
+    this.highlightLayer.clear();
+
+    for (const h of highlights) {
+      if (h.type === "area") {
+        // Semi-transparent amber rectangle over the region
+        const x1 = this.padding + h.minCol * this.cellSize - this.cellSize * 0.5;
+        const y1 = this.padding + h.minRow * this.cellSize - this.cellSize * 0.5;
+        const x2 = this.padding + h.maxCol * this.cellSize + this.cellSize * 0.5;
+        const y2 = this.padding + h.maxRow * this.cellSize + this.cellSize * 0.5;
+        this.highlightLayer
+          .rect(x1, y1, x2 - x1, y2 - y1)
+          .fill({ color: 0xf59e0b, alpha: 0.15 });
+      } else if (h.type === "candidates") {
+        // Pulsing amber circles at candidate intersections
+        for (const [row, col] of h.points) {
+          const { x, y } = intersectionToPixel(row, col, this.cellSize, this.padding);
+          const radius = this.cellSize * 0.25;
+          this.highlightLayer
+            .circle(x, y, radius)
+            .fill({ color: 0xf59e0b, alpha: 0.5 });
+        }
+      } else if (h.type === "answer") {
+        // Bright amber marker at the answer point
+        const { x, y } = intersectionToPixel(h.point[0], h.point[1], this.cellSize, this.padding);
+        const radius = this.cellSize * 0.3;
+        this.highlightLayer
+          .circle(x, y, radius)
+          .fill({ color: 0xf59e0b, alpha: 0.8 });
+      } else if (h.type === "flash") {
+        // Green/red flash on a point
+        const { x, y } = intersectionToPixel(h.point[0], h.point[1], this.cellSize, this.padding);
+        const radius = this.cellSize * 0.5;
+        const color = h.color === "correct" ? 0x10b981 : 0xef4444;
+        this.highlightLayer
+          .circle(x, y, radius)
+          .fill({ color, alpha: 0.4 });
+      }
     }
   }
 

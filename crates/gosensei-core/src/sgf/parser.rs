@@ -8,6 +8,12 @@ pub struct SgfGame {
     pub player_black: Option<String>,
     pub player_white: Option<String>,
     pub result: Option<String>,
+    /// Setup stones placed via AB[] (Add Black) properties.
+    pub setup_black: Vec<Point>,
+    /// Setup stones placed via AW[] (Add White) properties.
+    pub setup_white: Vec<Point>,
+    /// Color to play first, from PL[] property.
+    pub player_to_move: Option<Color>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -34,6 +40,9 @@ pub fn parse(input: &str) -> Result<SgfGame, SgfParseError> {
     let mut player_black = None;
     let mut player_white = None;
     let mut result = None;
+    let mut setup_black = Vec::new();
+    let mut setup_white = Vec::new();
+    let mut player_to_move = None;
 
     // Simple property parser — handles SZ, KM, PB, PW, RE, B, W
     let mut chars = input[2..].chars().peekable();
@@ -102,6 +111,29 @@ pub fn parse(input: &str) -> Result<SgfGame, SgfParseError> {
                             moves.push((color, mv));
                         }
                     }
+                    "AB" => {
+                        for val in &values {
+                            if let Move::Play(p) = parse_move(val) {
+                                setup_black.push(p);
+                            }
+                        }
+                    }
+                    "AW" => {
+                        for val in &values {
+                            if let Move::Play(p) = parse_move(val) {
+                                setup_white.push(p);
+                            }
+                        }
+                    }
+                    "PL" => {
+                        if let Some(val) = values.first() {
+                            player_to_move = match val.as_str() {
+                                "B" => Some(Color::Black),
+                                "W" => Some(Color::White),
+                                _ => None,
+                            };
+                        }
+                    }
                     _ => {} // Ignore unknown properties
                 }
             }
@@ -118,6 +150,9 @@ pub fn parse(input: &str) -> Result<SgfGame, SgfParseError> {
         player_black,
         player_white,
         result,
+        setup_black,
+        setup_white,
+        player_to_move,
     })
 }
 
@@ -155,5 +190,32 @@ mod tests {
         let game = parse(sgf).unwrap();
         assert_eq!(game.moves.len(), 2);
         assert_eq!(game.moves[1].1, Move::Pass);
+    }
+
+    #[test]
+    fn parse_setup_stones() {
+        // SGF coords: first char=col, second char=row
+        // aa = col 0, row 0; ab = col 0, row 1; ac = col 0, row 2
+        // ba = col 1, row 0; bb = col 1, row 1
+        let sgf = "(;SZ[9]AB[aa][ab][ac]AW[ba][bb])";
+        let game = parse(sgf).unwrap();
+        assert_eq!(game.setup_black.len(), 3);
+        assert_eq!(game.setup_white.len(), 2);
+        assert_eq!(game.setup_black[0], Point::new(0, 0));
+        assert_eq!(game.setup_black[1], Point::new(1, 0));
+        assert_eq!(game.setup_black[2], Point::new(2, 0));
+        assert_eq!(game.setup_white[0], Point::new(0, 1));
+        assert_eq!(game.setup_white[1], Point::new(1, 1));
+        assert_eq!(game.moves.len(), 0);
+    }
+
+    #[test]
+    fn parse_setup_with_moves_and_pl() {
+        let sgf = "(;SZ[9]AB[dd][de]AW[ed][ee]PL[B];B[df])";
+        let game = parse(sgf).unwrap();
+        assert_eq!(game.setup_black.len(), 2);
+        assert_eq!(game.setup_white.len(), 2);
+        assert_eq!(game.player_to_move, Some(Color::Black));
+        assert_eq!(game.moves.len(), 1);
     }
 }

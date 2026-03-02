@@ -6,6 +6,8 @@ function createReviewStore() {
   let data = $state<ReviewData | null>(null);
   let progress = $state<ReviewProgress | null>(null);
   let currentMove = $state(0);
+  let ownership = $state<number[] | null>(null);
+  let showOwnership = $state(false);
 
   return {
     get data() {
@@ -21,12 +23,24 @@ function createReviewStore() {
       if (!data) return null;
       return data.move_analyses.find((a) => a.move_number === currentMove) ?? null;
     },
+    get ownership() {
+      return ownership;
+    },
+    get showOwnership() {
+      return showOwnership;
+    },
     setData(reviewData: ReviewData) {
       data = reviewData;
       currentMove = 0;
     },
     setProgress(p: ReviewProgress) {
       progress = p;
+    },
+    setOwnership(d: number[] | null) {
+      ownership = d;
+    },
+    toggleOwnership() {
+      showOwnership = !showOwnership;
     },
     goToMove(n: number) {
       if (!data) return;
@@ -57,6 +71,8 @@ function createReviewStore() {
       data = null;
       progress = null;
       currentMove = 0;
+      ownership = null;
+      showOwnership = false;
     },
   };
 }

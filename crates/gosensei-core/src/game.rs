@@ -74,6 +74,10 @@ impl Game {
         &self.board
     }
 
+    pub fn board_mut(&mut self) -> &mut Board {
+        &mut self.board
+    }
+
     pub fn current_color(&self) -> Color {
         self.current_color
     }
@@ -96,6 +100,10 @@ impl Game {
 
     pub fn komi(&self) -> f32 {
         self.komi
+    }
+
+    pub fn set_current_color(&mut self, color: Color) {
+        self.current_color = color;
     }
 
     pub fn play(&mut self, point: Point) -> Result<Vec<Point>, MoveError> {
@@ -220,6 +228,51 @@ impl Game {
                     }
                     // play() flips color, but we forced it above, so the
                     // alternation is handled by the next iteration's force.
+                }
+                Move::Pass => {
+                    if game.pass().is_err() {
+                        break;
+                    }
+                }
+                Move::Resign => {
+                    let _ = game.resign();
+                    break;
+                }
+            }
+        }
+
+        Ok(game)
+    }
+
+    /// Parse an SGF with setup stones (AB/AW) into a Game.
+    /// Places setup stones directly on the board, then replays any moves.
+    /// The starting color is determined by the PL[] property, or defaults to Black.
+    pub fn from_sgf_with_setup(input: &str) -> Result<Self, String> {
+        let parsed = sgf::parser::parse(input).map_err(|e| e.to_string())?;
+        let mut game = Game::new(parsed.board_size, parsed.komi);
+
+        // Place setup stones directly (bypassing rules)
+        for &point in &parsed.setup_black {
+            game.board.set(point, Some(Color::Black));
+        }
+        for &point in &parsed.setup_white {
+            game.board.set(point, Some(Color::White));
+        }
+
+        // Update initial board history to include setup stones
+        game.board_history[0] = game.board.clone();
+
+        // Set starting color from PL[] or default to Black
+        game.current_color = parsed.player_to_move.unwrap_or(Color::Black);
+
+        // Replay any moves that follow the setup
+        for (color, mv) in &parsed.moves {
+            game.current_color = *color;
+            match mv {
+                Move::Play(point) => {
+                    if game.play(*point).is_err() {
+                        break;
+                    }
                 }
                 Move::Pass => {
                     if game.pass().is_err() {
@@ -383,5 +436,41 @@ mod tests {
         let empty = Game::from_sgf_partial(sgf, Some(0)).unwrap();
         assert_eq!(empty.move_history().len(), 0);
         assert!(empty.board().is_empty(Point::new(4, 4)));
+    }
+
+    #[test]
+    fn board_mut_allows_direct_placement() {
+        let mut game = Game::new(BoardSize::Nine, 6.5);
+        game.board_mut().set(Point::new(3, 3), Some(Color::Black));
+        assert_eq!(game.board().get(Point::new(3, 3)), Some(Color::Black));
+    }
+
+    #[test]
+    fn from_sgf_with_setup_places_stones() {
+        // SGF coords: dd = col 3 row 3, de = col 3 row 4, ed = col 4 row 3, ee = col 4 row 4
+        let sgf = "(;SZ[9]AB[dd][de]AW[ed][ee])";
+        let game = Game::from_sgf_with_setup(sgf).unwrap();
+        assert_eq!(game.board().get(Point::new(3, 3)), Some(Color::Black));
+        assert_eq!(game.board().get(Point::new(4, 3)), Some(Color::Black));
+        assert_eq!(game.board().get(Point::new(3, 4)), Some(Color::White));
+        assert_eq!(game.board().get(Point::new(4, 4)), Some(Color::White));
+        assert_eq!(game.current_color(), Color::Black);
+        assert_eq!(game.move_history().len(), 0);
+    }
+
+    #[test]
+    fn from_sgf_with_setup_respects_pl() {
+        let sgf = "(;SZ[9]AB[dd]AW[ee]PL[W])";
+        let game = Game::from_sgf_with_setup(sgf).unwrap();
+        assert_eq!(game.current_color(), Color::White);
+    }
+
+    #[test]
+    fn from_sgf_with_setup_and_moves() {
+        // df = col 3, row 5 → Point(5, 3)
+        let sgf = "(;SZ[9]AB[dd][de]AW[ed][ee];B[df])";
+        let game = Game::from_sgf_with_setup(sgf).unwrap();
+        assert_eq!(game.board().get(Point::new(5, 3)), Some(Color::Black));
+        assert_eq!(game.move_history().len(), 1);
     }
 }

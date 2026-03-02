@@ -68,6 +68,7 @@ pub fn build_query(
     komi: f32,
     max_visits: u32,
     human_sl_profile: Option<String>,
+    include_ownership: Option<bool>,
 ) -> AnalysisQuery {
     AnalysisQuery {
         id,
@@ -77,7 +78,7 @@ pub fn build_query(
         board_x_size: board_size,
         board_y_size: board_size,
         max_visits,
-        include_ownership: None,
+        include_ownership,
         include_policy: None,
         human_sl_profile,
     }
@@ -202,7 +203,7 @@ mod tests {
             mv: Move::Play(Point::new(4, 4)),
             move_number: 1,
         }];
-        let query = build_query("q1".to_string(), &history, 9, 6.5, 100, None);
+        let query = build_query("q1".to_string(), &history, 9, 6.5, 100, None, None);
         assert_eq!(query.id, "q1");
         assert_eq!(query.board_x_size, 9);
         assert_eq!(query.board_y_size, 9);
@@ -226,7 +227,7 @@ mod tests {
                 move_number: 2,
             },
         ];
-        let query = build_query("test-q1".to_string(), &history, 9, 6.5, 200, Some("preaz_18k".to_string()));
+        let query = build_query("test-q1".to_string(), &history, 9, 6.5, 200, Some("preaz_18k".to_string()), None);
         let json = serde_json::to_string(&query).unwrap();
 
         // Should be valid JSON with expected fields
@@ -336,6 +337,7 @@ mod tests {
             6.5,
             100,
             Some("preaz_18k".to_string()),
+            None,
         );
         let json = serde_json::to_string(&query).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
@@ -344,10 +346,26 @@ mod tests {
 
     #[test]
     fn query_without_profile_omits_field() {
-        let query = build_query("no-profile".to_string(), &[], 9, 6.5, 100, None);
+        let query = build_query("no-profile".to_string(), &[], 9, 6.5, 100, None, None);
         let json = serde_json::to_string(&query).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert!(parsed.get("humanSlProfile").is_none());
+    }
+
+    #[test]
+    fn query_with_ownership_serializes() {
+        let query = build_query("own-test".to_string(), &[], 9, 6.5, 50, None, Some(true));
+        let json = serde_json::to_string(&query).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["includeOwnership"], true);
+    }
+
+    #[test]
+    fn query_without_ownership_omits_field() {
+        let query = build_query("no-own".to_string(), &[], 9, 6.5, 50, None, None);
+        let json = serde_json::to_string(&query).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert!(parsed.get("includeOwnership").is_none());
     }
 
     #[test]

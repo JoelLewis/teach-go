@@ -39,5 +39,8 @@ pub struct ReviewSession {
     pub komi: f32,
     pub total_positions: u16,
     pub results: Vec<Option<MoveAnalysis>>,
+    /// Per-position ownership data from KataGo, normalized to Black's perspective.
+    /// Values range from -1.0 (White territory) to +1.0 (Black territory).
+    pub ownership: Vec<Option<Vec<f32>>>,
     pub is_complete: bool,
 }

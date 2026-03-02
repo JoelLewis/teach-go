@@ -21,6 +21,8 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 tokio = { workspace = true }
 rusqlite = { version = "0.38", features = ["bundled"] }
+rs-fsrs = { workspace = true }
+chrono = { workspace = true }
 gosensei-core = { path = "../crates/gosensei-core" }
 gosensei-katago = { path = "../crates/gosensei-katago" }
 gosensei-coaching = { path = "../crates/gosensei-coaching" }
