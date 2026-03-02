@@ -8,6 +8,7 @@
     "shell:allow-spawn",
     "shell:allow-stdin-write",
     "fs:allow-read-text-file",
-    "fs:allow-write-text-file"
+    "fs:allow-write-text-file",
+    "dialog:default"
   ]
 }

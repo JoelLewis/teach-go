@@ -67,6 +67,7 @@ pub fn build_query(
     board_size: u8,
     komi: f32,
     max_visits: u32,
+    human_sl_profile: Option<String>,
 ) -> AnalysisQuery {
     AnalysisQuery {
         id,
@@ -78,6 +79,18 @@ pub fn build_query(
         max_visits,
         include_ownership: None,
         include_policy: None,
+        human_sl_profile,
+    }
+}
+
+/// Map a GoSensei AI strength setting to a KataGo humanSLProfile name.
+pub fn strength_to_profile(strength: &str) -> Option<String> {
+    match strength {
+        "beginner" => Some("preaz_18k".to_string()),
+        "intermediate" => Some("preaz_9k".to_string()),
+        "advanced" => Some("preaz_3k".to_string()),
+        "dan" => None, // Full strength — no profile
+        _ => None,
     }
 }
 
@@ -189,7 +202,7 @@ mod tests {
             mv: Move::Play(Point::new(4, 4)),
             move_number: 1,
         }];
-        let query = build_query("q1".to_string(), &history, 9, 6.5, 100);
+        let query = build_query("q1".to_string(), &history, 9, 6.5, 100, None);
         assert_eq!(query.id, "q1");
         assert_eq!(query.board_x_size, 9);
         assert_eq!(query.board_y_size, 9);
@@ -197,6 +210,144 @@ mod tests {
         assert_eq!(query.max_visits, 100);
         assert_eq!(query.rules, "tromp-taylor");
         assert_eq!(query.moves.len(), 1);
+    }
+
+    #[test]
+    fn query_serializes_to_valid_json() {
+        let history = vec![
+            MoveRecord {
+                color: Color::Black,
+                mv: Move::Play(Point::new(4, 4)),
+                move_number: 1,
+            },
+            MoveRecord {
+                color: Color::White,
+                mv: Move::Play(Point::new(2, 6)),
+                move_number: 2,
+            },
+        ];
+        let query = build_query("test-q1".to_string(), &history, 9, 6.5, 200, Some("preaz_18k".to_string()));
+        let json = serde_json::to_string(&query).unwrap();
+
+        // Should be valid JSON with expected fields
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["id"], "test-q1");
+        assert_eq!(parsed["boardXSize"], 9);
+        assert_eq!(parsed["rules"], "tromp-taylor");
+        assert_eq!(parsed["moves"][0][0], "B");
+        assert_eq!(parsed["moves"][0][1], "E5");
+        assert_eq!(parsed["moves"][1][0], "W");
+    }
+
+    #[test]
+    fn mock_response_parses_correctly() {
+        use gosensei_katago::protocol::AnalysisResponse;
+
+        let mock_response = r#"{
+            "id": "test-q1",
+            "moveInfos": [
+                {
+                    "move": "D4",
+                    "visits": 150,
+                    "winrate": 0.55,
+                    "scoreLead": 2.5,
+                    "prior": 0.12,
+                    "order": 0,
+                    "pv": ["D4", "C3", "E5"]
+                },
+                {
+                    "move": "Q16",
+                    "visits": 50,
+                    "winrate": 0.52,
+                    "scoreLead": 1.2,
+                    "prior": 0.08,
+                    "order": 1,
+                    "pv": ["Q16", "R14"]
+                }
+            ],
+            "rootInfo": {
+                "winrate": 0.55,
+                "scoreLead": 2.5,
+                "visits": 200
+            },
+            "ownership": []
+        }"#;
+
+        let response: AnalysisResponse = serde_json::from_str(mock_response).unwrap();
+        assert_eq!(response.id, "test-q1");
+        assert_eq!(response.move_infos.len(), 2);
+
+        let best = &response.move_infos[0];
+        assert_eq!(best.mv, "D4");
+        assert_eq!(best.visits, 150);
+        assert!(best.winrate > 0.5);
+
+        // Convert the best move back to a Point
+        let point = gtp_to_point(&best.mv, 9).unwrap();
+        assert_eq!(point, Point::new(5, 3)); // D4 on a 9x9 board
+    }
+
+    #[test]
+    fn mock_pass_response() {
+        use gosensei_katago::protocol::AnalysisResponse;
+
+        let mock_response = r#"{
+            "id": "endgame-q",
+            "moveInfos": [
+                {
+                    "move": "pass",
+                    "visits": 200,
+                    "winrate": 0.99,
+                    "scoreLead": 50.0,
+                    "prior": 0.95,
+                    "order": 0,
+                    "pv": ["pass"]
+                }
+            ],
+            "rootInfo": {
+                "winrate": 0.99,
+                "scoreLead": 50.0,
+                "visits": 200
+            }
+        }"#;
+
+        let response: AnalysisResponse = serde_json::from_str(mock_response).unwrap();
+        let best = &response.move_infos[0];
+
+        // "pass" should return None from gtp_to_point
+        assert!(gtp_to_point(&best.mv, 9).is_none());
+    }
+
+    #[test]
+    fn strength_mapping() {
+        assert_eq!(strength_to_profile("beginner"), Some("preaz_18k".to_string()));
+        assert_eq!(strength_to_profile("intermediate"), Some("preaz_9k".to_string()));
+        assert_eq!(strength_to_profile("advanced"), Some("preaz_3k".to_string()));
+        assert_eq!(strength_to_profile("dan"), None);
+        assert_eq!(strength_to_profile("unknown"), None);
+    }
+
+    #[test]
+    fn query_with_profile_serializes() {
+        let query = build_query(
+            "profile-test".to_string(),
+            &[],
+            9,
+            6.5,
+            100,
+            Some("preaz_18k".to_string()),
+        );
+        let json = serde_json::to_string(&query).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["humanSlProfile"], "preaz_18k");
+    }
+
+    #[test]
+    fn query_without_profile_omits_field() {
+        let query = build_query("no-profile".to_string(), &[], 9, 6.5, 100, None);
+        let json = serde_json::to_string(&query).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert!(parsed.get("humanSlProfile").is_none());
     }
 
     #[test]

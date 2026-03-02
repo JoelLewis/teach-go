@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { CoachingMessage, GameResult, GameState, Settings } from "./types";
+import type { CoachingMessage, GameResult, GameState, SavedGame, Settings } from "./types";
 
 export async function newGame(
   boardSize: number,
@@ -39,6 +39,22 @@ export async function requestAiMove(): Promise<GameState> {
 
 export async function getCoachingFeedback(): Promise<CoachingMessage | null> {
   return invoke("get_coaching_feedback");
+}
+
+export async function saveGameSgf(): Promise<string | null> {
+  return invoke("save_game_sgf");
+}
+
+export async function loadGameSgf(): Promise<GameState | null> {
+  return invoke("load_game_sgf");
+}
+
+export async function listGames(): Promise<SavedGame[]> {
+  return invoke("list_games");
+}
+
+export async function loadSavedGame(gameId: number): Promise<GameState> {
+  return invoke("load_saved_game", { gameId });
 }
 
 export async function getSettings(): Promise<Settings> {

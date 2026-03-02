@@ -1,12 +1,15 @@
-import { Application, Graphics } from "pixi.js";
+import { Application, Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { StoneColor, StonePosition } from "../api/types";
 import { intersectionToPixel } from "../utils/coordinates";
 import { type BoardTheme, defaultTheme, starPoints } from "./themes";
+
+const COLUMN_LETTERS = "ABCDEFGHJKLMNOPQRST";
 
 export type BoardRendererOptions = {
   boardSize: number;
   canvasSize: number;
   theme?: BoardTheme;
+  showCoordinates?: boolean;
   onIntersectionClick?: (row: number, col: number) => void;
   onIntersectionHover?: (row: number, col: number | null) => void;
 };
@@ -17,11 +20,13 @@ export class BoardRenderer {
   private cellSize: number;
   private padding: number;
   private theme: BoardTheme;
+  private showCoordinates: boolean;
 
   private boardLayer: Graphics;
   private stoneLayer: Graphics;
   private hoverLayer: Graphics;
   private indicatorLayer: Graphics;
+  private coordinateLayer: Container;
 
   private hoverPoint: { row: number; col: number } | null = null;
   private hoverColor: StoneColor = "black";
@@ -30,8 +35,11 @@ export class BoardRenderer {
     this.app = new Application();
     this.boardSize = options.boardSize;
     this.theme = options.theme ?? defaultTheme;
+    this.showCoordinates = options.showCoordinates ?? false;
 
-    this.padding = options.canvasSize * 0.06;
+    // More padding when coordinates are shown to fit the labels
+    const paddingRatio = this.showCoordinates ? 0.1 : 0.06;
+    this.padding = options.canvasSize * paddingRatio;
     this.cellSize =
       (options.canvasSize - 2 * this.padding) / (this.boardSize - 1);
 
@@ -39,6 +47,7 @@ export class BoardRenderer {
     this.stoneLayer = new Graphics();
     this.hoverLayer = new Graphics();
     this.indicatorLayer = new Graphics();
+    this.coordinateLayer = new Container();
   }
 
   async init(canvas: HTMLCanvasElement): Promise<void> {
@@ -53,11 +62,15 @@ export class BoardRenderer {
     });
 
     this.app.stage.addChild(this.boardLayer);
+    this.app.stage.addChild(this.coordinateLayer);
     this.app.stage.addChild(this.stoneLayer);
     this.app.stage.addChild(this.hoverLayer);
     this.app.stage.addChild(this.indicatorLayer);
 
     this.drawBoard();
+    if (this.showCoordinates) {
+      this.drawCoordinates();
+    }
     this.setupInteraction(canvas);
   }
 
@@ -93,6 +106,62 @@ export class BoardRenderer {
         this.padding,
       );
       g.circle(x, y, this.theme.starPointRadius).fill(this.theme.lineColor);
+    }
+  }
+
+  private drawCoordinates(): void {
+    this.coordinateLayer.removeChildren();
+
+    const fontSize = Math.max(9, Math.min(14, this.cellSize * 0.35));
+    const style = new TextStyle({
+      fontFamily: "sans-serif",
+      fontSize,
+      fill: this.theme.coordinateColor,
+      align: "center",
+    });
+
+    const labelOffset = this.padding * 0.55;
+
+    // Column labels (A-T, skipping I) — top and bottom
+    for (let col = 0; col < this.boardSize; col++) {
+      const letter = COLUMN_LETTERS[col];
+      const x = this.padding + col * this.cellSize;
+
+      // Top
+      const topLabel = new Text({ text: letter, style });
+      topLabel.anchor.set(0.5, 0.5);
+      topLabel.x = x;
+      topLabel.y = this.padding - labelOffset;
+      this.coordinateLayer.addChild(topLabel);
+
+      // Bottom
+      const bottomLabel = new Text({ text: letter, style });
+      bottomLabel.anchor.set(0.5, 0.5);
+      bottomLabel.x = x;
+      bottomLabel.y =
+        this.padding + (this.boardSize - 1) * this.cellSize + labelOffset;
+      this.coordinateLayer.addChild(bottomLabel);
+    }
+
+    // Row labels (1-N from bottom) — left and right
+    for (let row = 0; row < this.boardSize; row++) {
+      const number = String(this.boardSize - row);
+      const y = this.padding + row * this.cellSize;
+
+      // Left
+      const leftLabel = new Text({ text: number, style });
+      leftLabel.anchor.set(0.5, 0.5);
+      leftLabel.x = this.padding - labelOffset;
+      leftLabel.y = y;
+      this.coordinateLayer.addChild(leftLabel);
+
+      // Right
+      const rightLabel = new Text({ text: number, style });
+      rightLabel.anchor.set(0.5, 0.5);
+      rightLabel.x =
+        this.padding + (this.boardSize - 1) * this.cellSize + labelOffset;
+      rightLabel.y = y;
+      this.coordinateLayer.addChild(rightLabel);
     }
   }
 
@@ -223,10 +292,14 @@ export class BoardRenderer {
   }
 
   resize(canvasSize: number): void {
-    this.padding = canvasSize * 0.06;
+    const paddingRatio = this.showCoordinates ? 0.1 : 0.06;
+    this.padding = canvasSize * paddingRatio;
     this.cellSize = (canvasSize - 2 * this.padding) / (this.boardSize - 1);
     this.app.renderer.resize(canvasSize, canvasSize);
     this.drawBoard();
+    if (this.showCoordinates) {
+      this.drawCoordinates();
+    }
   }
 
   destroy(): void {

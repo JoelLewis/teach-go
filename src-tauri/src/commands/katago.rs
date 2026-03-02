@@ -28,12 +28,12 @@ fn resolve_binary_path() -> Result<PathBuf, AppError> {
     }
 
     // Check PATH via `which`
-    if let Ok(output) = std::process::Command::new("which").arg("katago").output() {
-        if output.status.success() {
-            let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            if !path.is_empty() {
-                return Ok(PathBuf::from(path));
-            }
+    if let Ok(output) = std::process::Command::new("which").arg("katago").output()
+        && output.status.success()
+    {
+        let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if !path.is_empty() {
+            return Ok(PathBuf::from(path));
         }
     }
 
@@ -41,6 +41,16 @@ fn resolve_binary_path() -> Result<PathBuf, AppError> {
         "KataGo binary not found. Set KATAGO_BINARY env var or place binary in src-tauri/binaries/"
             .into(),
     ))
+}
+
+fn resolve_config_path() -> Option<PathBuf> {
+    if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
+        let config_path = PathBuf::from(manifest_dir).join("binaries").join("analysis.cfg");
+        if config_path.exists() {
+            return Some(config_path);
+        }
+    }
+    None
 }
 
 fn resolve_model_path() -> Result<PathBuf, AppError> {
@@ -87,11 +97,12 @@ pub async fn start_engine(
 
     let binary_path = resolve_binary_path()?;
     let model_path = resolve_model_path()?;
+    let config_path = resolve_config_path();
 
     info!("KataGo binary: {}", binary_path.display());
     info!("KataGo model: {}", model_path.display());
 
-    match KataGoProcess::spawn(binary_path, model_path, None).await {
+    match KataGoProcess::spawn(binary_path, model_path, config_path).await {
         Ok(process) => {
             let client = KataGoClient::new(process);
             *katago = Some(client);
@@ -127,10 +138,11 @@ pub async fn request_ai_move(
 ) -> Result<GameState, AppError> {
     let _ = app.emit("ai-thinking", true);
 
-    // Ensure engine is started (lazy init)
+    // Ensure engine is started (lazy init) and healthy
     {
-        let katago = state.katago.lock().await;
+        let mut katago = state.katago.lock().await;
         if katago.is_none() {
+            *katago = None;
             drop(katago);
             start_engine(state.clone(), app.clone()).await?;
         }
@@ -149,9 +161,22 @@ pub async fn request_ai_move(
         )
     };
 
+    // Read AI strength from settings
+    let profile = {
+        let db = state.db.lock().unwrap();
+        let strength: String = db
+            .query_row(
+                "SELECT value FROM settings WHERE key = 'ai_strength'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap_or_else(|_| "beginner".to_string());
+        convert::strength_to_profile(&strength)
+    };
+
     // Build and send query (async — no std mutex held)
     let query_id = format!("ai-move-{}", history.len());
-    let query = convert::build_query(query_id, &history, board_size, komi, MAX_VISITS);
+    let query = convert::build_query(query_id, &history, board_size, komi, MAX_VISITS, profile);
 
     let response = {
         let katago = state.katago.lock().await;

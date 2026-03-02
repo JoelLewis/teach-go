@@ -50,7 +50,7 @@ pub async fn get_coaching_feedback(
     // Build pre-move query (history excluding the last move)
     let pre_move_history = &history[..history.len() - 1];
     let query_id = format!("coaching-{move_number}");
-    let query = convert::build_query(query_id, pre_move_history, board_size, komi, COACHING_VISITS);
+    let query = convert::build_query(query_id, pre_move_history, board_size, komi, COACHING_VISITS, None);
 
     let response = client.query(query).await?;
     drop(katago);

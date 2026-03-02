@@ -7,10 +7,11 @@
     stones: StonePosition[];
     currentColor: StoneColor;
     lastMove: [number, number] | null;
+    showCoordinates?: boolean;
     onIntersectionClick: (row: number, col: number) => void;
   };
 
-  let { boardSize, stones, currentColor, lastMove, onIntersectionClick }: Props = $props();
+  let { boardSize, stones, currentColor, lastMove, showCoordinates = false, onIntersectionClick }: Props = $props();
 
   let canvasEl: HTMLCanvasElement;
   let renderer: BoardRenderer | null = null;
@@ -24,6 +25,7 @@
     renderer = new BoardRenderer({
       boardSize,
       canvasSize: CANVAS_SIZE,
+      showCoordinates,
       onIntersectionClick,
     });
     renderer.init(canvasEl);

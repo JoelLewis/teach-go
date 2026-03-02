@@ -8,6 +8,8 @@
   import { gameStore } from "../lib/stores/game.svelte";
   import { coachingStore } from "../lib/stores/coaching.svelte";
   import { engineStore } from "../lib/stores/engine.svelte";
+  import { settingsStore } from "../lib/stores/settings.svelte";
+  import * as sounds from "../lib/audio/sounds";
   import { onEngineStatus, onAiThinking } from "../lib/api/events";
   import * as api from "../lib/api/commands";
   import type { StoneColor } from "../lib/api/types";
@@ -21,6 +23,11 @@
   let boardSize = $state(9);
   let playerColor = $state<StoneColor>("black");
   let unlisteners: Array<() => void> = [];
+
+  // Keep sound state in sync with settings
+  $effect(() => {
+    sounds.setEnabled(settingsStore.value.sound_enabled);
+  });
 
   onMount(() => {
     // Subscribe to backend events
@@ -71,8 +78,18 @@
     if (!gameStore.state || gameStore.state.phase === "Finished") return;
     if (engineStore.aiThinking) return;
 
+    const prevCaptures = gameStore.state
+      ? gameStore.state.captures_black + gameStore.state.captures_white
+      : 0;
+
     try {
       const state = await api.playMove(row, col);
+      const newCaptures = state.captures_black + state.captures_white;
+      if (newCaptures > prevCaptures) {
+        sounds.play("capture");
+      } else {
+        sounds.play("stone");
+      }
       gameStore.set(state);
       triggerCoaching();
       triggerAiMove();
@@ -85,6 +102,7 @@
     if (engineStore.aiThinking) return;
     try {
       const state = await api.passTurn();
+      sounds.play("pass");
       gameStore.set(state);
       triggerAiMove();
     } catch (e) {
@@ -120,6 +138,27 @@
       gameStore.setError(String(e));
     }
   }
+
+  async function handleSave() {
+    try {
+      await api.saveGameSgf();
+    } catch (e) {
+      gameStore.setError(String(e));
+    }
+  }
+
+  async function handleLoad() {
+    try {
+      const state = await api.loadGameSgf();
+      if (state) {
+        gameStore.set(state);
+        boardSize = state.board_size;
+        coachingStore.clear();
+      }
+    } catch (e) {
+      gameStore.setError(String(e));
+    }
+  }
 </script>
 
 <div class="flex h-full">
@@ -131,6 +170,7 @@
         stones={gameStore.state.stones}
         currentColor={gameStore.state.current_color as StoneColor}
         lastMove={gameStore.state.last_move}
+        showCoordinates={settingsStore.value.show_coordinates}
         onIntersectionClick={handleIntersectionClick}
       />
     {/if}
@@ -176,6 +216,8 @@
         onResign={handleResign}
         onUndo={handleUndo}
         onNewGame={startNewGame}
+        onSave={handleSave}
+        onLoad={handleLoad}
         disabled={gameStore.state.phase === "Finished" ||
           engineStore.aiThinking}
       />
@@ -199,7 +241,7 @@
             {:else if typeof gameStore.state.result === "object" && "Score" in gameStore.state.result}
               &mdash; {gameStore.state.result.Score.winner === "black"
                 ? "Black"
-                : "White"} wins by {gameStore.state.result.Score.margin}
+                : "White"} wins by {gameStore.state.result.Score.margin} points
             {/if}
           {/if}
         </div>

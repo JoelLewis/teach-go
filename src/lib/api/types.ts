@@ -36,9 +36,18 @@ export type CoachingMessage = {
   move_number: number;
 };
 
+export type SavedGame = {
+  id: number;
+  board_size: number;
+  result: string;
+  played_at: string;
+};
+
 export type Settings = {
   board_size: number;
   komi: number;
   show_coordinates: boolean;
   show_move_numbers: boolean;
+  ai_strength: string;
+  sound_enabled: boolean;
 };

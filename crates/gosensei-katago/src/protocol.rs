@@ -17,6 +17,8 @@ pub struct AnalysisQuery {
     pub include_ownership: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include_policy: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub human_sl_profile: Option<String>,
 }
 
 /// KataGo Analysis Engine response format.

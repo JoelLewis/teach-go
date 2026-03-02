@@ -55,25 +55,23 @@ pub fn validate_move(
     let opponent = color.opponent();
     let mut captured = Vec::new();
     for neighbor in point.neighbors(dim) {
-        if test_board.get(neighbor) == Some(opponent) {
-            if let Some(group) = test_board.group_at(neighbor) {
-                if group.is_captured() {
-                    for &stone in &group.stones {
-                        captured.push(stone);
-                    }
-                    test_board.remove_group(&group);
-                }
+        if test_board.get(neighbor) == Some(opponent)
+            && let Some(group) = test_board.group_at(neighbor)
+            && group.is_captured()
+        {
+            for &stone in &group.stones {
+                captured.push(stone);
             }
+            test_board.remove_group(&group);
         }
     }
 
     // Check for suicide (no captures and placed stone has no liberties)
-    if captured.is_empty() {
-        if let Some(group) = test_board.group_at(point) {
-            if group.is_captured() {
-                return Err(MoveError::Suicide);
-            }
-        }
+    if captured.is_empty()
+        && let Some(group) = test_board.group_at(point)
+        && group.is_captured()
+    {
+        return Err(MoveError::Suicide);
     }
 
     Ok(captured)

@@ -11,12 +11,16 @@
 
   let boardSize = $state(settings.board_size);
   let showCoordinates = $state(settings.show_coordinates);
+  let aiStrength = $state(settings.ai_strength);
+  let soundEnabled = $state(settings.sound_enabled);
 
   function handleSave() {
     onSave({
       ...settings,
       board_size: boardSize,
       show_coordinates: showCoordinates,
+      ai_strength: aiStrength,
+      sound_enabled: soundEnabled,
     });
   }
 </script>
@@ -37,10 +41,30 @@
       </select>
     </div>
 
-    <div class="mb-6">
+    <div class="mb-4">
+      <label class="mb-1 block text-sm text-stone-400">AI Strength</label>
+      <select
+        bind:value={aiStrength}
+        class="w-full rounded bg-stone-700 px-3 py-2 text-stone-100"
+      >
+        <option value="beginner">Beginner (25-20 kyu)</option>
+        <option value="intermediate">Intermediate (19-10 kyu)</option>
+        <option value="advanced">Advanced (9-1 kyu)</option>
+        <option value="dan">Dan (1 dan+)</option>
+      </select>
+    </div>
+
+    <div class="mb-4">
       <label class="flex items-center gap-2 text-sm text-stone-400">
         <input type="checkbox" bind:checked={showCoordinates} class="rounded" />
         Show coordinates
+      </label>
+    </div>
+
+    <div class="mb-6">
+      <label class="flex items-center gap-2 text-sm text-stone-400">
+        <input type="checkbox" bind:checked={soundEnabled} class="rounded" />
+        Sound effects
       </label>
     </div>
 

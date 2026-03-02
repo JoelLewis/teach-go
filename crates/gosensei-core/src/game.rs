@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::board::Board;
 use crate::rules::{self, MoveError};
+use crate::scoring;
+use crate::sgf;
 use crate::types::{BoardSize, Color, GameResult, Move, MoveRecord, Point};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -145,10 +147,10 @@ impl Game {
         self.ko_point = None;
         self.current_color = self.current_color.opponent();
 
-        // Two consecutive passes end the game
+        // Two consecutive passes end the game — score the position
         if self.consecutive_passes >= 2 {
             self.phase = GamePhase::Finished;
-            self.result = Some(GameResult::Draw); // Simplified — real scoring TBD
+            self.result = Some(scoring::score_area(&self.board, self.komi));
         }
 
         Ok(())
@@ -194,6 +196,42 @@ impl Game {
         self.result = None;
 
         Ok(())
+    }
+
+    /// Replay an SGF string into a Game. Stops on the first illegal move.
+    pub fn from_sgf(input: &str) -> Result<Self, String> {
+        let parsed = sgf::parser::parse(input).map_err(|e| e.to_string())?;
+        let mut game = Game::new(parsed.board_size, parsed.komi);
+
+        for (color, mv) in &parsed.moves {
+            // SGF may have out-of-order colors; force the expected color
+            game.current_color = *color;
+            match mv {
+                Move::Play(point) => {
+                    if game.play(*point).is_err() {
+                        break;
+                    }
+                    // play() flips color, but we forced it above, so the
+                    // alternation is handled by the next iteration's force.
+                }
+                Move::Pass => {
+                    if game.pass().is_err() {
+                        break;
+                    }
+                }
+                Move::Resign => {
+                    let _ = game.resign();
+                    break;
+                }
+            }
+        }
+
+        Ok(game)
+    }
+
+    /// Serialize this game to SGF format.
+    pub fn to_sgf(&self) -> String {
+        sgf::writer::write(self)
     }
 
     /// Create a serializable snapshot of the current state.
@@ -263,6 +301,14 @@ mod tests {
         game.pass().unwrap();
         game.pass().unwrap();
         assert_eq!(*game.phase(), GamePhase::Finished);
+        // Empty board with 6.5 komi → White wins
+        assert_eq!(
+            game.result().cloned(),
+            Some(GameResult::Score {
+                winner: Color::White,
+                margin: 6.5,
+            })
+        );
     }
 
     #[test]

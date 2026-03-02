@@ -5,6 +5,8 @@ const DEFAULT_SETTINGS: Settings = {
   komi: 6.5,
   show_coordinates: true,
   show_move_numbers: false,
+  ai_strength: "beginner",
+  sound_enabled: true,
 };
 
 export const settingsStore = createSettingsStore();
