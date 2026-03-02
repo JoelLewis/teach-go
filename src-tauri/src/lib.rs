@@ -2,6 +2,7 @@ mod commands;
 mod convert;
 mod db;
 mod error;
+mod review;
 mod state;
 
 use state::AppState;
@@ -37,6 +38,10 @@ pub fn run() {
             commands::settings::update_settings,
             commands::sgf::save_game_sgf,
             commands::sgf::load_game_sgf,
+            commands::review::start_review,
+            commands::review::get_review_progress,
+            commands::review::get_review_data,
+            commands::review::get_review_position,
         ])
         .run(tauri::generate_context!())
         .expect("error while running GoSensei");

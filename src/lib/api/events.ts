@@ -1,4 +1,5 @@
 import { listen } from "@tauri-apps/api/event";
+import type { ReviewProgress } from "./types";
 
 export type EngineStatus = "starting" | "ready" | "error" | "stopped";
 
@@ -14,6 +15,14 @@ export function onAiThinking(
   callback: (thinking: boolean) => void,
 ): Promise<() => void> {
   return listen<boolean>("ai-thinking", (event) => {
+    callback(event.payload);
+  }).then((unlisten) => unlisten);
+}
+
+export function onReviewProgress(
+  callback: (progress: ReviewProgress) => void,
+): Promise<() => void> {
+  return listen<ReviewProgress>("review-progress", (event) => {
     callback(event.payload);
   }).then((unlisten) => unlisten);
 }

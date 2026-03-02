@@ -16,9 +16,10 @@
 
   type Props = {
     onGoHome: () => void;
+    onStartReview: () => void;
   };
 
-  let { onGoHome }: Props = $props();
+  let { onGoHome, onStartReview }: Props = $props();
 
   let boardSize = $state(9);
   let playerColor = $state<StoneColor>("black");
@@ -244,6 +245,12 @@
                 : "White"} wins by {gameStore.state.result.Score.margin} points
             {/if}
           {/if}
+          <button
+            onclick={onStartReview}
+            class="mt-2 rounded bg-amber-700 px-4 py-1 text-sm font-semibold text-white hover:bg-amber-600"
+          >
+            Review Game
+          </button>
         </div>
       {/if}
     {:else if gameStore.error}

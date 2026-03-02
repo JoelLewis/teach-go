@@ -1,5 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { CoachingMessage, GameResult, GameState, SavedGame, Settings } from "./types";
+import type {
+  CoachingMessage,
+  GameResult,
+  GameState,
+  ReviewData,
+  ReviewProgress,
+  SavedGame,
+  Settings,
+} from "./types";
 
 export async function newGame(
   boardSize: number,
@@ -63,4 +71,20 @@ export async function getSettings(): Promise<Settings> {
 
 export async function updateSettings(settings: Settings): Promise<Settings> {
   return invoke("update_settings", { settings });
+}
+
+export async function startReview(gameId?: number): Promise<void> {
+  return invoke("start_review", { gameId: gameId ?? null });
+}
+
+export async function getReviewProgress(): Promise<ReviewProgress> {
+  return invoke("get_review_progress");
+}
+
+export async function getReviewData(): Promise<ReviewData> {
+  return invoke("get_review_data");
+}
+
+export async function getReviewPosition(moveNumber: number): Promise<GameState> {
+  return invoke("get_review_position", { moveNumber });
 }

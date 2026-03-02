@@ -51,3 +51,30 @@ export type Settings = {
   ai_strength: string;
   sound_enabled: boolean;
 };
+
+export type MoveAnalysis = {
+  move_number: number;
+  color: "black" | "white" | null;
+  player_move: string | null;
+  winrate_black: number;
+  score_lead: number;
+  best_move: string | null;
+  score_loss: number;
+  severity: Severity;
+  coaching_message: string | null;
+  best_variation: string[];
+};
+
+export type ReviewData = {
+  board_size: number;
+  total_moves: number;
+  komi: number;
+  move_analyses: MoveAnalysis[];
+  top_mistakes: number[];
+};
+
+export type ReviewProgress = {
+  total_positions: number;
+  analyzed_positions: number;
+  is_complete: boolean;
+};

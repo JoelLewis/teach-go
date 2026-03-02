@@ -200,10 +200,17 @@ impl Game {
 
     /// Replay an SGF string into a Game. Stops on the first illegal move.
     pub fn from_sgf(input: &str) -> Result<Self, String> {
+        Self::from_sgf_partial(input, None)
+    }
+
+    /// Replay an SGF string up to `max_moves` moves (or all moves if `None`).
+    /// Stops on the first illegal move or when the limit is reached.
+    pub fn from_sgf_partial(input: &str, max_moves: Option<u16>) -> Result<Self, String> {
         let parsed = sgf::parser::parse(input).map_err(|e| e.to_string())?;
         let mut game = Game::new(parsed.board_size, parsed.komi);
+        let limit = max_moves.unwrap_or(u16::MAX) as usize;
 
-        for (color, mv) in &parsed.moves {
+        for (color, mv) in parsed.moves.iter().take(limit) {
             // SGF may have out-of-order colors; force the expected color
             game.current_color = *color;
             match mv {
@@ -339,5 +346,42 @@ mod tests {
         game.resign().unwrap();
         let result = game.play(Point::new(4, 4));
         assert!(matches!(result, Err(MoveError::GameOver)));
+    }
+
+    #[test]
+    fn from_sgf_partial_stops_at_limit() {
+        let sgf = "(;SZ[9]KM[6.5];B[ee];W[cc];B[gg];W[dd])";
+        // Full replay has 4 moves
+        let full = Game::from_sgf(sgf).unwrap();
+        assert_eq!(full.move_history().len(), 4);
+
+        // Partial replay at move 2
+        let partial = Game::from_sgf_partial(sgf, Some(2)).unwrap();
+        assert_eq!(partial.move_history().len(), 2);
+
+        // Board at move 2 should match full game's board at that point
+        let full_state_at_2 = Game::from_sgf_partial(sgf, Some(2)).unwrap().to_state();
+        let partial_state = partial.to_state();
+        assert_eq!(full_state_at_2.stones.len(), partial_state.stones.len());
+        assert_eq!(full_state_at_2.move_number, 2);
+    }
+
+    #[test]
+    fn from_sgf_partial_none_replays_all() {
+        let sgf = "(;SZ[9]KM[6.5];B[ee];W[cc];B[gg])";
+        let full = Game::from_sgf(sgf).unwrap();
+        let partial_all = Game::from_sgf_partial(sgf, None).unwrap();
+        assert_eq!(
+            full.move_history().len(),
+            partial_all.move_history().len()
+        );
+    }
+
+    #[test]
+    fn from_sgf_partial_zero_gives_empty_board() {
+        let sgf = "(;SZ[9]KM[6.5];B[ee];W[cc])";
+        let empty = Game::from_sgf_partial(sgf, Some(0)).unwrap();
+        assert_eq!(empty.move_history().len(), 0);
+        assert!(empty.board().is_empty(Point::new(4, 4)));
     }
 }

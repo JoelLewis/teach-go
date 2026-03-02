@@ -5,11 +5,14 @@ use gosensei_core::types::Color;
 use gosensei_katago::client::KataGoClient;
 use rusqlite::Connection;
 
+use crate::review::ReviewSession;
+
 pub struct AppState {
     pub game: Mutex<Option<Game>>,
     pub ai_color: Mutex<Option<Color>>,
     pub katago: Arc<tokio::sync::Mutex<Option<KataGoClient>>>,
     pub db: Mutex<Connection>,
+    pub review: Arc<tokio::sync::Mutex<Option<ReviewSession>>>,
 }
 
 impl AppState {
@@ -19,6 +22,7 @@ impl AppState {
             ai_color: Mutex::new(None),
             katago: Arc::new(tokio::sync::Mutex::new(None)),
             db: Mutex::new(conn),
+            review: Arc::new(tokio::sync::Mutex::new(None)),
         }
     }
 }

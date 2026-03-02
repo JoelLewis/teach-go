@@ -59,13 +59,24 @@ impl KataGoClient {
 
     /// Send a query and wait for the response.
     pub async fn query(&self, query: AnalysisQuery) -> Result<AnalysisResponse, ClientError> {
+        let rx = self.query_fire(query).await?;
+        let id_for_err = "unknown".to_string();
+        rx.await.map_err(|_| ClientError::Timeout(id_for_err))
+    }
+
+    /// Send a query and return the receiver for later collection.
+    /// Use this for pipelining multiple queries (e.g., batch review analysis).
+    pub async fn query_fire(
+        &self,
+        query: AnalysisQuery,
+    ) -> Result<oneshot::Receiver<AnalysisResponse>, ClientError> {
         let id = query.id.clone();
         let json = serde_json::to_string(&query)?;
 
         let (tx, rx) = oneshot::channel();
         {
             let mut pending = self.pending.lock().await;
-            pending.insert(id.clone(), tx);
+            pending.insert(id, tx);
         }
 
         {
@@ -73,6 +84,6 @@ impl KataGoClient {
             proc.send(&json).await?;
         }
 
-        rx.await.map_err(|_| ClientError::Timeout(id))
+        Ok(rx)
     }
 }

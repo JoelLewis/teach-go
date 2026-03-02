@@ -6,9 +6,10 @@
   type Props = {
     onStartGame: () => void;
     onLoadGame: (gameId: number) => void;
+    onStartReview: (gameId: number) => void;
   };
 
-  let { onStartGame, onLoadGame }: Props = $props();
+  let { onStartGame, onLoadGame, onStartReview }: Props = $props();
 
   let recentGames = $state<SavedGame[]>([]);
 
@@ -52,14 +53,23 @@
       <h2 class="mb-2 text-sm font-semibold text-stone-400">Recent Games</h2>
       <div class="flex flex-col gap-1">
         {#each recentGames.slice(0, 10) as game}
-          <button
-            onclick={() => onLoadGame(game.id)}
-            class="flex items-center justify-between rounded bg-stone-800 px-3 py-2 text-left text-sm text-stone-300 hover:bg-stone-700"
-          >
-            <span>{game.board_size}x{game.board_size}</span>
-            <span class="text-stone-400">{formatResult(game.result)}</span>
-            <span class="text-xs text-stone-500">{game.played_at.slice(0, 10)}</span>
-          </button>
+          <div class="flex items-center gap-1 rounded bg-stone-800 px-3 py-2 text-sm text-stone-300">
+            <button
+              onclick={() => onLoadGame(game.id)}
+              class="flex flex-1 items-center justify-between text-left hover:text-stone-100"
+            >
+              <span>{game.board_size}x{game.board_size}</span>
+              <span class="text-stone-400">{formatResult(game.result)}</span>
+              <span class="text-xs text-stone-500">{game.played_at.slice(0, 10)}</span>
+            </button>
+            <button
+              onclick={() => onStartReview(game.id)}
+              class="rounded bg-stone-700 px-2 py-0.5 text-xs text-amber-400 hover:bg-stone-600"
+              title="Review this game"
+            >
+              Review
+            </button>
+          </div>
         {/each}
       </div>
     </div>
