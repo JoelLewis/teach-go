@@ -83,8 +83,8 @@ pub fn seed_bundled_collections(conn: &Connection) -> Result<u32, AppError> {
             // Interpolate difficulty from base→top across the collection
             if count > 1 {
                 let t = i as f64 / (count - 1) as f64;
-                problem.difficulty = spec.difficulty_base
-                    + t * (spec.difficulty_top - spec.difficulty_base);
+                problem.difficulty =
+                    spec.difficulty_base + t * (spec.difficulty_top - spec.difficulty_base);
             }
 
             // Add the collection source tag

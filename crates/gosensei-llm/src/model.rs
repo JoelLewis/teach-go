@@ -43,9 +43,7 @@ impl ModelManager {
     /// Load a GGUF model from disk. Blocking — call from `spawn_blocking`.
     pub fn load(model_path: &Path) -> Result<Self, LlmError> {
         if !model_path.exists() {
-            return Err(LlmError::ModelNotFound(
-                model_path.display().to_string(),
-            ));
+            return Err(LlmError::ModelNotFound(model_path.display().to_string()));
         }
 
         info!("Loading LLM model from {}", model_path.display());
@@ -57,7 +55,10 @@ impl ModelManager {
         let model = LlamaModel::load_from_file(&backend, model_path, &model_params)
             .map_err(|e| LlmError::InferenceFailed(format!("model load: {e}")))?;
 
-        info!("LLM model loaded successfully ({} params)", model.n_params());
+        info!(
+            "LLM model loaded successfully ({} params)",
+            model.n_params()
+        );
 
         Ok(Self {
             backend: Arc::new(backend),
@@ -97,8 +98,8 @@ impl ModelManager {
         max_tokens: u32,
         mut on_token: impl FnMut(&str),
     ) -> Result<String, LlmError> {
-        let ctx_params = LlamaContextParams::default()
-            .with_n_ctx(Some(NonZeroU32::new(N_CTX).unwrap()));
+        let ctx_params =
+            LlamaContextParams::default().with_n_ctx(Some(NonZeroU32::new(N_CTX).unwrap()));
 
         let mut ctx = self
             .model

@@ -115,7 +115,7 @@ pub async fn start_review(
                         board_size,
                         komi,
                         REVIEW_VISITS,
-                        None, // Full strength for review analysis
+                        None,       // Full strength for review analysis
                         Some(true), // Request ownership data for territory overlay
                     );
 
@@ -146,7 +146,7 @@ pub async fn start_review(
                 // KataGo reports winrate from the perspective of the current player.
                 // Position i: after i moves. Black plays odd-indexed positions (moves 1,3,5...)
                 // Position 0 = Black to move, position 1 = White to move, etc.
-                let is_black_to_move = i .is_multiple_of(2);
+                let is_black_to_move = i.is_multiple_of(2);
                 let winrate_black = if is_black_to_move {
                     response.root_info.winrate
                 } else {
@@ -188,9 +188,9 @@ pub async fn start_review(
                     winrate_black,
                     score_lead,
                     best_move,
-                    score_loss: 0.0, // Computed later
+                    score_loss: 0.0,          // Computed later
                     severity: Severity::Good, // Computed later
-                    coaching_message: None, // Computed later
+                    coaching_message: None,   // Computed later
                     best_variation,
                 };
 
@@ -261,14 +261,8 @@ fn compute_score_loss_and_severity(session: &mut ReviewSession, board_size: u8, 
     for i in 1..results.len() {
         // Get score_lead of the previous position (what the engine expected)
         // and the current position (what actually happened after the move)
-        let prev_score = results[i - 1]
-            .as_ref()
-            .map(|a| a.score_lead)
-            .unwrap_or(0.0);
-        let curr_score = results[i]
-            .as_ref()
-            .map(|a| a.score_lead)
-            .unwrap_or(0.0);
+        let prev_score = results[i - 1].as_ref().map(|a| a.score_lead).unwrap_or(0.0);
+        let curr_score = results[i].as_ref().map(|a| a.score_lead).unwrap_or(0.0);
 
         // Determine who played this move
         let is_black_move = results[i]
@@ -296,11 +290,22 @@ fn compute_score_loss_and_severity(session: &mut ReviewSession, board_size: u8, 
                 .as_ref()
                 .and_then(|a| a.player_move.as_deref())
                 .and_then(|gtp| convert::gtp_to_point(gtp, board_size))
-                .map(|point| classify::classify_error_simple(i as u16, board_size, point.row, point.col, score_loss))
+                .map(|point| {
+                    classify::classify_error_simple(
+                        i as u16, board_size, point.row, point.col, score_loss,
+                    )
+                })
                 .unwrap_or(None);
 
             let suggested = results[i].as_ref().and_then(|a| a.best_move.clone());
-            let msg = templates::generate_message(severity, error_class, score_loss, suggested, None, i as u16);
+            let msg = templates::generate_message(
+                severity,
+                error_class,
+                score_loss,
+                suggested,
+                None,
+                i as u16,
+            );
             Some(msg.message)
         } else {
             None
@@ -315,9 +320,7 @@ fn compute_score_loss_and_severity(session: &mut ReviewSession, board_size: u8, 
 }
 
 #[tauri::command]
-pub async fn get_review_progress(
-    state: State<'_, AppState>,
-) -> Result<ReviewProgress, AppError> {
+pub async fn get_review_progress(state: State<'_, AppState>) -> Result<ReviewProgress, AppError> {
     let review = state.review.lock().await;
     let session = review
         .as_ref()
@@ -333,9 +336,7 @@ pub async fn get_review_progress(
 }
 
 #[tauri::command]
-pub async fn get_review_data(
-    state: State<'_, AppState>,
-) -> Result<ReviewData, AppError> {
+pub async fn get_review_data(state: State<'_, AppState>) -> Result<ReviewData, AppError> {
     let review = state.review.lock().await;
     let session = review
         .as_ref()
@@ -345,11 +346,8 @@ pub async fn get_review_data(
         return Err(AppError::Other("Review not yet complete".into()));
     }
 
-    let move_analyses: Vec<MoveAnalysis> = session
-        .results
-        .iter()
-        .filter_map(|r| r.clone())
-        .collect();
+    let move_analyses: Vec<MoveAnalysis> =
+        session.results.iter().filter_map(|r| r.clone()).collect();
 
     // Find top 5 mistakes sorted by score_loss descending (skip position 0)
     let mut scored: Vec<(u16, f64)> = move_analyses
@@ -379,8 +377,8 @@ pub async fn get_review_position(
         .as_ref()
         .ok_or(AppError::Other("No review in progress".into()))?;
 
-    let game = Game::from_sgf_partial(&session.game_sgf, Some(move_number))
-        .map_err(AppError::Other)?;
+    let game =
+        Game::from_sgf_partial(&session.game_sgf, Some(move_number)).map_err(AppError::Other)?;
 
     Ok(game.to_state())
 }
@@ -443,7 +441,7 @@ mod tests {
         // Position 0 (Black to move): KataGo reports 0.6 from Black's perspective
         // After normalization: should stay 0.6
         let position: usize = 0;
-        let is_black_to_move = position .is_multiple_of(2);
+        let is_black_to_move = position.is_multiple_of(2);
         let katago_winrate: f64 = 0.6;
         let winrate_black: f64 = if is_black_to_move {
             katago_winrate
@@ -458,7 +456,7 @@ mod tests {
         // Position 1 (White to move): KataGo reports 0.55 from White's perspective
         // After normalization to Black: 1.0 - 0.55 = 0.45
         let position: usize = 1;
-        let is_black_to_move = position .is_multiple_of(2);
+        let is_black_to_move = position.is_multiple_of(2);
         let katago_winrate: f64 = 0.55;
         let winrate_black: f64 = if is_black_to_move {
             katago_winrate
@@ -529,7 +527,10 @@ mod tests {
         // At rank 25.0 (beginner band): 3.0 < 5.0 threshold → Inaccuracy
         let loss1 = session.results[1].as_ref().unwrap().score_loss;
         assert!((loss1 - 3.0).abs() < f64::EPSILON);
-        assert_eq!(session.results[1].as_ref().unwrap().severity, Severity::Inaccuracy);
+        assert_eq!(
+            session.results[1].as_ref().unwrap().severity,
+            Severity::Inaccuracy
+        );
 
         // Position 2: White moved. score_lead went from -3.0 to -3.2.
         // For White: curr(-3.2) - prev(-3.0) = -0.2, max(0) = 0.0 — excellent move
@@ -566,13 +567,13 @@ mod tests {
     #[test]
     fn top_mistakes_selection() {
         let analyses = vec![
-            (1u16, 0.5),  // small
-            (2, 8.0),     // big
-            (3, 0.1),     // tiny
-            (4, 15.0),    // huge
-            (5, 3.0),     // medium
-            (6, 12.0),    // large
-            (7, 0.0),     // perfect
+            (1u16, 0.5), // small
+            (2, 8.0),    // big
+            (3, 0.1),    // tiny
+            (4, 15.0),   // huge
+            (5, 3.0),    // medium
+            (6, 12.0),   // large
+            (7, 0.0),    // perfect
         ];
 
         let mut scored = analyses.clone();

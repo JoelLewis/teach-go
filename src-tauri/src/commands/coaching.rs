@@ -71,7 +71,13 @@ pub async fn get_coaching_feedback(
     let pre_move_history = &history[..history.len() - 1];
     let query_id = format!("coaching-{move_number}");
     let standard_query = convert::build_query(
-        query_id, pre_move_history, board_size, komi, COACHING_VISITS, None, None,
+        query_id,
+        pre_move_history,
+        board_size,
+        komi,
+        COACHING_VISITS,
+        None,
+        None,
     );
 
     // Fire standard analysis query
@@ -85,27 +91,52 @@ pub async fn get_coaching_feedback(
             let at_rank_profile = convert::rank_to_human_profile(player_rank);
             let one_up_profile = convert::rank_one_up_profile(player_rank);
             let q1 = convert::build_query(
-                format!("coaching-{move_number}-hsl"), pre_move_history, board_size, komi,
-                1, Some(at_rank_profile), None,
+                format!("coaching-{move_number}-hsl"),
+                pre_move_history,
+                board_size,
+                komi,
+                1,
+                Some(at_rank_profile),
+                None,
             );
             let q2 = convert::build_query(
-                format!("coaching-{move_number}-hsl-up"), pre_move_history, board_size, komi,
-                1, Some(one_up_profile), None,
+                format!("coaching-{move_number}-hsl-up"),
+                pre_move_history,
+                board_size,
+                komi,
+                1,
+                Some(one_up_profile),
+                None,
             );
-            (client.query_fire(q1).await.ok(), client.query_fire(q2).await.ok())
+            (
+                client.query_fire(q1).await.ok(),
+                client.query_fire(q2).await.ok(),
+            )
         } else {
             (None, None)
         }
     };
 
-    let response = standard_rx.await.map_err(|_| AppError::KataGo("coaching query dropped".into()))?;
+    let response = standard_rx
+        .await
+        .map_err(|_| AppError::KataGo("coaching query dropped".into()))?;
 
     // Await Human SL responses concurrently (non-fatal)
     #[cfg(feature = "llm")]
     let (human_at_rank, human_one_up): (Option<AnalysisResponse>, Option<AnalysisResponse>) = {
         let (at_rank, one_up) = tokio::join!(
-            async { match human_at_rank_rx { Some(rx) => rx.await.ok(), None => None } },
-            async { match human_one_up_rx { Some(rx) => rx.await.ok(), None => None } },
+            async {
+                match human_at_rank_rx {
+                    Some(rx) => rx.await.ok(),
+                    None => None,
+                }
+            },
+            async {
+                match human_one_up_rx {
+                    Some(rx) => rx.await.ok(),
+                    None => None,
+                }
+            },
         );
         (at_rank, one_up)
     };
@@ -121,14 +152,17 @@ pub async fn get_coaching_feedback(
     #[cfg(feature = "llm")]
     let (human_policy_played_at_rank, human_policy_played_one_up, human_policy_best_at_rank) = {
         let best_move_gtp = response.move_infos.first().map(|m| m.mv.as_str());
-        let at_rank = human_at_rank.as_ref()
+        let at_rank = human_at_rank
+            .as_ref()
             .and_then(|r| r.move_infos.iter().find(|m| m.mv == player_move_gtp))
             .map(|m| m.prior);
-        let one_up = human_one_up.as_ref()
+        let one_up = human_one_up
+            .as_ref()
             .and_then(|r| r.move_infos.iter().find(|m| m.mv == player_move_gtp))
             .map(|m| m.prior);
         let best_at_rank = best_move_gtp.and_then(|best| {
-            human_at_rank.as_ref()
+            human_at_rank
+                .as_ref()
                 .and_then(|r| r.move_infos.iter().find(|m| m.mv == best))
                 .map(|m| m.prior)
         });
@@ -137,7 +171,12 @@ pub async fn get_coaching_feedback(
 
     // For excellent moves, occasionally return praise
     if severity == Severity::Excellent {
-        let praise = templates::maybe_praise(move_number, &player_move_gtp, &response.move_infos, score_loss);
+        let praise = templates::maybe_praise(
+            move_number,
+            &player_move_gtp,
+            &response.move_infos,
+            score_loss,
+        );
         if let Some(ref msg) = praise {
             info!("Coaching move {move_number}: Excellent — {}", msg.message);
         }
@@ -188,13 +227,25 @@ pub async fn get_coaching_feedback(
 
     // Accumulate error for skill model update at game end
     if let Some(ec) = error_class {
-        state.game_errors.lock().unwrap().push(
-            crate::skill::GameError { error_class: ec, score_loss },
-        );
+        state
+            .game_errors
+            .lock()
+            .unwrap()
+            .push(crate::skill::GameError {
+                error_class: ec,
+                score_loss,
+            });
     }
 
     // Always compute the template message first (zero-latency fallback)
-    let template_msg = templates::generate_message(severity, error_class, score_loss, suggested.clone(), simplest_move.clone(), move_number);
+    let template_msg = templates::generate_message(
+        severity,
+        error_class,
+        score_loss,
+        suggested.clone(),
+        simplest_move.clone(),
+        move_number,
+    );
 
     // Try LLM coaching if available, fall back to template on any failure
     #[allow(unused_mut)]
@@ -203,12 +254,23 @@ pub async fn get_coaching_feedback(
     #[cfg(feature = "llm")]
     let final_message = {
         match try_llm_coaching(
-            &state, &app, player_rank, move_number, &player_move_gtp,
-            suggested.as_deref(), simplest_move.as_deref(),
-            score_loss, severity, error_class, &response,
-            human_policy_played_at_rank, human_policy_played_one_up,
+            &state,
+            &app,
+            player_rank,
+            move_number,
+            &player_move_gtp,
+            suggested.as_deref(),
+            simplest_move.as_deref(),
+            score_loss,
+            severity,
+            error_class,
+            &response,
+            human_policy_played_at_rank,
+            human_policy_played_one_up,
             human_policy_best_at_rank,
-        ).await {
+        )
+        .await
+        {
             Ok(msg) => {
                 llm_used = true;
                 msg
@@ -226,13 +288,16 @@ pub async fn get_coaching_feedback(
     // Record coaching event in DB for session context
     {
         let db = state.db.lock().unwrap();
-        let _ = crate::coaching_db::insert_event(&db, &crate::coaching_db::CoachingEvent {
-            move_number,
-            error_class: error_class.map(|ec| format!("{ec:?}")),
-            severity: format!("{severity:?}"),
-            score_loss,
-            llm_used,
-        });
+        let _ = crate::coaching_db::insert_event(
+            &db,
+            &crate::coaching_db::CoachingEvent {
+                move_number,
+                error_class: error_class.map(|ec| format!("{ec:?}")),
+                severity: format!("{severity:?}"),
+                score_loss,
+                llm_used,
+            },
+        );
     }
 
     info!(
@@ -282,17 +347,16 @@ async fn try_llm_coaching(
     let (similar_errors, total_mistakes) = {
         let db = state.db.lock().unwrap();
         let similar = error_class
-            .map(|ec| crate::coaching_db::count_class_this_session(&db, &format!("{ec:?}")).unwrap_or(0))
+            .map(|ec| {
+                crate::coaching_db::count_class_this_session(&db, &format!("{ec:?}")).unwrap_or(0)
+            })
             .unwrap_or(0);
         let total = crate::coaching_db::count_mistakes_this_session(&db).unwrap_or(0);
         (similar, total)
     };
 
     // Determine best/simplest move for the prompt
-    let best_or_simplest = simplest_move
-        .or(suggested)
-        .unwrap_or("unknown")
-        .to_string();
+    let best_or_simplest = simplest_move.or(suggested).unwrap_or("unknown").to_string();
 
     // Build PV from best move
     let pv_best: Vec<String> = response
@@ -332,11 +396,14 @@ async fn try_llm_coaching(
     // Run generation in blocking task (LlamaContext is !Send)
     let raw_output = tokio::task::spawn_blocking(move || {
         manager.generate_streaming(&prompt, 150, |piece| {
-            let _ = app_for_stream.emit("coaching-stream", CoachingStreamChunk {
-                move_number: mn,
-                text_delta: piece.to_string(),
-                is_complete: false,
-            });
+            let _ = app_for_stream.emit(
+                "coaching-stream",
+                CoachingStreamChunk {
+                    move_number: mn,
+                    text_delta: piece.to_string(),
+                    is_complete: false,
+                },
+            );
         })
     })
     .await
@@ -344,11 +411,14 @@ async fn try_llm_coaching(
     .map_err(|e| AppError::Llm(e.to_string()))?;
 
     // Signal stream completion
-    let _ = app.emit("coaching-stream", CoachingStreamChunk {
-        move_number,
-        text_delta: String::new(),
-        is_complete: true,
-    });
+    let _ = app.emit(
+        "coaching-stream",
+        CoachingStreamChunk {
+            move_number,
+            text_delta: String::new(),
+            is_complete: true,
+        },
+    );
 
     // Parse LLM output
     let parsed = gosensei_llm::parse::parse_llm_output(&raw_output);
@@ -356,7 +426,9 @@ async fn try_llm_coaching(
     Ok(CoachingMessage {
         severity,
         error_class: error_class.or_else(|| {
-            parsed.error_class.as_deref()
+            parsed
+                .error_class
+                .as_deref()
                 .and_then(gosensei_llm::parse::validate_error_class)
                 .and_then(|name| name.parse().ok())
         }),

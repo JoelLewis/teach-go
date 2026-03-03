@@ -1,5 +1,5 @@
 use gosensei_coaching::types::ErrorClass;
-use rusqlite::{params, Connection};
+use rusqlite::{Connection, params};
 use serde::{Deserialize, Serialize};
 
 use crate::error::AppError;
@@ -142,12 +142,30 @@ pub fn get_skill_profile(conn: &Connection) -> Result<SkillProfile, AppError> {
     let profile = stmt.query_row([], |row| {
         Ok(SkillProfile {
             overall_rank: row.get(0)?,
-            reading: SkillDimension { mu: row.get(1)?, sigma: row.get(2)? },
-            shape: SkillDimension { mu: row.get(3)?, sigma: row.get(4)? },
-            direction: SkillDimension { mu: row.get(5)?, sigma: row.get(6)? },
-            endgame: SkillDimension { mu: row.get(7)?, sigma: row.get(8)? },
-            life_death: SkillDimension { mu: row.get(9)?, sigma: row.get(10)? },
-            fighting: SkillDimension { mu: row.get(11)?, sigma: row.get(12)? },
+            reading: SkillDimension {
+                mu: row.get(1)?,
+                sigma: row.get(2)?,
+            },
+            shape: SkillDimension {
+                mu: row.get(3)?,
+                sigma: row.get(4)?,
+            },
+            direction: SkillDimension {
+                mu: row.get(5)?,
+                sigma: row.get(6)?,
+            },
+            endgame: SkillDimension {
+                mu: row.get(7)?,
+                sigma: row.get(8)?,
+            },
+            life_death: SkillDimension {
+                mu: row.get(9)?,
+                sigma: row.get(10)?,
+            },
+            fighting: SkillDimension {
+                mu: row.get(11)?,
+                sigma: row.get(12)?,
+            },
             games_played: row.get(13)?,
             last_updated: row.get(14)?,
         })
@@ -157,10 +175,7 @@ pub fn get_skill_profile(conn: &Connection) -> Result<SkillProfile, AppError> {
         Ok(p) => Ok(p),
         Err(rusqlite::Error::QueryReturnedNoRows) => {
             // First call — insert default row
-            conn.execute(
-                "INSERT INTO skill_profiles (player_id) VALUES (1)",
-                [],
-            )?;
+            conn.execute("INSERT INTO skill_profiles (player_id) VALUES (1)", [])?;
             // Re-read to get defaults from schema
             get_skill_profile(conn)
         }
@@ -179,12 +194,18 @@ pub fn save_skill_profile(conn: &Connection, profile: &SkillProfile) -> Result<(
          WHERE player_id = 1",
         rusqlite::params![
             profile.overall_rank,
-            profile.reading.mu, profile.reading.sigma,
-            profile.shape.mu, profile.shape.sigma,
-            profile.direction.mu, profile.direction.sigma,
-            profile.endgame.mu, profile.endgame.sigma,
-            profile.life_death.mu, profile.life_death.sigma,
-            profile.fighting.mu, profile.fighting.sigma,
+            profile.reading.mu,
+            profile.reading.sigma,
+            profile.shape.mu,
+            profile.shape.sigma,
+            profile.direction.mu,
+            profile.direction.sigma,
+            profile.endgame.mu,
+            profile.endgame.sigma,
+            profile.life_death.mu,
+            profile.life_death.sigma,
+            profile.fighting.mu,
+            profile.fighting.sigma,
             profile.games_played,
         ],
     )?;
@@ -373,28 +394,46 @@ mod tests {
 
     #[test]
     fn errors_increase_mu() {
-        let mut dim = SkillDimension { mu: 25.0, sigma: 8.0 };
+        let mut dim = SkillDimension {
+            mu: 25.0,
+            sigma: 8.0,
+        };
         update_dimension(&mut dim, 10.0, true);
-        assert!(dim.mu > 25.0, "mu should increase (rank worsens) after errors");
+        assert!(
+            dim.mu > 25.0,
+            "mu should increase (rank worsens) after errors"
+        );
     }
 
     #[test]
     fn no_errors_decrease_mu() {
-        let mut dim = SkillDimension { mu: 25.0, sigma: 8.0 };
+        let mut dim = SkillDimension {
+            mu: 25.0,
+            sigma: 8.0,
+        };
         update_dimension(&mut dim, 0.0, false);
-        assert!(dim.mu < 25.0, "mu should decrease (rank improves) with no errors");
+        assert!(
+            dim.mu < 25.0,
+            "mu should decrease (rank improves) with no errors"
+        );
     }
 
     #[test]
     fn sigma_decreases_over_updates() {
-        let mut dim = SkillDimension { mu: 25.0, sigma: 8.0 };
+        let mut dim = SkillDimension {
+            mu: 25.0,
+            sigma: 8.0,
+        };
         update_dimension(&mut dim, 0.0, false);
         assert!(dim.sigma < 8.0, "sigma should decrease after an update");
     }
 
     #[test]
     fn sigma_respects_floor() {
-        let mut dim = SkillDimension { mu: 25.0, sigma: 1.0 };
+        let mut dim = SkillDimension {
+            mu: 25.0,
+            sigma: 1.0,
+        };
         update_dimension(&mut dim, 0.0, false);
         assert!(
             (dim.sigma - 1.0).abs() < f64::EPSILON,
@@ -426,22 +465,52 @@ mod tests {
 
     #[test]
     fn error_class_mapping_all_variants() {
-        assert_eq!(error_class_to_dimension(ErrorClass::Reading), DimensionKind::Reading);
-        assert_eq!(error_class_to_dimension(ErrorClass::Shape), DimensionKind::Shape);
-        assert_eq!(error_class_to_dimension(ErrorClass::Direction), DimensionKind::Direction);
-        assert_eq!(error_class_to_dimension(ErrorClass::Opening), DimensionKind::Direction);
-        assert_eq!(error_class_to_dimension(ErrorClass::Endgame), DimensionKind::Endgame);
-        assert_eq!(error_class_to_dimension(ErrorClass::LifeAndDeath), DimensionKind::LifeDeath);
-        assert_eq!(error_class_to_dimension(ErrorClass::Ko), DimensionKind::Fighting);
+        assert_eq!(
+            error_class_to_dimension(ErrorClass::Reading),
+            DimensionKind::Reading
+        );
+        assert_eq!(
+            error_class_to_dimension(ErrorClass::Shape),
+            DimensionKind::Shape
+        );
+        assert_eq!(
+            error_class_to_dimension(ErrorClass::Direction),
+            DimensionKind::Direction
+        );
+        assert_eq!(
+            error_class_to_dimension(ErrorClass::Opening),
+            DimensionKind::Direction
+        );
+        assert_eq!(
+            error_class_to_dimension(ErrorClass::Endgame),
+            DimensionKind::Endgame
+        );
+        assert_eq!(
+            error_class_to_dimension(ErrorClass::LifeAndDeath),
+            DimensionKind::LifeDeath
+        );
+        assert_eq!(
+            error_class_to_dimension(ErrorClass::Ko),
+            DimensionKind::Fighting
+        );
     }
 
     #[test]
     fn full_update_skill_after_game() {
         let conn = test_db();
         let errors = vec![
-            GameError { error_class: ErrorClass::Reading, score_loss: 5.0 },
-            GameError { error_class: ErrorClass::Reading, score_loss: 3.0 },
-            GameError { error_class: ErrorClass::Shape, score_loss: 7.0 },
+            GameError {
+                error_class: ErrorClass::Reading,
+                score_loss: 5.0,
+            },
+            GameError {
+                error_class: ErrorClass::Reading,
+                score_loss: 3.0,
+            },
+            GameError {
+                error_class: ErrorClass::Shape,
+                score_loss: 7.0,
+            },
         ];
         let profile = update_skill_after_game(&conn, &errors).unwrap();
         assert_eq!(profile.games_played, 1);
@@ -500,8 +569,12 @@ mod tests {
         update_skill_after_problem(&conn, DimensionKind::Shape, false, 20.0).unwrap();
         update_skill_after_game(
             &conn,
-            &[GameError { error_class: ErrorClass::Reading, score_loss: 10.0 }],
-        ).unwrap();
+            &[GameError {
+                error_class: ErrorClass::Reading,
+                score_loss: 10.0,
+            }],
+        )
+        .unwrap();
 
         let history = get_skill_history(&conn, None, 500).unwrap();
         assert_eq!(history.len(), 3);

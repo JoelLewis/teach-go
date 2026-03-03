@@ -1,5 +1,5 @@
 use chrono::{DateTime, NaiveDateTime, Utc};
-use rs_fsrs::{Card, Rating, State, FSRS};
+use rs_fsrs::{Card, FSRS, Rating, State};
 use rusqlite::Connection;
 
 use crate::error::AppError;
@@ -50,11 +50,7 @@ pub fn get_card(conn: &Connection, problem_id: i64) -> Result<Card, AppError> {
 }
 
 /// Apply a rating to a card and upsert the result into the database.
-pub fn update_card(
-    conn: &Connection,
-    problem_id: i64,
-    rating: Rating,
-) -> Result<Card, AppError> {
+pub fn update_card(conn: &Connection, problem_id: i64, rating: Rating) -> Result<Card, AppError> {
     let card = get_card(conn, problem_id)?;
     let fsrs = FSRS::new(Default::default());
     let now = Utc::now();
@@ -208,6 +204,9 @@ mod tests {
 
         // Problem 1 was reviewed, so it should not appear in unseen results
         let unseen_after = get_unseen_problems(&conn, 5000).unwrap();
-        assert!(!unseen_after.contains(&1), "reviewed problem should be excluded");
+        assert!(
+            !unseen_after.contains(&1),
+            "reviewed problem should be excluded"
+        );
     }
 }

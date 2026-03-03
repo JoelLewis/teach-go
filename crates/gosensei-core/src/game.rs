@@ -121,7 +121,8 @@ impl Game {
             return Err(MoveError::GameOver);
         }
 
-        let captured = rules::apply_move(&mut self.board, point, self.current_color, self.ko_point)?;
+        let captured =
+            rules::apply_move(&mut self.board, point, self.current_color, self.ko_point)?;
 
         // Update captures count
         let capture_count = captured.len() as u32;
@@ -365,8 +366,16 @@ impl Game {
             move_number: idx as u16,
             captures_black: 0, // Historical captures not tracked per-position
             captures_white: 0,
-            phase: if idx < self.move_history.len() { GamePhase::Playing } else { self.phase.clone() },
-            result: if idx == self.move_history.len() { self.result.clone() } else { None },
+            phase: if idx < self.move_history.len() {
+                GamePhase::Playing
+            } else {
+                self.phase.clone()
+            },
+            result: if idx == self.move_history.len() {
+                self.result.clone()
+            } else {
+                None
+            },
             last_move,
             moves,
         })
@@ -516,10 +525,7 @@ mod tests {
         let sgf = "(;SZ[9]KM[6.5];B[ee];W[cc];B[gg])";
         let full = Game::from_sgf(sgf).unwrap();
         let partial_all = Game::from_sgf_partial(sgf, None).unwrap();
-        assert_eq!(
-            full.move_history().len(),
-            partial_all.move_history().len()
-        );
+        assert_eq!(full.move_history().len(), partial_all.move_history().len());
     }
 
     #[test]
@@ -571,7 +577,7 @@ mod tests {
         let mut game = Game::new(BoardSize::Nine, 6.5);
         game.play(Point::new(4, 4)).unwrap(); // Black E5
         game.play(Point::new(2, 2)).unwrap(); // White C7
-        game.pass().unwrap();                  // Black pass
+        game.pass().unwrap(); // Black pass
 
         let state = game.to_state();
         assert_eq!(state.moves.len(), 3);

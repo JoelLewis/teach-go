@@ -26,15 +26,28 @@ pub fn classify_error(input: &ClassifyInput<'_>) -> Option<ErrorClass> {
     let phase = game_phase(input.move_number, input.board_size);
 
     // 1. Direction: player and best move are far apart (>7 intersections or different quadrants)
-    let distance = manhattan_distance(input.player_row, input.player_col, input.best_row, input.best_col);
+    let distance = manhattan_distance(
+        input.player_row,
+        input.player_col,
+        input.best_row,
+        input.best_col,
+    );
     if distance > 7
-        || different_quadrants(input.player_row, input.player_col, input.best_row, input.best_col, input.board_size)
+        || different_quadrants(
+            input.player_row,
+            input.player_col,
+            input.best_row,
+            input.best_col,
+            input.board_size,
+        )
     {
         return Some(ErrorClass::Direction);
     }
 
     // 2. Life & Death: ownership map shows territory flipping near the move
-    if input.ownership.is_some_and(|own| ownership_flips_near(own, input.player_row, input.player_col, input.board_size)) {
+    if input.ownership.is_some_and(|own| {
+        ownership_flips_near(own, input.player_row, input.player_col, input.board_size)
+    }) {
         return Some(ErrorClass::LifeAndDeath);
     }
 
@@ -174,10 +187,15 @@ mod tests {
     macro_rules! ci {
         ($mn:expr, $bs:expr, $pr:expr, $pc:expr, $br:expr, $bc:expr, $pv:expr, $own:expr, $loss:expr) => {
             ClassifyInput {
-                move_number: $mn, board_size: $bs,
-                player_row: $pr, player_col: $pc,
-                best_row: $br, best_col: $bc,
-                pv_length: $pv, ownership: $own, score_loss: $loss,
+                move_number: $mn,
+                board_size: $bs,
+                player_row: $pr,
+                player_col: $pc,
+                best_row: $br,
+                best_col: $bc,
+                pv_length: $pv,
+                ownership: $own,
+                score_loss: $loss,
             }
         };
     }

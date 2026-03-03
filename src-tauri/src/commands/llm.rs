@@ -39,17 +39,13 @@ pub async fn init_llm_model(
     // Download + load in a blocking task (both are CPU/IO heavy)
     let manager = tokio::task::spawn_blocking(move || {
         // Ensure model file exists
-        let model_path =
-            gosensei_llm::download::ensure_model(&model_dir, |downloaded, total| {
-                let _ = app_clone.emit(
-                    "llm-download-progress",
-                    DownloadProgress {
-                        downloaded,
-                        total,
-                    },
-                );
-            })
-            .map_err(|e| AppError::Llm(e.to_string()))?;
+        let model_path = gosensei_llm::download::ensure_model(&model_dir, |downloaded, total| {
+            let _ = app_clone.emit(
+                "llm-download-progress",
+                DownloadProgress { downloaded, total },
+            );
+        })
+        .map_err(|e| AppError::Llm(e.to_string()))?;
 
         // Load the model
         gosensei_llm::model::ModelManager::load(&model_path)

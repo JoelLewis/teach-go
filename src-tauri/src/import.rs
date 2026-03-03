@@ -1,9 +1,7 @@
-use gosensei_core::sgf::tree::{parse_sgf_collection, parse_sgf_tree, SgfNode, SgfTreeRoot};
+use gosensei_core::sgf::tree::{SgfNode, SgfTreeRoot, parse_sgf_collection, parse_sgf_tree};
 use gosensei_core::types::{Color, Move};
 
-use crate::problem::{
-    Problem, ProblemCategory, ProblemSource, ResponseBranch, SolutionNode,
-};
+use crate::problem::{Problem, ProblemCategory, ProblemSource, ResponseBranch, SolutionNode};
 
 /// Result of importing problems from an SGF string.
 #[derive(Debug)]
@@ -161,10 +159,7 @@ fn build_solution_tree(node: &SgfNode, player_color: Color) -> Vec<SolutionNode>
 }
 
 /// Build response branches from an opponent's possible replies.
-fn build_response_branches(
-    player_node: &SgfNode,
-    player_color: Color,
-) -> Vec<ResponseBranch> {
+fn build_response_branches(player_node: &SgfNode, player_color: Color) -> Vec<ResponseBranch> {
     let opponent_color = player_color.opponent();
     let mut branches = Vec::new();
 
@@ -397,18 +392,12 @@ mod tests {
             ProblemCategory::Ko
         );
         // "komi" should not trigger Ko
-        assert_ne!(
-            infer_category_from_text("komi rules"),
-            ProblemCategory::Ko
-        );
+        assert_ne!(infer_category_from_text("komi rules"), ProblemCategory::Ko);
     }
 
     #[test]
     fn infer_category_default() {
-        assert_eq!(
-            infer_category_from_text(""),
-            ProblemCategory::LifeDeath
-        );
+        assert_eq!(infer_category_from_text(""), ProblemCategory::LifeDeath);
     }
 
     #[test]

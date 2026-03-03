@@ -1,6 +1,6 @@
 use crate::types::{BoardSize, Color, Move, Point};
 
-use super::parser::{parse_move, SgfParseError};
+use super::parser::{SgfParseError, parse_move};
 
 /// A node in an SGF game tree. Each node can have properties (move, setup
 /// stones, comments) and zero or more child variations.
@@ -165,7 +165,11 @@ fn parse_node_sequence(
         match bytes[*pos] {
             b';' => {
                 *pos += 1;
-                let node = parse_single_node(bytes, pos, if is_root { Some(&mut root_props) } else { None })?;
+                let node = parse_single_node(
+                    bytes,
+                    pos,
+                    if is_root { Some(&mut root_props) } else { None },
+                )?;
                 nodes.push(node);
                 is_root = false;
             }
@@ -413,9 +417,7 @@ fn find_matching_paren(bytes: &[u8], start: usize) -> Result<usize, SgfParseErro
             _ => {}
         }
     }
-    Err(SgfParseError::InvalidFormat(
-        "Unmatched parenthesis".into(),
-    ))
+    Err(SgfParseError::InvalidFormat("Unmatched parenthesis".into()))
 }
 
 /// Helper: collect all moves from the main line (first child at each level).
@@ -557,10 +559,7 @@ mod tests {
         let sgf = "(;SZ[9]C[Root comment];B[ee]C[Good move])";
         let tree = parse_sgf_tree(sgf).unwrap();
         assert_eq!(tree.root.comment.as_deref(), Some("Root comment"));
-        assert_eq!(
-            tree.root.children[0].comment.as_deref(),
-            Some("Good move")
-        );
+        assert_eq!(tree.root.children[0].comment.as_deref(), Some("Good move"));
     }
 
     #[test]
@@ -592,10 +591,7 @@ mod tests {
     fn parse_game_name() {
         let sgf = "(;SZ[9]GN[Life and Death Problem 1];B[dd])";
         let tree = parse_sgf_tree(sgf).unwrap();
-        assert_eq!(
-            tree.game_name.as_deref(),
-            Some("Life and Death Problem 1")
-        );
+        assert_eq!(tree.game_name.as_deref(), Some("Life and Death Problem 1"));
     }
 
     #[test]

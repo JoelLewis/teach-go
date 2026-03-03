@@ -3,8 +3,8 @@ use gosensei_katago::protocol::AnalysisQuery;
 
 /// GTP column letters: A–T, skipping I.
 const GTP_COLUMNS: [char; 25] = [
-    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
-    'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T',
+    'U', 'V', 'W', 'X', 'Y', 'Z',
 ];
 
 /// Convert a Point (0-indexed, top-left origin) to a GTP coordinate string.
@@ -183,10 +183,13 @@ mod tests {
             },
         ];
         let moves = history_to_katago_moves(&history, 9);
-        assert_eq!(moves, vec![
-            ("B".to_string(), "E5".to_string()),
-            ("W".to_string(), "D6".to_string()),
-        ]);
+        assert_eq!(
+            moves,
+            vec![
+                ("B".to_string(), "E5".to_string()),
+                ("W".to_string(), "D6".to_string()),
+            ]
+        );
     }
 
     #[test]
@@ -249,7 +252,15 @@ mod tests {
                 move_number: 2,
             },
         ];
-        let query = build_query("test-q1".to_string(), &history, 9, 6.5, 200, Some("preaz_18k".to_string()), None);
+        let query = build_query(
+            "test-q1".to_string(),
+            &history,
+            9,
+            6.5,
+            200,
+            Some("preaz_18k".to_string()),
+            None,
+        );
         let json = serde_json::to_string(&query).unwrap();
 
         // Should be valid JSON with expected fields
@@ -343,9 +354,18 @@ mod tests {
 
     #[test]
     fn strength_mapping() {
-        assert_eq!(strength_to_profile("beginner"), Some("preaz_18k".to_string()));
-        assert_eq!(strength_to_profile("intermediate"), Some("preaz_9k".to_string()));
-        assert_eq!(strength_to_profile("advanced"), Some("preaz_3k".to_string()));
+        assert_eq!(
+            strength_to_profile("beginner"),
+            Some("preaz_18k".to_string())
+        );
+        assert_eq!(
+            strength_to_profile("intermediate"),
+            Some("preaz_9k".to_string())
+        );
+        assert_eq!(
+            strength_to_profile("advanced"),
+            Some("preaz_3k".to_string())
+        );
         assert_eq!(strength_to_profile("dan"), None);
         assert_eq!(strength_to_profile("unknown"), None);
     }

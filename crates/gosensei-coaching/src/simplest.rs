@@ -15,14 +15,13 @@ pub fn find_simplest_good_move(move_infos: &[MoveInfo], max_score_gap: f64) -> O
         .collect();
 
     // Pick the one with the shortest PV (ties broken by higher score)
-    let simplest = candidates
-        .iter()
-        .min_by(|a, b| {
-            a.pv
-                .len()
-                .cmp(&b.pv.len())
-                .then_with(|| b.score_lead.partial_cmp(&a.score_lead).unwrap_or(std::cmp::Ordering::Equal))
-        })?;
+    let simplest = candidates.iter().min_by(|a, b| {
+        a.pv.len().cmp(&b.pv.len()).then_with(|| {
+            b.score_lead
+                .partial_cmp(&a.score_lead)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
+    })?;
 
     // Only return if it's different from the best move
     if simplest.mv == best.mv {
@@ -62,9 +61,9 @@ mod tests {
     #[test]
     fn returns_none_when_best_is_already_simplest() {
         let moves = vec![
-            make_move_info("Q16", 5.0, 3),  // best AND shortest
-            make_move_info("D4", 4.5, 8),   // within gap but longer
-            make_move_info("C3", 4.0, 12),  // within gap but longest
+            make_move_info("Q16", 5.0, 3), // best AND shortest
+            make_move_info("D4", 4.5, 8),  // within gap but longer
+            make_move_info("C3", 4.0, 12), // within gap but longest
         ];
         let result = find_simplest_good_move(&moves, 1.0);
         assert!(result.is_none());

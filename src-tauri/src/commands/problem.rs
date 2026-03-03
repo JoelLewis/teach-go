@@ -98,7 +98,9 @@ pub fn solve_move(
             SolveStatus::InProgress => "in_progress",
         };
         drop(solver_lock);
-        record_attempt(&state, problem_id, status_str, hints_used, attempts, elapsed);
+        record_attempt(
+            &state, problem_id, status_str, hints_used, attempts, elapsed,
+        );
     }
 
     Ok(SolveMoveResult {
@@ -181,23 +183,16 @@ pub async fn generate_problems_from_game(
     // Look up game_id from saved games (most recent with matching SGF)
     let game_id = {
         let conn = state.db.lock().unwrap();
-        conn.query_row(
-            "SELECT id FROM games ORDER BY id DESC LIMIT 1",
-            [],
-            |row| row.get::<_, i64>(0),
-        )
+        conn.query_row("SELECT id FROM games ORDER BY id DESC LIMIT 1", [], |row| {
+            row.get::<_, i64>(0)
+        })
         .unwrap_or(0)
     };
 
     // Generate problems
-    let problems = crate::generate::generate_from_review(
-        &game_sgf,
-        board_size,
-        &analyses,
-        game_id,
-        threshold,
-    )
-    .map_err(AppError::Other)?;
+    let problems =
+        crate::generate::generate_from_review(&game_sgf, board_size, &analyses, game_id, threshold)
+            .map_err(AppError::Other)?;
 
     let count = problems.len() as u32;
 
@@ -240,17 +235,14 @@ fn record_attempt(
         // Update skill profile
         if let Ok(prob) = problem::get_problem(&conn, problem_id) {
             let dimension = prob.category.to_dimension();
-            let _ = crate::skill::update_skill_after_problem(
-                &conn, dimension, solved, prob.difficulty,
-            );
+            let _ =
+                crate::skill::update_skill_after_problem(&conn, dimension, solved, prob.difficulty);
         }
     }
 }
 
 #[tauri::command]
-pub fn get_recommended_problem(
-    state: State<'_, AppState>,
-) -> Result<ProblemState, AppError> {
+pub fn get_recommended_problem(state: State<'_, AppState>) -> Result<ProblemState, AppError> {
     let conn = state.db.lock().unwrap();
     let profile = crate::skill::get_skill_profile(&conn)?;
     let problem_id = problem::select_next_problem(&conn, &profile)?;
@@ -282,9 +274,7 @@ pub struct CategoryStat {
 }
 
 #[tauri::command]
-pub fn get_problem_stats(
-    state: State<'_, AppState>,
-) -> Result<ProblemStats, AppError> {
+pub fn get_problem_stats(state: State<'_, AppState>) -> Result<ProblemStats, AppError> {
     let conn = state.db.lock().unwrap();
 
     let total_solved: u32 = conn.query_row(
@@ -293,11 +283,10 @@ pub fn get_problem_stats(
         |row| row.get(0),
     )?;
 
-    let total_attempted: u32 = conn.query_row(
-        "SELECT COUNT(*) FROM problem_attempts",
-        [],
-        |row| row.get(0),
-    )?;
+    let total_attempted: u32 =
+        conn.query_row("SELECT COUNT(*) FROM problem_attempts", [], |row| {
+            row.get(0)
+        })?;
 
     let accuracy_percent = if total_attempted > 0 {
         (total_solved as f64 / total_attempted as f64) * 100.0

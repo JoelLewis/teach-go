@@ -13,10 +13,7 @@ pub const DEFAULT_MODEL_FILENAME: &str = "gemma-3-1b-it-Q4_K_M.gguf";
 /// (bytes_downloaded, total_bytes).
 ///
 /// This is a blocking operation — call from `spawn_blocking`.
-pub fn ensure_model(
-    model_dir: &Path,
-    on_progress: impl Fn(u64, u64),
-) -> Result<PathBuf, LlmError> {
+pub fn ensure_model(model_dir: &Path, on_progress: impl Fn(u64, u64)) -> Result<PathBuf, LlmError> {
     let model_path = model_dir.join(DEFAULT_MODEL_FILENAME);
 
     if model_path.exists() {
@@ -29,9 +26,8 @@ pub fn ensure_model(
         DEFAULT_HF_REPO, DEFAULT_MODEL_FILENAME
     );
 
-    std::fs::create_dir_all(model_dir).map_err(|e| {
-        LlmError::DownloadFailed(format!("create model dir: {e}"))
-    })?;
+    std::fs::create_dir_all(model_dir)
+        .map_err(|e| LlmError::DownloadFailed(format!("create model dir: {e}")))?;
 
     // Use hf-hub sync API for download
     let api = hf_hub::api::sync::ApiBuilder::new()
@@ -55,14 +51,12 @@ pub fn ensure_model(
         // If hf-hub stored it somewhere else, create a symlink
         if !model_path.exists() {
             #[cfg(unix)]
-            std::os::unix::fs::symlink(&downloaded_path, &model_path).map_err(|e| {
-                LlmError::DownloadFailed(format!("symlink: {e}"))
-            })?;
+            std::os::unix::fs::symlink(&downloaded_path, &model_path)
+                .map_err(|e| LlmError::DownloadFailed(format!("symlink: {e}")))?;
 
             #[cfg(not(unix))]
-            std::fs::copy(&downloaded_path, &model_path).map_err(|e| {
-                LlmError::DownloadFailed(format!("copy: {e}"))
-            })?;
+            std::fs::copy(&downloaded_path, &model_path)
+                .map_err(|e| LlmError::DownloadFailed(format!("copy: {e}")))?;
         }
     }
 

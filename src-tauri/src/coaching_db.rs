@@ -69,29 +69,41 @@ mod tests {
     #[test]
     fn insert_and_count() {
         let conn = test_conn();
-        insert_event(&conn, &CoachingEvent {
-            move_number: 10,
-            error_class: Some("Direction".to_string()),
-            severity: "Mistake".to_string(),
-            score_loss: 3.5,
-            llm_used: false,
-        }).unwrap();
+        insert_event(
+            &conn,
+            &CoachingEvent {
+                move_number: 10,
+                error_class: Some("Direction".to_string()),
+                severity: "Mistake".to_string(),
+                score_loss: 3.5,
+                llm_used: false,
+            },
+        )
+        .unwrap();
 
-        insert_event(&conn, &CoachingEvent {
-            move_number: 20,
-            error_class: Some("Direction".to_string()),
-            severity: "Inaccuracy".to_string(),
-            score_loss: 1.2,
-            llm_used: true,
-        }).unwrap();
+        insert_event(
+            &conn,
+            &CoachingEvent {
+                move_number: 20,
+                error_class: Some("Direction".to_string()),
+                severity: "Inaccuracy".to_string(),
+                score_loss: 1.2,
+                llm_used: true,
+            },
+        )
+        .unwrap();
 
-        insert_event(&conn, &CoachingEvent {
-            move_number: 30,
-            error_class: Some("Shape".to_string()),
-            severity: "Blunder".to_string(),
-            score_loss: 8.0,
-            llm_used: false,
-        }).unwrap();
+        insert_event(
+            &conn,
+            &CoachingEvent {
+                move_number: 30,
+                error_class: Some("Shape".to_string()),
+                severity: "Blunder".to_string(),
+                score_loss: 8.0,
+                llm_used: false,
+            },
+        )
+        .unwrap();
 
         assert_eq!(count_class_this_session(&conn, "Direction").unwrap(), 2);
         assert_eq!(count_class_this_session(&conn, "Shape").unwrap(), 1);
@@ -102,13 +114,17 @@ mod tests {
     #[test]
     fn clear_session_removes_all() {
         let conn = test_conn();
-        insert_event(&conn, &CoachingEvent {
-            move_number: 5,
-            error_class: None,
-            severity: "Mistake".to_string(),
-            score_loss: 2.0,
-            llm_used: false,
-        }).unwrap();
+        insert_event(
+            &conn,
+            &CoachingEvent {
+                move_number: 5,
+                error_class: None,
+                severity: "Mistake".to_string(),
+                score_loss: 2.0,
+                llm_used: false,
+            },
+        )
+        .unwrap();
 
         assert_eq!(count_mistakes_this_session(&conn).unwrap(), 1);
         clear_session(&conn).unwrap();
@@ -126,21 +142,29 @@ mod tests {
     #[test]
     fn insert_returns_id() {
         let conn = test_conn();
-        let id1 = insert_event(&conn, &CoachingEvent {
-            move_number: 1,
-            error_class: None,
-            severity: "Inaccuracy".to_string(),
-            score_loss: 1.0,
-            llm_used: false,
-        }).unwrap();
+        let id1 = insert_event(
+            &conn,
+            &CoachingEvent {
+                move_number: 1,
+                error_class: None,
+                severity: "Inaccuracy".to_string(),
+                score_loss: 1.0,
+                llm_used: false,
+            },
+        )
+        .unwrap();
 
-        let id2 = insert_event(&conn, &CoachingEvent {
-            move_number: 2,
-            error_class: None,
-            severity: "Mistake".to_string(),
-            score_loss: 2.0,
-            llm_used: false,
-        }).unwrap();
+        let id2 = insert_event(
+            &conn,
+            &CoachingEvent {
+                move_number: 2,
+                error_class: None,
+                severity: "Mistake".to_string(),
+                score_loss: 2.0,
+                llm_used: false,
+            },
+        )
+        .unwrap();
 
         assert_eq!(id1, 1);
         assert_eq!(id2, 2);

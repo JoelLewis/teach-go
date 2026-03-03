@@ -12,7 +12,9 @@ pub fn generate_message(
     move_number: u16,
 ) -> CoachingMessage {
     let message = match (&severity, &error_class) {
-        (Severity::Excellent, _) => "Excellent move! This matches the engine's top recommendation.".into(),
+        (Severity::Excellent, _) => {
+            "Excellent move! This matches the engine's top recommendation.".into()
+        }
         (Severity::Good, _) => "Good move! This is close to what the engine recommends.".into(),
         // Direction
         (Severity::Inaccuracy, Some(ErrorClass::Direction)) => {
@@ -147,10 +149,7 @@ pub fn maybe_praise(
     score_loss: f64,
 ) -> Option<CoachingMessage> {
     // Only praise if the player's move is among the top 3 engine candidates
-    let in_top3 = move_infos
-        .iter()
-        .take(3)
-        .any(|m| m.mv == player_move);
+    let in_top3 = move_infos.iter().take(3).any(|m| m.mv == player_move);
     if !in_top3 {
         return None;
     }
@@ -206,7 +205,14 @@ mod tests {
 
     #[test]
     fn blunder_message_includes_score_loss() {
-        let msg = generate_message(Severity::Blunder, Some(ErrorClass::Direction), 15.2, None, None, 25);
+        let msg = generate_message(
+            Severity::Blunder,
+            Some(ErrorClass::Direction),
+            15.2,
+            None,
+            None,
+            25,
+        );
         assert!(msg.message.contains("15.2"));
     }
 

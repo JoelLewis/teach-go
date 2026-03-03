@@ -76,13 +76,11 @@ pub fn new_game(
 }
 
 #[tauri::command]
-pub fn play_move(
-    state: State<'_, AppState>,
-    row: u8,
-    col: u8,
-) -> Result<GameState, AppError> {
+pub fn play_move(state: State<'_, AppState>, row: u8, col: u8) -> Result<GameState, AppError> {
     let mut game_lock = state.game.lock().unwrap();
-    let game = game_lock.as_mut().ok_or(AppError::Other("No active game".into()))?;
+    let game = game_lock
+        .as_mut()
+        .ok_or(AppError::Other("No active game".into()))?;
     game.play(Point::new(row, col))?;
     let game_state = game.to_state();
     auto_save_if_finished(&state, game);
@@ -92,7 +90,9 @@ pub fn play_move(
 #[tauri::command]
 pub fn pass_turn(state: State<'_, AppState>) -> Result<GameState, AppError> {
     let mut game_lock = state.game.lock().unwrap();
-    let game = game_lock.as_mut().ok_or(AppError::Other("No active game".into()))?;
+    let game = game_lock
+        .as_mut()
+        .ok_or(AppError::Other("No active game".into()))?;
     game.pass()?;
     let game_state = game.to_state();
     auto_save_if_finished(&state, game);
@@ -102,7 +102,9 @@ pub fn pass_turn(state: State<'_, AppState>) -> Result<GameState, AppError> {
 #[tauri::command]
 pub fn resign(state: State<'_, AppState>) -> Result<(GameState, GameResult), AppError> {
     let mut game_lock = state.game.lock().unwrap();
-    let game = game_lock.as_mut().ok_or(AppError::Other("No active game".into()))?;
+    let game = game_lock
+        .as_mut()
+        .ok_or(AppError::Other("No active game".into()))?;
     let result = game.resign()?;
     let game_state = game.to_state();
     auto_save_if_finished(&state, game);
@@ -112,7 +114,9 @@ pub fn resign(state: State<'_, AppState>) -> Result<(GameState, GameResult), App
 #[tauri::command]
 pub fn undo_move(state: State<'_, AppState>) -> Result<GameState, AppError> {
     let mut game_lock = state.game.lock().unwrap();
-    let game = game_lock.as_mut().ok_or(AppError::Other("No active game".into()))?;
+    let game = game_lock
+        .as_mut()
+        .ok_or(AppError::Other("No active game".into()))?;
     game.undo()?;
     Ok(game.to_state())
 }
@@ -159,10 +163,7 @@ pub fn list_games(state: State<'_, AppState>) -> Result<Vec<SavedGame>, AppError
 }
 
 #[tauri::command]
-pub fn load_saved_game(
-    state: State<'_, AppState>,
-    game_id: i64,
-) -> Result<GameState, AppError> {
+pub fn load_saved_game(state: State<'_, AppState>, game_id: i64) -> Result<GameState, AppError> {
     let sgf: String = {
         let db = state.db.lock().unwrap();
         db.query_row("SELECT sgf FROM games WHERE id = ?1", [game_id], |row| {
@@ -192,14 +193,20 @@ fn detect_streak(results: &[(String, String)]) -> Option<DifficultySuggestion> {
     }
 
     let recent = &results[..STREAK_THRESHOLD.min(results.len())];
-    let wins = recent.iter().filter(|&(result, color)| {
-        let winner_prefix = if color == "black" { "B+" } else { "W+" };
-        result.starts_with(winner_prefix)
-    }).count();
-    let losses = recent.iter().filter(|&(result, color)| {
-        let loser_prefix = if color == "black" { "W+" } else { "B+" };
-        result.starts_with(loser_prefix)
-    }).count();
+    let wins = recent
+        .iter()
+        .filter(|&(result, color)| {
+            let winner_prefix = if color == "black" { "B+" } else { "W+" };
+            result.starts_with(winner_prefix)
+        })
+        .count();
+    let losses = recent
+        .iter()
+        .filter(|&(result, color)| {
+            let loser_prefix = if color == "black" { "W+" } else { "B+" };
+            result.starts_with(loser_prefix)
+        })
+        .count();
 
     if wins >= STREAK_THRESHOLD {
         Some(DifficultySuggestion {
@@ -221,12 +228,15 @@ pub fn check_difficulty_suggestion(
     state: State<'_, AppState>,
 ) -> Result<Option<DifficultySuggestion>, AppError> {
     let db = state.db.lock().unwrap();
-    let mut stmt = db.prepare(
-        "SELECT result, player_color FROM games ORDER BY played_at DESC LIMIT ?1",
-    )?;
+    let mut stmt =
+        db.prepare("SELECT result, player_color FROM games ORDER BY played_at DESC LIMIT ?1")?;
     let results: Vec<(String, String)> = stmt
         .query_map([RECENT_GAMES_QUERY as i64], |row| {
-            Ok((row.get(0)?, row.get::<_, String>(1).unwrap_or_else(|_| "black".to_string())))
+            Ok((
+                row.get(0)?,
+                row.get::<_, String>(1)
+                    .unwrap_or_else(|_| "black".to_string()),
+            ))
         })?
         .collect::<Result<Vec<_>, _>>()?;
 

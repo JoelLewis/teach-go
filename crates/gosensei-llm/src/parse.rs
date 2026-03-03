@@ -18,24 +18,82 @@ const GTP_COLUMNS: &[u8] = b"ABCDEFGHJKLMNOPQRST";
 /// Used to gauge whether LLM output is actually Go-relevant.
 const GO_TERMS: &[&str] = &[
     // Stones and groups
-    "stone", "stones", "group", "groups", "chain",
+    "stone",
+    "stones",
+    "group",
+    "groups",
+    "chain",
     // Board areas
-    "corner", "side", "center", "edge", "territory", "influence",
+    "corner",
+    "side",
+    "center",
+    "edge",
+    "territory",
+    "influence",
     // Tactics
-    "atari", "capture", "connect", "cut", "extend", "attach", "hane",
-    "push", "peep", "probe", "block", "jump", "keima", "kosumi",
-    "nobi", "tenuki", "sente", "gote",
+    "atari",
+    "capture",
+    "connect",
+    "cut",
+    "extend",
+    "attach",
+    "hane",
+    "push",
+    "peep",
+    "probe",
+    "block",
+    "jump",
+    "keima",
+    "kosumi",
+    "nobi",
+    "tenuki",
+    "sente",
+    "gote",
     // Strategy
-    "shape", "eye", "eyes", "life", "death", "live", "dead", "alive",
-    "ko", "ladder", "net", "snapback", "tesuji", "joseki", "fuseki",
-    "endgame", "yose", "miai", "aji", "thickness", "thinness",
-    "overplay", "direction", "opening", "approach", "invasion",
-    "reduction", "moyo", "framework",
+    "shape",
+    "eye",
+    "eyes",
+    "life",
+    "death",
+    "live",
+    "dead",
+    "alive",
+    "ko",
+    "ladder",
+    "net",
+    "snapback",
+    "tesuji",
+    "joseki",
+    "fuseki",
+    "endgame",
+    "yose",
+    "miai",
+    "aji",
+    "thickness",
+    "thinness",
+    "overplay",
+    "direction",
+    "opening",
+    "approach",
+    "invasion",
+    "reduction",
+    "moyo",
+    "framework",
     // General move terms
-    "move", "play", "defend", "attack", "respond", "response",
-    "sacrifice", "exchange", "sequence", "variation",
+    "move",
+    "play",
+    "defend",
+    "attack",
+    "respond",
+    "response",
+    "sacrifice",
+    "exchange",
+    "sequence",
+    "variation",
     // Points and scoring
-    "point", "points", "komi",
+    "point",
+    "points",
+    "komi",
 ];
 
 /// Parse structured output from the LLM response.
@@ -49,9 +107,7 @@ const GO_TERMS: &[&str] = &[
 /// Falls back gracefully: if tags are missing, uses the full text as coaching.
 pub fn parse_llm_output(raw: &str) -> LlmCoachingOutput {
     let error_class = extract_between(raw, "<classification>", "</classification>")
-        .and_then(|json| {
-            serde_json::from_str::<serde_json::Value>(json).ok()
-        })
+        .and_then(|json| serde_json::from_str::<serde_json::Value>(json).ok())
         .and_then(|val| val.get("error_class")?.as_str().map(String::from))
         .filter(|class| validate_error_class(class).is_some());
 
@@ -138,8 +194,7 @@ pub fn text_contains_go_terms(text: &str) -> bool {
         lower
             .find(term)
             .map(|pos| {
-                let before_ok =
-                    pos == 0 || !lower.as_bytes()[pos - 1].is_ascii_alphanumeric();
+                let before_ok = pos == 0 || !lower.as_bytes()[pos - 1].is_ascii_alphanumeric();
                 let after_pos = pos + term.len();
                 let after_ok = after_pos >= lower.len()
                     || !lower.as_bytes()[after_pos].is_ascii_alphanumeric();
@@ -160,10 +215,7 @@ pub fn sanitize_coordinates_in_text(text: &str) -> String {
     let mut i = 0;
     while i < chars.len() {
         // Check if this could be a coordinate: uppercase letter followed by 1-2 digits
-        if chars[i].is_ascii_uppercase()
-            && i + 1 < chars.len()
-            && chars[i + 1].is_ascii_digit()
-        {
+        if chars[i].is_ascii_uppercase() && i + 1 < chars.len() && chars[i + 1].is_ascii_digit() {
             let start = i;
             let mut end = i + 2;
             if end < chars.len() && chars[end].is_ascii_digit() {
@@ -296,9 +348,15 @@ mod tests {
 
     #[test]
     fn text_contains_go_terms_positive() {
-        assert!(text_contains_go_terms("Playing on the third line gives up territory."));
-        assert!(text_contains_go_terms("This move creates a dead group in the corner."));
-        assert!(text_contains_go_terms("Consider a keima to extend your influence."));
+        assert!(text_contains_go_terms(
+            "Playing on the third line gives up territory."
+        ));
+        assert!(text_contains_go_terms(
+            "This move creates a dead group in the corner."
+        ));
+        assert!(text_contains_go_terms(
+            "Consider a keima to extend your influence."
+        ));
     }
 
     #[test]

@@ -125,7 +125,8 @@ pub fn init_schema(conn: &Connection) -> Result<(), AppError> {
 /// Run idempotent migrations for schema changes on existing databases.
 fn run_migrations(conn: &Connection) -> Result<(), AppError> {
     // Add player_color column to games table (added in coaching update)
-    let _ = conn.execute_batch("ALTER TABLE games ADD COLUMN player_color TEXT NOT NULL DEFAULT 'black'");
+    let _ = conn
+        .execute_batch("ALTER TABLE games ADD COLUMN player_color TEXT NOT NULL DEFAULT 'black'");
 
     // Add skill_history table (added in beta)
     let _ = conn.execute_batch(

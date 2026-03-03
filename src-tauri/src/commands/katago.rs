@@ -45,7 +45,9 @@ fn resolve_binary_path() -> Result<PathBuf, AppError> {
 
 fn resolve_config_path() -> Option<PathBuf> {
     if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
-        let config_path = PathBuf::from(manifest_dir).join("binaries").join("analysis.cfg");
+        let config_path = PathBuf::from(manifest_dir)
+            .join("binaries")
+            .join("analysis.cfg");
         if config_path.exists() {
             return Some(config_path);
         }
@@ -82,10 +84,7 @@ fn resolve_model_path() -> Result<PathBuf, AppError> {
 }
 
 #[tauri::command]
-pub async fn start_engine(
-    state: State<'_, AppState>,
-    app: AppHandle,
-) -> Result<String, AppError> {
+pub async fn start_engine(state: State<'_, AppState>, app: AppHandle) -> Result<String, AppError> {
     let mut katago = state.katago.lock().await;
 
     if katago.is_some() {
@@ -120,10 +119,7 @@ pub async fn start_engine(
 }
 
 #[tauri::command]
-pub async fn stop_engine(
-    state: State<'_, AppState>,
-    app: AppHandle,
-) -> Result<(), AppError> {
+pub async fn stop_engine(state: State<'_, AppState>, app: AppHandle) -> Result<(), AppError> {
     let mut katago = state.katago.lock().await;
     *katago = None;
     let _ = app.emit("engine-status", "stopped");
@@ -176,7 +172,9 @@ pub async fn request_ai_move(
 
     // Build and send query (async — no std mutex held)
     let query_id = format!("ai-move-{}", history.len());
-    let query = convert::build_query(query_id, &history, board_size, komi, MAX_VISITS, profile, None);
+    let query = convert::build_query(
+        query_id, &history, board_size, komi, MAX_VISITS, profile, None,
+    );
 
     let response = {
         let katago = state.katago.lock().await;

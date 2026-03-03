@@ -89,7 +89,10 @@ pub fn update_settings(
         ("sound_enabled", settings.sound_enabled.to_string()),
         ("feedback_timing", settings.feedback_timing.clone()),
         ("theme", settings.theme.clone()),
-        ("onboarding_completed", settings.onboarding_completed.to_string()),
+        (
+            "onboarding_completed",
+            settings.onboarding_completed.to_string(),
+        ),
         ("experience_level", settings.experience_level.clone()),
     ];
 

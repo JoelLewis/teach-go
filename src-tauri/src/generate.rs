@@ -3,7 +3,7 @@ use gosensei_core::types::{BoardSize, Color, Point};
 
 use crate::convert::gtp_to_point;
 use crate::problem::{
-    points_to_setup_sgf, Problem, ProblemCategory, ProblemSource, ResponseBranch, SolutionNode,
+    Problem, ProblemCategory, ProblemSource, ResponseBranch, SolutionNode, points_to_setup_sgf,
 };
 use crate::review::MoveAnalysis;
 
@@ -49,11 +49,8 @@ pub fn generate_from_review(
         let setup_sgf = board_to_setup_sgf(&game, board_size);
 
         // Build solution from the engine's best variation
-        let solutions = build_solution_from_pv(
-            &best_move_gtp,
-            &analysis.best_variation,
-            board_size,
-        );
+        let solutions =
+            build_solution_from_pv(&best_move_gtp, &analysis.best_variation, board_size);
 
         if solutions.is_empty() {
             continue;

@@ -202,9 +202,7 @@ pub fn get_problem(conn: &Connection, id: i64) -> Result<Problem, AppError> {
         })
     })
     .map_err(|e| match e {
-        rusqlite::Error::QueryReturnedNoRows => {
-            AppError::Other(format!("problem {id} not found"))
-        }
+        rusqlite::Error::QueryReturnedNoRows => AppError::Other(format!("problem {id} not found")),
         other => other.into(),
     })
 }
@@ -319,8 +317,12 @@ pub fn select_next_problem(
     };
 
     // Score all candidates
-    let mut due_scored: Vec<(i64, f64)> = due_ids.iter().map(|&id| (id, score_problem(id))).collect();
-    let mut unseen_scored: Vec<(i64, f64)> = unseen_ids.iter().map(|&id| (id, score_problem(id))).collect();
+    let mut due_scored: Vec<(i64, f64)> =
+        due_ids.iter().map(|&id| (id, score_problem(id))).collect();
+    let mut unseen_scored: Vec<(i64, f64)> = unseen_ids
+        .iter()
+        .map(|&id| (id, score_problem(id)))
+        .collect();
 
     // Sort by score descending (weakest dimensions first)
     due_scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
@@ -457,7 +459,16 @@ fn seed_problems() -> Vec<Problem> {
         //    Answer: (1,2) — fills in to make second eye
         make_problem(
             &[pt(0, 1), pt(0, 2), pt(0, 3), pt(1, 1), pt(1, 3)],
-            &[pt(0, 0), pt(1, 0), pt(2, 0), pt(2, 1), pt(2, 2), pt(2, 3), pt(1, 4), pt(0, 4)],
+            &[
+                pt(0, 0),
+                pt(1, 0),
+                pt(2, 0),
+                pt(2, 1),
+                pt(2, 2),
+                pt(2, 3),
+                pt(1, 4),
+                pt(0, 4),
+            ],
             vec![leaf(1, 2)],
             ProblemCategory::LifeDeath,
             25.0,
@@ -482,7 +493,18 @@ fn seed_problems() -> Vec<Problem> {
         //    Answer: (5,1) or (5,2) — makes eyes
         make_problem(
             &[pt(4, 0), pt(4, 1), pt(4, 2), pt(4, 3), pt(5, 0), pt(5, 3)],
-            &[pt(3, 0), pt(3, 1), pt(3, 2), pt(3, 3), pt(4, 4), pt(5, 4), pt(6, 0), pt(6, 1), pt(6, 2), pt(6, 3)],
+            &[
+                pt(3, 0),
+                pt(3, 1),
+                pt(3, 2),
+                pt(3, 3),
+                pt(4, 4),
+                pt(5, 4),
+                pt(6, 0),
+                pt(6, 1),
+                pt(6, 2),
+                pt(6, 3),
+            ],
             vec![leaf(5, 2), leaf(5, 1)],
             ProblemCategory::LifeDeath,
             24.0,
@@ -502,7 +524,6 @@ fn seed_problems() -> Vec<Problem> {
             "Black to play and capture",
             &["beginner", "capture"],
         ),
-
         // --- Tesuji (capturing tactics) ---
         // 6. Simple ladder/net capture — one stone
         //    W: (4,4)  B: (3,4)(4,3)(5,4)
@@ -581,7 +602,6 @@ fn seed_problems() -> Vec<Problem> {
             "Black to play double atari",
             &["intermediate", "double-atari"],
         ),
-
         // --- Shape problems ---
         // 12. Bamboo joint — connect two groups
         //    B: (3,3)(5,3)  W: (4,2)(4,4)
@@ -646,7 +666,6 @@ fn seed_problems() -> Vec<Problem> {
             "Black to play the best shape move",
             &["beginner", "hane"],
         ),
-
         // --- More LifeDeath ---
         // 17. Three-in-a-row on edge — expand to live
         //    B: (0,3)(0,4)(0,5)  W: (1,2)(1,3)(1,4)(1,5)(1,6)(0,2)(0,6)
@@ -656,7 +675,15 @@ fn seed_problems() -> Vec<Problem> {
         //    Answer: (1,3) — vital point of the 1-2-1 shape
         make_problem(
             &[pt(0, 2), pt(0, 3), pt(0, 4), pt(1, 2), pt(1, 4)],
-            &[pt(0, 1), pt(0, 5), pt(1, 1), pt(1, 5), pt(2, 2), pt(2, 3), pt(2, 4)],
+            &[
+                pt(0, 1),
+                pt(0, 5),
+                pt(1, 1),
+                pt(1, 5),
+                pt(2, 2),
+                pt(2, 3),
+                pt(2, 4),
+            ],
             vec![leaf(1, 3)],
             ProblemCategory::LifeDeath,
             22.0,
@@ -669,7 +696,15 @@ fn seed_problems() -> Vec<Problem> {
         //    Since player is always Black in our system, flip it:
         //    B surrounds W, answer: (1,3) kills
         make_problem(
-            &[pt(0, 1), pt(0, 5), pt(1, 1), pt(1, 5), pt(2, 2), pt(2, 3), pt(2, 4)],
+            &[
+                pt(0, 1),
+                pt(0, 5),
+                pt(1, 1),
+                pt(1, 5),
+                pt(2, 2),
+                pt(2, 3),
+                pt(2, 4),
+            ],
             &[pt(0, 2), pt(0, 3), pt(0, 4), pt(1, 2), pt(1, 4)],
             vec![leaf(1, 3)],
             ProblemCategory::LifeDeath,
@@ -677,14 +712,22 @@ fn seed_problems() -> Vec<Problem> {
             "Black to play and kill",
             &["intermediate", "vital-point"],
         ),
-
         // --- More Tesuji ---
         // 19. Snapback
         //    W: (3,3)(3,4)(4,4)  B: (2,3)(2,4)(3,5)(4,5)(5,4)(5,3)(4,2)(3,2)
         //    W group has one eye-like space at (4,3)
         //    Answer: (4,3) — sacrifice, then recapture (snapback)
         make_problem(
-            &[pt(2, 3), pt(2, 4), pt(3, 5), pt(4, 5), pt(5, 4), pt(5, 3), pt(4, 2), pt(3, 2)],
+            &[
+                pt(2, 3),
+                pt(2, 4),
+                pt(3, 5),
+                pt(4, 5),
+                pt(5, 4),
+                pt(5, 3),
+                pt(4, 2),
+                pt(3, 2),
+            ],
             &[pt(3, 3), pt(3, 4), pt(4, 4)],
             vec![leaf(4, 3)],
             ProblemCategory::Tesuji,
@@ -696,7 +739,15 @@ fn seed_problems() -> Vec<Problem> {
         //    W: (3,3)(3,4)(4,3)  B: (2,3)(2,4)(3,5)(4,4)(4,5)(5,3)(3,2)
         //    Answer: (4,2) — throw-in reduces liberties
         make_problem(
-            &[pt(2, 3), pt(2, 4), pt(3, 5), pt(4, 4), pt(4, 5), pt(5, 3), pt(3, 2)],
+            &[
+                pt(2, 3),
+                pt(2, 4),
+                pt(3, 5),
+                pt(4, 4),
+                pt(4, 5),
+                pt(5, 3),
+                pt(3, 2),
+            ],
             &[pt(3, 3), pt(3, 4), pt(4, 3)],
             vec![leaf(4, 2)],
             ProblemCategory::Tesuji,
@@ -772,7 +823,11 @@ mod tests {
 
         // After seeding, we have 20 hand-crafted + bundled classical collections
         let all = list_problems(&conn, None, Some(5000)).unwrap();
-        assert!(all.len() >= 20, "should have at least seed problems, got {}", all.len());
+        assert!(
+            all.len() >= 20,
+            "should have at least seed problems, got {}",
+            all.len()
+        );
 
         let life_death = list_problems(&conn, Some("LifeDeath"), None).unwrap();
         assert!(!life_death.is_empty());
@@ -781,23 +836,37 @@ mod tests {
 
     #[test]
     fn category_to_dimension_all_variants() {
-        assert_eq!(ProblemCategory::LifeDeath.to_dimension(), DimensionKind::LifeDeath);
-        assert_eq!(ProblemCategory::Tesuji.to_dimension(), DimensionKind::Reading);
-        assert_eq!(ProblemCategory::Endgame.to_dimension(), DimensionKind::Endgame);
-        assert_eq!(ProblemCategory::Opening.to_dimension(), DimensionKind::Direction);
-        assert_eq!(ProblemCategory::Direction.to_dimension(), DimensionKind::Direction);
+        assert_eq!(
+            ProblemCategory::LifeDeath.to_dimension(),
+            DimensionKind::LifeDeath
+        );
+        assert_eq!(
+            ProblemCategory::Tesuji.to_dimension(),
+            DimensionKind::Reading
+        );
+        assert_eq!(
+            ProblemCategory::Endgame.to_dimension(),
+            DimensionKind::Endgame
+        );
+        assert_eq!(
+            ProblemCategory::Opening.to_dimension(),
+            DimensionKind::Direction
+        );
+        assert_eq!(
+            ProblemCategory::Direction.to_dimension(),
+            DimensionKind::Direction
+        );
         assert_eq!(ProblemCategory::Ko.to_dimension(), DimensionKind::Fighting);
-        assert_eq!(ProblemCategory::CapturingRace.to_dimension(), DimensionKind::Fighting);
+        assert_eq!(
+            ProblemCategory::CapturingRace.to_dimension(),
+            DimensionKind::Fighting
+        );
         assert_eq!(ProblemCategory::Shape.to_dimension(), DimensionKind::Shape);
     }
 
     #[test]
     fn points_to_setup_sgf_produces_valid_sgf() {
-        let sgf = points_to_setup_sgf(
-            9,
-            &[pt(0, 0), pt(1, 1)],
-            &[pt(2, 2)],
-        );
+        let sgf = points_to_setup_sgf(9, &[pt(0, 0), pt(1, 1)], &[pt(2, 2)]);
         assert!(sgf.starts_with("(;SZ[9]"));
         assert!(sgf.contains("AB[aa][bb]"));
         assert!(sgf.contains("AW[cc]"));
