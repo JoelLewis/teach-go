@@ -691,4 +691,19 @@ mod tests {
         let vars = tree.root.variations_at_move(99);
         assert!(vars.is_empty());
     }
+
+    #[test]
+    fn replay_variation_branch() {
+        // B[ee] then (W[cc];B[dd]) or (W[ff];B[gg])
+        let sgf = "(;SZ[9];B[ee](;W[cc];B[dd])(;W[ff];B[gg]))";
+        let tree = parse_sgf_tree(sgf).unwrap();
+        // Get variation at move 2 (after B[ee]): should be W[ff]
+        let vars = tree.root.variations_at_move(2);
+        assert_eq!(vars.len(), 1);
+        // Replay that variation's continuation
+        let line = vars[0].main_line_moves();
+        assert_eq!(line.len(), 2); // W[ff], B[gg]
+        assert_eq!(line[0], (Color::White, Move::Play(Point::new(5, 5))));
+        assert_eq!(line[1], (Color::Black, Move::Play(Point::new(6, 6))));
+    }
 }
