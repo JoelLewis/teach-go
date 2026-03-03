@@ -33,6 +33,16 @@ pub struct ReviewData {
     pub top_mistakes: Vec<u16>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VariationMove {
+    pub row: u8,
+    pub col: u8,
+    pub color: String,
+    pub comment: Option<String>,
+    /// Number of moves in this variation's continuation
+    pub continuation_length: usize,
+}
+
 /// In-memory session tracking review progress.
 pub struct ReviewSession {
     pub game_sgf: String,

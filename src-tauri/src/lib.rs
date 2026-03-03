@@ -53,6 +53,7 @@ pub fn run() {
             commands::review::get_review_data,
             commands::review::get_review_position,
             commands::review::get_ownership_at,
+            commands::review::get_review_variations,
             commands::skill::get_skill_profile,
             commands::problem::list_problems,
             commands::problem::start_problem,

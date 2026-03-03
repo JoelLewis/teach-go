@@ -401,6 +401,39 @@ pub async fn get_ownership_at(
     Ok(session.ownership[idx].clone())
 }
 
+#[tauri::command]
+pub async fn get_review_variations(
+    state: State<'_, AppState>,
+    move_number: u16,
+) -> Result<Vec<crate::review::VariationMove>, AppError> {
+    let review = state.review.lock().await;
+    let session = review
+        .as_ref()
+        .ok_or(AppError::Other("No review in progress".into()))?;
+
+    let tree = match &session.variation_tree {
+        Some(t) => t,
+        None => return Ok(Vec::new()),
+    };
+
+    let alt_nodes = tree.variations_at_move(move_number as usize);
+    let mut variations = Vec::new();
+
+    for node in alt_nodes {
+        if let Some((color, Move::Play(point))) = node.mv {
+            variations.push(crate::review::VariationMove {
+                row: point.row,
+                col: point.col,
+                color: color.as_str().to_string(),
+                comment: node.comment.clone(),
+                continuation_length: node.main_line_moves().len(),
+            });
+        }
+    }
+
+    Ok(variations)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
