@@ -449,6 +449,40 @@ impl SgfNode {
             1 + self.children.iter().map(|c| c.depth()).max().unwrap_or(0)
         }
     }
+
+    /// Walk the main line to `move_num` and return the non-main-line sibling
+    /// nodes at that position (i.e., alternative moves explored by the SGF).
+    /// Move 1 = first played move. Returns empty vec if no variations exist.
+    pub fn variations_at_move(&self, move_num: usize) -> Vec<&SgfNode> {
+        if move_num == 0 {
+            return Vec::new();
+        }
+
+        let mut current = self;
+        let mut moves_seen = 0;
+
+        loop {
+            // Check if current has a move
+            if current.mv.is_some() {
+                moves_seen += 1;
+            }
+
+            if current.children.is_empty() {
+                return Vec::new();
+            }
+
+            // Before descending, check: does the NEXT level have the target move?
+            let next = &current.children[0]; // main line child
+            let next_is_move = next.mv.is_some();
+            if next_is_move && moves_seen + 1 == move_num {
+                // The children of `current` represent the choices at move_num.
+                // children[0] is the main line; children[1..] are variations.
+                return current.children.iter().skip(1).collect();
+            }
+
+            current = next;
+        }
+    }
 }
 
 #[cfg(test)]
@@ -590,5 +624,71 @@ mod tests {
         let wrong = &tree.root.children[1];
         assert!(!wrong.good_for_black);
         assert!(wrong.comment.as_deref().unwrap().contains("Wrong"));
+    }
+
+    #[test]
+    fn find_variations_at_move_no_branches() {
+        let sgf = "(;SZ[9];B[ee];W[cc];B[dd])";
+        let tree = parse_sgf_tree(sgf).unwrap();
+        let vars = tree.root.variations_at_move(1);
+        assert!(vars.is_empty(), "Linear game has no variations");
+    }
+
+    #[test]
+    fn find_variations_at_move_with_branch() {
+        // At move 2, White has two choices: W[cc] (main) and W[dd] (variation)
+        let sgf = "(;SZ[9];B[ee](;W[cc])(;W[dd]))";
+        let tree = parse_sgf_tree(sgf).unwrap();
+        let vars = tree.root.variations_at_move(2);
+        // Should return the non-main-line sibling(s): W[dd]
+        assert_eq!(vars.len(), 1);
+        assert_eq!(
+            vars[0].mv,
+            Some((Color::White, Move::Play(Point::new(3, 3))))
+        );
+    }
+
+    #[test]
+    fn find_variations_at_move_multiple_branches() {
+        let sgf = "(;SZ[9];B[ee](;W[cc])(;W[dd])(;W[ff]))";
+        let tree = parse_sgf_tree(sgf).unwrap();
+        let vars = tree.root.variations_at_move(2);
+        assert_eq!(vars.len(), 2); // W[dd] and W[ff], excluding main line W[cc]
+    }
+
+    #[test]
+    fn find_variations_at_move_nested() {
+        // Move 1: B[ee], Move 2: W[cc] (main) with variation W[dd]
+        // At move 3 on main line: B[ff] (main) with variation B[gg]
+        let sgf = "(;SZ[9];B[ee](;W[cc](;B[ff])(;B[gg]))(;W[dd]))";
+        let tree = parse_sgf_tree(sgf).unwrap();
+
+        // Variations at move 2 (after B[ee]): W[dd] is the alternative
+        let vars2 = tree.root.variations_at_move(2);
+        assert_eq!(vars2.len(), 1);
+
+        // Variations at move 3 (after W[cc]): B[gg] is the alternative
+        let vars3 = tree.root.variations_at_move(3);
+        assert_eq!(vars3.len(), 1);
+        assert_eq!(
+            vars3[0].mv,
+            Some((Color::Black, Move::Play(Point::new(6, 6))))
+        );
+    }
+
+    #[test]
+    fn find_variations_at_move_zero_returns_empty() {
+        let sgf = "(;SZ[9];B[ee](;W[cc])(;W[dd]))";
+        let tree = parse_sgf_tree(sgf).unwrap();
+        let vars = tree.root.variations_at_move(0);
+        assert!(vars.is_empty());
+    }
+
+    #[test]
+    fn find_variations_at_move_beyond_end() {
+        let sgf = "(;SZ[9];B[ee];W[cc])";
+        let tree = parse_sgf_tree(sgf).unwrap();
+        let vars = tree.root.variations_at_move(99);
+        assert!(vars.is_empty());
     }
 }
