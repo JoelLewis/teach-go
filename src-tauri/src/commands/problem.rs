@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use tauri::State;
 
 use crate::error::AppError;
+use crate::import;
 use crate::problem::{self, ProblemSummary};
 use crate::solver::{HintData, HintLevel, MoveResult, SolveStatus, SolverSession};
 use crate::srs;
@@ -333,4 +334,76 @@ pub fn get_problem_stats(
         accuracy_percent,
         per_category,
     })
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ImportProblemResult {
+    pub imported: u32,
+    pub errors: Vec<String>,
+}
+
+#[tauri::command]
+pub async fn import_problems_from_sgf(
+    state: State<'_, AppState>,
+    app: tauri::AppHandle,
+) -> Result<Option<ImportProblemResult>, AppError> {
+    use tauri_plugin_dialog::DialogExt;
+
+    let paths = app
+        .dialog()
+        .file()
+        .add_filter("SGF Files", &["sgf"])
+        .blocking_pick_files();
+
+    let Some(paths) = paths else {
+        return Ok(None); // User cancelled
+    };
+
+    let mut all_problems = Vec::new();
+    let mut all_errors = Vec::new();
+
+    // Phase 1: Read and parse all files without holding the DB lock
+    for file_path in paths {
+        let path_buf = match file_path.as_path() {
+            Some(p) => p.to_path_buf(),
+            None => {
+                all_errors.push("Invalid file path".to_string());
+                continue;
+            }
+        };
+
+        let sgf_text = match std::fs::read_to_string(&path_buf) {
+            Ok(text) => text,
+            Err(e) => {
+                all_errors.push(format!("{}: {e}", path_buf.display()));
+                continue;
+            }
+        };
+
+        let result = import::import_from_sgf(&sgf_text);
+        all_errors.extend(
+            result
+                .errors
+                .into_iter()
+                .map(|e| format!("{}: {e}", path_buf.display())),
+        );
+        all_problems.extend(result.problems);
+    }
+
+    // Phase 2: Batch insert within a single transaction
+    let mut total_imported = 0u32;
+    let conn = state.db.lock().unwrap();
+    let _ = conn.execute("BEGIN", []);
+    for prob in &all_problems {
+        match problem::insert_problem(&conn, prob) {
+            Ok(_id) => total_imported += 1,
+            Err(e) => all_errors.push(format!("DB insert: {e}")),
+        }
+    }
+    let _ = conn.execute("COMMIT", []);
+
+    Ok(Some(ImportProblemResult {
+        imported: total_imported,
+        errors: all_errors,
+    }))
 }

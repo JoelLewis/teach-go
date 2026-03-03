@@ -1,0 +1,20 @@
+[package]
+name = "gosensei-llm"
+description = "Local LLM coaching for GoSensei via llama.cpp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+thiserror = { workspace = true }
+tracing = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+llama-cpp-2 = { version = "0.1", optional = true, features = ["sampler"] }
+hf-hub = { version = "0.5", optional = true }
+encoding_rs = { version = "0.8", optional = true }
+
+[features]
+default = []
+llm = ["llama-cpp-2", "hf-hub", "encoding_rs"]

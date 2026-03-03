@@ -1,6 +1,6 @@
 <script lang="ts">
   import { BoardRenderer, type Highlight } from "./renderer";
-  import type { StoneColor, StonePosition } from "../api/types";
+  import type { Severity, StoneColor, StonePosition } from "../api/types";
 
   type Props = {
     boardSize: number;
@@ -10,10 +10,11 @@
     showCoordinates?: boolean;
     ownership?: number[] | null;
     highlights?: Highlight[];
+    lastMoveSeverity?: Severity | null;
     onIntersectionClick: (row: number, col: number) => void;
   };
 
-  let { boardSize, stones, currentColor, lastMove, showCoordinates = false, ownership = null, highlights = [], onIntersectionClick }: Props = $props();
+  let { boardSize, stones, currentColor, lastMove, showCoordinates = false, ownership = null, highlights = [], lastMoveSeverity = null, onIntersectionClick }: Props = $props();
 
   let canvasEl: HTMLCanvasElement;
   let renderer: BoardRenderer | null = null;
@@ -52,6 +53,15 @@
   $effect(() => {
     if (!renderer) return;
     renderer.drawHighlights(highlights);
+  });
+
+  $effect(() => {
+    if (!renderer) return;
+    if (lastMove && lastMoveSeverity) {
+      renderer.drawMoveQuality(lastMoveSeverity, lastMove[0], lastMove[1]);
+    } else {
+      renderer.drawMoveQuality(null, 0, 0);
+    }
   });
 </script>
 

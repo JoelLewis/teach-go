@@ -44,6 +44,7 @@ pub struct GameState {
     pub phase: GamePhase,
     pub result: Option<GameResult>,
     pub last_move: Option<(u8, u8)>,
+    pub moves: Vec<MoveEntry>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,6 +52,15 @@ pub struct StonePosition {
     pub row: u8,
     pub col: u8,
     pub color: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MoveEntry {
+    pub move_number: u16,
+    pub color: String,
+    pub row: Option<u8>,
+    pub col: Option<u8>,
+    pub is_pass: bool,
 }
 
 impl Game {
@@ -294,6 +304,74 @@ impl Game {
         sgf::writer::write(self)
     }
 
+    /// Create a serializable snapshot at a specific move number (0 = initial position).
+    /// Returns `None` if the move number is out of range.
+    pub fn state_at_move(&self, move_number: u16) -> Option<GameState> {
+        let idx = move_number as usize;
+        let board = self.board_history.get(idx)?;
+        let dim = board.dimension();
+
+        let mut stones = Vec::new();
+        for r in 0..dim {
+            for c in 0..dim {
+                let p = Point::new(r, c);
+                if let Some(color) = board.get(p) {
+                    stones.push(StonePosition {
+                        row: r,
+                        col: c,
+                        color: color.as_str().to_string(),
+                    });
+                }
+            }
+        }
+
+        let last_move = if idx > 0 {
+            self.move_history.get(idx - 1).and_then(|m| match m.mv {
+                Move::Play(p) => Some((p.row, p.col)),
+                _ => None,
+            })
+        } else {
+            None
+        };
+
+        let current_color = if idx < self.move_history.len() {
+            self.move_history[idx].color
+        } else {
+            self.current_color
+        };
+
+        let moves: Vec<MoveEntry> = self.move_history[..idx]
+            .iter()
+            .map(|record| {
+                let (row, col, is_pass) = match record.mv {
+                    Move::Play(p) => (Some(p.row), Some(p.col), false),
+                    Move::Pass => (None, None, true),
+                    Move::Resign => (None, None, false),
+                };
+                MoveEntry {
+                    move_number: record.move_number,
+                    color: record.color.as_str().to_string(),
+                    row,
+                    col,
+                    is_pass,
+                }
+            })
+            .collect();
+
+        Some(GameState {
+            board_size: dim,
+            stones,
+            current_color: current_color.as_str().to_string(),
+            move_number: idx as u16,
+            captures_black: 0, // Historical captures not tracked per-position
+            captures_white: 0,
+            phase: if idx < self.move_history.len() { GamePhase::Playing } else { self.phase.clone() },
+            result: if idx == self.move_history.len() { self.result.clone() } else { None },
+            last_move,
+            moves,
+        })
+    }
+
     /// Create a serializable snapshot of the current state.
     pub fn to_state(&self) -> GameState {
         let dim = self.board.dimension();
@@ -305,10 +383,7 @@ impl Game {
                     stones.push(StonePosition {
                         row: r,
                         col: c,
-                        color: match color {
-                            Color::Black => "black".to_string(),
-                            Color::White => "white".to_string(),
-                        },
+                        color: color.as_str().to_string(),
                     });
                 }
             }
@@ -319,19 +394,36 @@ impl Game {
             _ => None,
         });
 
+        let moves = self
+            .move_history
+            .iter()
+            .map(|record| {
+                let (row, col, is_pass) = match record.mv {
+                    Move::Play(p) => (Some(p.row), Some(p.col), false),
+                    Move::Pass => (None, None, true),
+                    Move::Resign => (None, None, false),
+                };
+                MoveEntry {
+                    move_number: record.move_number,
+                    color: record.color.as_str().to_string(),
+                    row,
+                    col,
+                    is_pass,
+                }
+            })
+            .collect();
+
         GameState {
             board_size: dim,
             stones,
-            current_color: match self.current_color {
-                Color::Black => "black".to_string(),
-                Color::White => "white".to_string(),
-            },
+            current_color: self.current_color.as_str().to_string(),
             move_number: self.move_history.len() as u16,
             captures_black: self.captures.black,
             captures_white: self.captures.white,
             phase: self.phase.clone(),
             result: self.result.clone(),
             last_move,
+            moves,
         }
     }
 }
@@ -472,5 +564,48 @@ mod tests {
         let game = Game::from_sgf_with_setup(sgf).unwrap();
         assert_eq!(game.board().get(Point::new(5, 3)), Some(Color::Black));
         assert_eq!(game.move_history().len(), 1);
+    }
+
+    #[test]
+    fn to_state_includes_moves() {
+        let mut game = Game::new(BoardSize::Nine, 6.5);
+        game.play(Point::new(4, 4)).unwrap(); // Black E5
+        game.play(Point::new(2, 2)).unwrap(); // White C7
+        game.pass().unwrap();                  // Black pass
+
+        let state = game.to_state();
+        assert_eq!(state.moves.len(), 3);
+
+        // First move: Black at (4,4)
+        assert_eq!(state.moves[0].move_number, 1);
+        assert_eq!(state.moves[0].color, "black");
+        assert_eq!(state.moves[0].row, Some(4));
+        assert_eq!(state.moves[0].col, Some(4));
+        assert!(!state.moves[0].is_pass);
+
+        // Second move: White at (2,2)
+        assert_eq!(state.moves[1].color, "white");
+        assert_eq!(state.moves[1].row, Some(2));
+
+        // Third move: Black pass
+        assert_eq!(state.moves[2].color, "black");
+        assert!(state.moves[2].is_pass);
+        assert_eq!(state.moves[2].row, None);
+    }
+
+    #[test]
+    fn empty_game_has_empty_moves() {
+        let game = Game::new(BoardSize::Nine, 6.5);
+        assert!(game.to_state().moves.is_empty());
+    }
+
+    #[test]
+    fn from_sgf_partial_moves_match_limit() {
+        let sgf = "(;SZ[9]KM[6.5];B[ee];W[cc];B[gg];W[dd])";
+        let partial = Game::from_sgf_partial(sgf, Some(2)).unwrap();
+        let state = partial.to_state();
+        assert_eq!(state.moves.len(), 2);
+        assert_eq!(state.moves[0].color, "black");
+        assert_eq!(state.moves[1].color, "white");
     }
 }

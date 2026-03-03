@@ -11,6 +11,7 @@ use tracing::{info, warn};
 use crate::convert;
 use crate::error::AppError;
 use crate::review::{MoveAnalysis, ReviewData, ReviewSession};
+use crate::skill;
 use crate::state::AppState;
 
 const REVIEW_VISITS: u32 = 50;
@@ -67,8 +68,11 @@ pub async fn start_review(
         });
     }
 
+    // Read player rank for rank-aware severity thresholds
+    let player_rank = skill::get_player_rank(&state);
+
     info!(
-        "Starting review: {total_moves} moves, {total_positions} positions to analyze"
+        "Starting review: {total_moves} moves, {total_positions} positions to analyze (player rank: {player_rank:.1})"
     );
 
     // Clone Arcs for the spawned task
@@ -152,10 +156,7 @@ pub async fn start_review(
                 // Determine the played move at this position (the move that created position i)
                 let (color, player_move_gtp) = if i > 0 {
                     let record = &history[i - 1];
-                    let color_str = match record.color {
-                        gosensei_core::types::Color::Black => "black",
-                        gosensei_core::types::Color::White => "white",
-                    };
+                    let color_str = record.color.as_str();
                     let gtp = match record.mv {
                         Move::Play(p) => Some(convert::point_to_gtp(p, board_size)),
                         Move::Pass => Some("pass".to_string()),
@@ -226,7 +227,7 @@ pub async fn start_review(
         {
             let mut review = review_state.lock().await;
             if let Some(session) = review.as_mut() {
-                compute_score_loss_and_severity(session, board_size);
+                compute_score_loss_and_severity(session, board_size, player_rank);
                 session.is_complete = true;
             }
         }
@@ -249,7 +250,7 @@ pub async fn start_review(
 
 /// Compute score loss by comparing each position to the previous one.
 /// A good move maintains or improves the position; a bad move loses score.
-fn compute_score_loss_and_severity(session: &mut ReviewSession, board_size: u8) {
+fn compute_score_loss_and_severity(session: &mut ReviewSession, board_size: u8, player_rank: f64) {
     let results = &mut session.results;
 
     for i in 1..results.len() {
@@ -281,10 +282,10 @@ fn compute_score_loss_and_severity(session: &mut ReviewSession, board_size: u8) 
             (curr_score - prev_score).max(0.0)
         };
 
-        let severity = Severity::from_score_loss(score_loss, true); // DDK thresholds
+        let severity = Severity::from_score_loss(score_loss, player_rank);
 
         // Generate coaching message for non-good moves
-        let coaching_message = if severity != Severity::Good {
+        let coaching_message = if !matches!(severity, Severity::Excellent | Severity::Good) {
             // Try to classify the error type using move coordinates
             let error_class = results[i]
                 .as_ref()
@@ -294,7 +295,7 @@ fn compute_score_loss_and_severity(session: &mut ReviewSession, board_size: u8) 
                 .unwrap_or(None);
 
             let suggested = results[i].as_ref().and_then(|a| a.best_move.clone());
-            let msg = templates::generate_message(severity, error_class, score_loss, suggested, i as u16);
+            let msg = templates::generate_message(severity, error_class, score_loss, suggested, None, i as u16);
             Some(msg.message)
         } else {
             None
@@ -478,19 +479,21 @@ mod tests {
             is_complete: false,
         };
 
-        compute_score_loss_and_severity(&mut session, 9);
+        // Use beginner rank (25k) — same band as the old DDK thresholds
+        compute_score_loss_and_severity(&mut session, 9, 25.0);
 
         // Position 0 stays at 0
         assert!((session.results[0].as_ref().unwrap().score_loss - 0.0).abs() < f64::EPSILON);
 
         // Position 1: Black moved. score_lead went from 0.0 to -3.0.
         // For Black: prev(0.0) - curr(-3.0) = 3.0 points lost
+        // At rank 25.0 (beginner band): 3.0 < 5.0 threshold → Inaccuracy
         let loss1 = session.results[1].as_ref().unwrap().score_loss;
         assert!((loss1 - 3.0).abs() < f64::EPSILON);
         assert_eq!(session.results[1].as_ref().unwrap().severity, Severity::Inaccuracy);
 
         // Position 2: White moved. score_lead went from -3.0 to -3.2.
-        // For White: curr(-3.2) - prev(-3.0) = -0.2, max(0) = 0.0 — good move
+        // For White: curr(-3.2) - prev(-3.0) = -0.2, max(0) = 0.0 — excellent move
         let loss2 = session.results[2].as_ref().unwrap().score_loss;
         assert!(loss2 < 0.01);
     }

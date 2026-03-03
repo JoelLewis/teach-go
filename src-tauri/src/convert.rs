@@ -95,6 +95,28 @@ pub fn strength_to_profile(strength: &str) -> Option<String> {
     }
 }
 
+/// Map a numeric player rank to the closest KataGo humanSLProfile.
+/// Used for Human SL policy queries to understand what a human at this rank would play.
+#[cfg_attr(not(feature = "llm"), allow(dead_code))]
+pub fn rank_to_human_profile(rank: f64) -> String {
+    match rank as u32 {
+        20..=u32::MAX => "preaz_18k",
+        15..=19 => "preaz_15k",
+        10..=14 => "preaz_9k",
+        5..=9 => "preaz_5k",
+        1..=4 => "preaz_3k",
+        _ => "preaz_1d",
+    }
+    .to_string()
+}
+
+/// Map a rank to the profile of a player ~5 stones stronger.
+/// For comparing what a slightly better player would do.
+#[cfg_attr(not(feature = "llm"), allow(dead_code))]
+pub fn rank_one_up_profile(rank: f64) -> String {
+    rank_to_human_profile((rank - 5.0).max(0.0))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -378,5 +400,30 @@ mod tests {
                 assert_eq!(back, point, "19×19 round-trip failed for {gtp}");
             }
         }
+    }
+
+    #[test]
+    fn rank_to_human_profile_mappings() {
+        assert_eq!(rank_to_human_profile(25.0), "preaz_18k");
+        assert_eq!(rank_to_human_profile(20.0), "preaz_18k");
+        assert_eq!(rank_to_human_profile(15.0), "preaz_15k");
+        assert_eq!(rank_to_human_profile(12.0), "preaz_9k");
+        assert_eq!(rank_to_human_profile(7.0), "preaz_5k");
+        assert_eq!(rank_to_human_profile(3.0), "preaz_3k");
+        assert_eq!(rank_to_human_profile(0.5), "preaz_1d");
+    }
+
+    #[test]
+    fn rank_one_up_advances_band() {
+        // 25k → one_up is 20k → still preaz_18k band
+        assert_eq!(rank_one_up_profile(25.0), "preaz_18k");
+        // 15k → one_up is 10k → preaz_9k band
+        assert_eq!(rank_one_up_profile(15.0), "preaz_9k");
+        // 10k → one_up is 5k → preaz_5k band
+        assert_eq!(rank_one_up_profile(10.0), "preaz_5k");
+        // 5k → one_up is 0 → preaz_1d (clamped)
+        assert_eq!(rank_one_up_profile(5.0), "preaz_1d");
+        // 3k → one_up is 0 → preaz_1d (clamped at 0.0)
+        assert_eq!(rank_one_up_profile(3.0), "preaz_1d");
     }
 }

@@ -29,7 +29,7 @@ pub fn write(game: &Game) -> String {
     sgf
 }
 
-fn format_point(p: Point) -> String {
+pub fn format_point(p: Point) -> String {
     let col = (b'a' + p.col) as char;
     let row = (b'a' + p.row) as char;
     format!("{col}{row}")

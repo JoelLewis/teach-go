@@ -1,8 +1,10 @@
+mod coaching_db;
 mod commands;
 mod convert;
 mod db;
 mod error;
 mod generate;
+mod import;
 mod problem;
 mod review;
 mod skill;
@@ -36,6 +38,8 @@ pub fn run() {
             commands::game::undo_move,
             commands::game::list_games,
             commands::game::load_saved_game,
+            commands::game::get_game_position,
+            commands::game::check_difficulty_suggestion,
             commands::katago::start_engine,
             commands::katago::stop_engine,
             commands::katago::request_ai_move,
@@ -59,6 +63,9 @@ pub fn run() {
             commands::problem::get_recommended_problem,
             commands::problem::get_problem_stats,
             commands::problem::generate_problems_from_game,
+            commands::problem::import_problems_from_sgf,
+            commands::llm::init_llm_model,
+            commands::llm::get_llm_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running GoSensei");

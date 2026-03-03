@@ -1,9 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
   CoachingMessage,
+  DifficultySuggestion,
   GameResult,
   GameState,
   HintData,
+  LlmStatus,
   ProblemState,
   ProblemStats,
   ProblemSummary,
@@ -37,6 +39,14 @@ export async function resign(): Promise<[GameState, GameResult]> {
 
 export async function undoMove(): Promise<GameState> {
   return invoke("undo_move");
+}
+
+export async function checkDifficultySuggestion(): Promise<DifficultySuggestion | null> {
+  return invoke("check_difficulty_suggestion");
+}
+
+export async function getGamePosition(moveNumber: number): Promise<GameState> {
+  return invoke("get_game_position", { moveNumber });
 }
 
 export async function startEngine(): Promise<string> {
@@ -142,4 +152,23 @@ export async function getProblemStats(): Promise<ProblemStats> {
 
 export async function generateProblemsFromGame(threshold?: number): Promise<number> {
   return invoke("generate_problems_from_game", { threshold: threshold ?? null });
+}
+
+export type ImportProblemResult = {
+  imported: number;
+  errors: string[];
+};
+
+export async function importProblemsFromSgf(): Promise<ImportProblemResult | null> {
+  return invoke("import_problems_from_sgf");
+}
+
+// --- LLM Coaching ---
+
+export async function initLlmModel(): Promise<string> {
+  return invoke("init_llm_model");
+}
+
+export async function getLlmStatus(): Promise<LlmStatus> {
+  return invoke("get_llm_status");
 }

@@ -17,6 +17,8 @@
   let showList = $state(true);
   let categoryFilter = $state<string | null>(null);
   let sourceFilter = $state<"all" | "generated">("all");
+  let importing = $state(false);
+  let importMessage = $state<string | null>(null);
 
   const CATEGORIES = [
     { value: null, label: "All" },
@@ -134,6 +136,31 @@
     }
   }
 
+  async function handleImport() {
+    importing = true;
+    importMessage = null;
+
+    try {
+      const result = await api.importProblemsFromSgf();
+      if (!result) {
+        // User cancelled file picker
+        importing = false;
+        return;
+      }
+      if (result.errors.length > 0) {
+        importMessage = `Imported ${result.imported} problem${result.imported !== 1 ? "s" : ""}. ${result.errors.length} error${result.errors.length !== 1 ? "s" : ""}.`;
+      } else {
+        importMessage = `Imported ${result.imported} problem${result.imported !== 1 ? "s" : ""}.`;
+      }
+      loadProblems();
+    } catch (e) {
+      importMessage = `Import failed: ${e}`;
+    }
+
+    importing = false;
+    setTimeout(() => { importMessage = null; }, 5000);
+  }
+
   function handleNextProblem() {
     problemStore.clear();
     showList = true;
@@ -210,14 +237,28 @@
       </button>
     </div>
 
-    <!-- Recommended + Category filter -->
+    <!-- Recommended + Import + Category filter -->
     <div class="mb-4 flex flex-col gap-3">
-      <button
-        onclick={startRecommended}
-        class="rounded-lg bg-teal-700 px-6 py-3 text-sm font-semibold text-white transition hover:bg-teal-600"
-      >
-        Recommended Problem
-      </button>
+      <div class="flex gap-2">
+        <button
+          onclick={startRecommended}
+          class="flex-1 rounded-lg bg-teal-700 px-6 py-3 text-sm font-semibold text-white transition hover:bg-teal-600"
+        >
+          Recommended Problem
+        </button>
+        <button
+          onclick={handleImport}
+          disabled={importing}
+          class="rounded-lg bg-stone-700 px-4 py-3 text-sm text-stone-300 transition hover:bg-stone-600 disabled:opacity-50"
+        >
+          {importing ? "Importing..." : "Import SGF"}
+        </button>
+      </div>
+      {#if importMessage}
+        <div class="rounded bg-stone-700/50 px-3 py-2 text-xs text-stone-300">
+          {importMessage}
+        </div>
+      {/if}
       <div class="flex flex-wrap gap-2">
         {#each CATEGORIES as cat}
           <button

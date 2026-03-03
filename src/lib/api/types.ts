@@ -13,6 +13,14 @@ export type GameResult =
   | { Resignation: { winner: StoneColor } }
   | "Draw";
 
+export type MoveEntry = {
+  move_number: number;
+  color: StoneColor;
+  row: number | null;
+  col: number | null;
+  is_pass: boolean;
+};
+
 export type GameState = {
   board_size: number;
   stones: StonePosition[];
@@ -23,15 +31,17 @@ export type GameState = {
   phase: GamePhase;
   result: GameResult | null;
   last_move: [number, number] | null;
+  moves: MoveEntry[];
 };
 
-export type Severity = "Good" | "Inaccuracy" | "Mistake" | "Blunder";
+export type Severity = "Excellent" | "Good" | "Inaccuracy" | "Mistake" | "Blunder";
 
 export type CoachingMessage = {
   severity: Severity;
   error_class: string | null;
   message: string;
   suggested_move: string | null;
+  simplest_move: string | null;
   score_loss: number;
   move_number: number;
 };
@@ -43,6 +53,8 @@ export type SavedGame = {
   played_at: string;
 };
 
+export type FeedbackTiming = "immediate" | "on_demand" | "post_game";
+
 export type Settings = {
   board_size: number;
   komi: number;
@@ -50,6 +62,7 @@ export type Settings = {
   show_move_numbers: boolean;
   ai_strength: string;
   sound_enabled: boolean;
+  feedback_timing: FeedbackTiming;
 };
 
 export type MoveAnalysis = {
@@ -77,6 +90,11 @@ export type ReviewProgress = {
   total_positions: number;
   analyzed_positions: number;
   is_complete: boolean;
+};
+
+export type DifficultySuggestion = {
+  direction: "up" | "down";
+  message: string;
 };
 
 export type NewGameConfig = {
@@ -162,3 +180,18 @@ export type ProblemStats = {
   accuracy_percent: number;
   per_category: CategoryStat[];
 };
+
+// --- LLM Coaching ---
+
+export type CoachingStreamChunk = {
+  move_number: number;
+  text_delta: string;
+  is_complete: boolean;
+};
+
+export type LlmDownloadProgress = {
+  downloaded: number;
+  total: number;
+};
+
+export type LlmStatus = "not_installed" | "ready" | "loading" | "disabled";

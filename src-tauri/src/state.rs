@@ -17,6 +17,8 @@ pub struct AppState {
     pub review: Arc<tokio::sync::Mutex<Option<ReviewSession>>>,
     pub game_errors: Mutex<Vec<GameError>>,
     pub solver: Mutex<Option<SolverSession>>,
+    #[cfg(feature = "llm")]
+    pub llm: Arc<tokio::sync::Mutex<Option<gosensei_llm::model::ModelManager>>>,
 }
 
 impl AppState {
@@ -29,6 +31,8 @@ impl AppState {
             review: Arc::new(tokio::sync::Mutex::new(None)),
             game_errors: Mutex::new(Vec::new()),
             solver: Mutex::new(None),
+            #[cfg(feature = "llm")]
+            llm: Arc::new(tokio::sync::Mutex::new(None)),
         }
     }
 }

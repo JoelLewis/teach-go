@@ -8,6 +8,7 @@
   let { analysis }: Props = $props();
 
   const severityStyles: Record<string, string> = {
+    Excellent: "bg-emerald-900/50 text-emerald-200",
     Good: "bg-green-900/50 text-green-200",
     Inaccuracy: "bg-yellow-900/50 text-yellow-200",
     Mistake: "bg-orange-900/50 text-orange-200",
@@ -44,7 +45,7 @@
       {/if}
 
       <!-- Best move suggestion -->
-      {#if analysis.best_move && analysis.severity !== "Good"}
+      {#if analysis.best_move && analysis.severity !== "Good" && analysis.severity !== "Excellent"}
         <div class="text-xs text-stone-400">
           Suggested: <span class="font-mono text-amber-400">{analysis.best_move}</span>
           {#if analysis.best_variation.length > 1}
@@ -59,6 +60,10 @@
       {#if analysis.coaching_message}
         <div class="rounded bg-stone-800 p-2 text-sm leading-relaxed text-stone-300">
           {analysis.coaching_message}
+        </div>
+      {:else if analysis.severity === "Excellent"}
+        <div class="rounded bg-stone-800 p-2 text-sm text-emerald-400">
+          Excellent move!
         </div>
       {:else if analysis.severity === "Good"}
         <div class="rounded bg-stone-800 p-2 text-sm text-stone-400">

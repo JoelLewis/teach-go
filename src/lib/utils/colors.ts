@@ -2,6 +2,8 @@ import type { Severity } from "../api/types";
 
 export function severityColor(severity: Severity): number {
   switch (severity) {
+    case "Excellent":
+      return 0x10b981;
     case "Good":
       return 0x4caf50;
     case "Inaccuracy":
@@ -15,6 +17,8 @@ export function severityColor(severity: Severity): number {
 
 export function severityLabel(severity: Severity): string {
   switch (severity) {
+    case "Excellent":
+      return "Excellent";
     case "Good":
       return "Good";
     case "Inaccuracy":

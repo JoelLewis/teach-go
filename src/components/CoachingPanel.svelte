@@ -4,9 +4,10 @@
 
   type Props = {
     messages: CoachingMessage[];
+    streamingMoveNumber?: number | null;
   };
 
-  let { messages }: Props = $props();
+  let { messages, streamingMoveNumber = null }: Props = $props();
 
   function hexColor(severity: CoachingMessage["severity"]): string {
     return `#${severityColor(severity).toString(16).padStart(6, "0")}`;
@@ -30,7 +31,15 @@
             {severityLabel(msg.severity)}
           </span>
           <span class="ml-1 text-stone-400">Move {msg.move_number}</span>
-          <p class="mt-1 text-stone-300">{msg.message}</p>
+          <p class="mt-1 text-stone-300">
+            {msg.message}{#if streamingMoveNumber === msg.move_number}<span class="animate-pulse text-amber-400">|</span>{/if}
+          </p>
+          {#if msg.simplest_move}
+            <p class="mt-0.5 text-stone-400">
+              Try: <span class="font-mono text-amber-400">{msg.simplest_move}</span>
+              <span class="text-stone-500">(simpler alternative)</span>
+            </p>
+          {/if}
         </div>
       {/each}
     {/if}

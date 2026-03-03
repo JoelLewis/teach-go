@@ -7,6 +7,7 @@ const DEFAULT_SETTINGS: Settings = {
   show_move_numbers: false,
   ai_strength: "beginner",
   sound_enabled: true,
+  feedback_timing: "immediate",
 };
 
 export const settingsStore = createSettingsStore();

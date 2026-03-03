@@ -3,6 +3,17 @@ use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 
 use crate::error::AppError;
+use crate::state::AppState;
+
+const DEFAULT_RANK: f64 = 25.0;
+
+/// Read player rank from skill profile, defaulting to 25k for new players.
+pub fn get_player_rank(state: &AppState) -> f64 {
+    let db = state.db.lock().unwrap();
+    get_skill_profile(&db)
+        .map(|p| p.overall_rank)
+        .unwrap_or(DEFAULT_RANK)
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SkillDimension {

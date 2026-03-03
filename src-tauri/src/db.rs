@@ -20,6 +20,7 @@ pub fn init_schema(conn: &Connection) -> Result<(), AppError> {
             board_size INTEGER NOT NULL,
             sgf TEXT,
             result TEXT,
+            player_color TEXT NOT NULL DEFAULT 'black',
             played_at TEXT NOT NULL DEFAULT (datetime('now'))
         );
 
@@ -87,8 +88,28 @@ pub fn init_schema(conn: &Connection) -> Result<(), AppError> {
             state INTEGER NOT NULL DEFAULT 0,
             last_review TEXT NOT NULL DEFAULT (datetime('now'))
         );
+
+        -- Migration: add player_color to games (idempotent for existing DBs)
+        -- New installs get it from CREATE TABLE; ALTER is for upgrades.
+
+        CREATE TABLE IF NOT EXISTS coaching_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            move_number INTEGER NOT NULL,
+            error_class TEXT,
+            severity TEXT NOT NULL,
+            score_loss REAL NOT NULL,
+            llm_used INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
         ",
     )?;
+    Ok(())
+}
+
+/// Run idempotent migrations for schema changes on existing databases.
+fn run_migrations(conn: &Connection) -> Result<(), AppError> {
+    // Add player_color column to games table (added in coaching update)
+    let _ = conn.execute_batch("ALTER TABLE games ADD COLUMN player_color TEXT NOT NULL DEFAULT 'black'");
     Ok(())
 }
 
@@ -96,5 +117,6 @@ pub fn init_schema(conn: &Connection) -> Result<(), AppError> {
 pub fn init_db(path: &str) -> Result<Connection, AppError> {
     let conn = Connection::open(path)?;
     init_schema(&conn)?;
+    run_migrations(&conn)?;
     Ok(conn)
 }

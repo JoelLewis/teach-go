@@ -1,5 +1,5 @@
 import { listen } from "@tauri-apps/api/event";
-import type { ReviewProgress } from "./types";
+import type { CoachingStreamChunk, LlmDownloadProgress, ReviewProgress } from "./types";
 
 export type EngineStatus = "starting" | "ready" | "error" | "stopped";
 
@@ -23,6 +23,22 @@ export function onReviewProgress(
   callback: (progress: ReviewProgress) => void,
 ): Promise<() => void> {
   return listen<ReviewProgress>("review-progress", (event) => {
+    callback(event.payload);
+  }).then((unlisten) => unlisten);
+}
+
+export function onCoachingStream(
+  callback: (chunk: CoachingStreamChunk) => void,
+): Promise<() => void> {
+  return listen<CoachingStreamChunk>("coaching-stream", (event) => {
+    callback(event.payload);
+  }).then((unlisten) => unlisten);
+}
+
+export function onLlmDownloadProgress(
+  callback: (progress: LlmDownloadProgress) => void,
+): Promise<() => void> {
+  return listen<LlmDownloadProgress>("llm-download-progress", (event) => {
     callback(event.payload);
   }).then((unlisten) => unlisten);
 }

@@ -14,6 +14,10 @@ pub enum AppError {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 
+    #[error("LLM error: {0}")]
+    #[cfg_attr(not(feature = "llm"), allow(dead_code))]
+    Llm(String),
+
     #[error("{0}")]
     Other(String),
 }

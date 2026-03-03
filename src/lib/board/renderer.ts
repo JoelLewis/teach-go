@@ -1,6 +1,7 @@
 import { Application, Container, Graphics, Text, TextStyle } from "pixi.js";
-import type { StoneColor, StonePosition } from "../api/types";
+import type { Severity, StoneColor, StonePosition } from "../api/types";
 import { intersectionToPixel } from "../utils/coordinates";
+import { severityColor } from "../utils/colors";
 import { type BoardTheme, defaultTheme, starPoints } from "./themes";
 
 const COLUMN_LETTERS = "ABCDEFGHJKLMNOPQRST";
@@ -281,6 +282,19 @@ export class BoardRenderer {
           .fill({ color, alpha: 0.4 });
       }
     }
+  }
+
+  drawMoveQuality(severity: Severity | null, row: number, col: number): void {
+    this.indicatorLayer.clear();
+    if (!severity) return;
+
+    const { x, y } = intersectionToPixel(row, col, this.cellSize, this.padding);
+    const ringRadius = this.cellSize * 0.5;
+    const color = severityColor(severity);
+
+    this.indicatorLayer
+      .circle(x, y, ringRadius)
+      .stroke({ color, width: 2.5, alpha: 0.85 });
   }
 
   setHoverColor(color: StoneColor): void {

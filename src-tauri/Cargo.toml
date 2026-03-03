@@ -26,3 +26,8 @@ chrono = { workspace = true }
 gosensei-core = { path = "../crates/gosensei-core" }
 gosensei-katago = { path = "../crates/gosensei-katago" }
 gosensei-coaching = { path = "../crates/gosensei-coaching" }
+gosensei-llm = { path = "../crates/gosensei-llm", optional = true }
+
+[features]
+default = []
+llm = ["gosensei-llm/llm", "gosensei-llm"]

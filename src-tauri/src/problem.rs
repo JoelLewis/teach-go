@@ -63,6 +63,7 @@ impl ProblemCategory {
 pub enum ProblemSource {
     Seed,
     Generated,
+    Imported,
 }
 
 impl ProblemSource {
@@ -70,12 +71,14 @@ impl ProblemSource {
         match self {
             Self::Seed => "seed",
             Self::Generated => "generated",
+            Self::Imported => "imported",
         }
     }
 
     pub fn from_str(s: &str) -> Self {
         match s {
             "generated" => Self::Generated,
+            "imported" => Self::Imported,
             _ => Self::Seed,
         }
     }
@@ -211,10 +214,7 @@ pub fn insert_problem(conn: &Connection, problem: &Problem) -> Result<i64, AppEr
         serde_json::to_string(&problem.solutions).map_err(|e| AppError::Other(e.to_string()))?;
     let tags_json =
         serde_json::to_string(&problem.tags).map_err(|e| AppError::Other(e.to_string()))?;
-    let color_str = match problem.player_color {
-        Color::Black => "black",
-        Color::White => "white",
-    };
+    let color_str = problem.player_color.as_str();
 
     conn.execute(
         "INSERT INTO problems (setup_sgf, board_size, player_color, solutions_json, category,
@@ -312,26 +312,22 @@ pub fn select_next_problem(
 
 /// Convert board positions to SGF with AB/AW setup properties.
 pub fn points_to_setup_sgf(board_size: u8, black: &[Point], white: &[Point]) -> String {
+    use gosensei_core::sgf::writer::format_point;
+
     let mut sgf = format!("(;SZ[{board_size}]");
     if !black.is_empty() {
         sgf.push_str("AB");
         for p in black {
-            let c = (b'a' + p.col) as char;
-            let r = (b'a' + p.row) as char;
             sgf.push('[');
-            sgf.push(c);
-            sgf.push(r);
+            sgf.push_str(&format_point(*p));
             sgf.push(']');
         }
     }
     if !white.is_empty() {
         sgf.push_str("AW");
         for p in white {
-            let c = (b'a' + p.col) as char;
-            let r = (b'a' + p.row) as char;
             sgf.push('[');
-            sgf.push(c);
-            sgf.push(r);
+            sgf.push_str(&format_point(*p));
             sgf.push(']');
         }
     }

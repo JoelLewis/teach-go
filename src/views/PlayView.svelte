@@ -4,15 +4,16 @@
   import GameControls from "../components/GameControls.svelte";
   import MoveHistory from "../components/MoveHistory.svelte";
   import CoachingPanel from "../components/CoachingPanel.svelte";
+  import DifficultyPrompt from "../components/DifficultyPrompt.svelte";
   import ScoreBar from "../components/ScoreBar.svelte";
   import { gameStore } from "../lib/stores/game.svelte";
   import { coachingStore } from "../lib/stores/coaching.svelte";
   import { engineStore } from "../lib/stores/engine.svelte";
   import { settingsStore } from "../lib/stores/settings.svelte";
   import * as sounds from "../lib/audio/sounds";
-  import { onEngineStatus, onAiThinking } from "../lib/api/events";
+  import { onEngineStatus, onAiThinking, onCoachingStream } from "../lib/api/events";
   import * as api from "../lib/api/commands";
-  import type { StoneColor, NewGameConfig } from "../lib/api/types";
+  import type { CoachingMessage, DifficultySuggestion, GameState, StoneColor, NewGameConfig } from "../lib/api/types";
 
   type Props = {
     config?: NewGameConfig;
@@ -24,7 +25,18 @@
 
   let boardSize = $state(config?.boardSize ?? settingsStore.value.board_size);
   let playerColor = $state<StoneColor>(config?.playerColor ?? "black");
+  let viewingMove = $state<number | null>(null);
+  let viewingState = $state<GameState | null>(null);
+  let pendingFeedback = $state<CoachingMessage | null>(null);
+  let difficultySuggestion = $state<DifficultySuggestion | null>(null);
+  let difficultyChecked = $state(false);
   let unlisteners: Array<() => void> = [];
+
+  const noop = () => {};
+
+  // Whether we're viewing a past position (not the current game state)
+  let isViewingHistory = $derived(viewingMove !== null && viewingMove !== (gameStore.state?.move_number ?? 0));
+  let displayState = $derived(isViewingHistory && viewingState ? viewingState : gameStore.state);
 
   // Keep sound state in sync with settings
   $effect(() => {
@@ -39,6 +51,13 @@
     onAiThinking((thinking) => engineStore.setAiThinking(thinking)).then((u) =>
       unlisteners.push(u),
     );
+    onCoachingStream((chunk) => {
+      if (chunk.is_complete) {
+        coachingStore.completeStream(chunk.move_number);
+      } else {
+        coachingStore.appendStream(chunk.move_number, chunk.text_delta);
+      }
+    }).then((u) => unlisteners.push(u));
 
     startNewGame();
 
@@ -47,11 +66,20 @@
     };
   });
 
+  // Check for difficulty suggestion when game finishes (once per game)
+  $effect(() => {
+    if (gameStore.state?.phase === "Finished" && !difficultyChecked) {
+      difficultyChecked = true;
+      checkDifficulty();
+    }
+  });
+
   async function startNewGame() {
     try {
       const state = await api.newGame(boardSize, settingsStore.value.komi, playerColor);
       gameStore.set(state);
       coachingStore.clear();
+      difficultyChecked = false;
       // If player is white, AI (black) moves first
       if (playerColor === "white") {
         await triggerAiMove();
@@ -113,11 +141,32 @@
   }
 
   async function triggerCoaching() {
+    const timing = settingsStore.value.feedback_timing;
+    if (timing === "post_game") return; // Coaching deferred to review
+
     try {
       const feedback = await api.getCoachingFeedback();
-      if (feedback) coachingStore.add(feedback);
+      if (timing === "on_demand") {
+        // Store feedback but don't show it yet
+        pendingFeedback = feedback;
+        coachingStore.setLastMoveSeverity(null);
+      } else {
+        // immediate mode
+        if (feedback) {
+          coachingStore.add(feedback);
+        } else {
+          coachingStore.setLastMoveSeverity(null);
+        }
+      }
     } catch (e) {
       console.warn("Coaching unavailable:", e);
+    }
+  }
+
+  function revealPendingFeedback() {
+    if (pendingFeedback) {
+      coachingStore.add(pendingFeedback);
+      pendingFeedback = null;
     }
   }
 
@@ -149,6 +198,53 @@
     }
   }
 
+  async function checkDifficulty() {
+    try {
+      difficultySuggestion = await api.checkDifficultySuggestion();
+    } catch {
+      // Non-fatal
+    }
+  }
+
+  async function acceptDifficulty() {
+    if (!difficultySuggestion) return;
+    const strengthMap: Record<string, string[]> = {
+      up: ["beginner", "intermediate", "advanced", "dan"],
+      down: ["dan", "advanced", "intermediate", "beginner"],
+    };
+    const levels = strengthMap[difficultySuggestion.direction] ?? [];
+    const currentIdx = levels.indexOf(settingsStore.value.ai_strength);
+    if (currentIdx >= 0 && currentIdx < levels.length - 1) {
+      const newStrength = levels[currentIdx + 1];
+      const updated = await api.updateSettings({
+        ...settingsStore.value,
+        ai_strength: newStrength,
+      });
+      settingsStore.update(updated);
+    }
+    difficultySuggestion = null;
+  }
+
+  async function handleNavigate(moveNumber: number) {
+    if (moveNumber === (gameStore.state?.move_number ?? 0)) {
+      // Return to current position
+      viewingMove = null;
+      viewingState = null;
+      return;
+    }
+    try {
+      viewingState = await api.getGamePosition(moveNumber);
+      viewingMove = moveNumber;
+    } catch (e) {
+      console.warn("Navigation failed:", e);
+    }
+  }
+
+  function returnToCurrent() {
+    viewingMove = null;
+    viewingState = null;
+  }
+
   async function handleLoad() {
     try {
       const state = await api.loadGameSgf();
@@ -166,15 +262,28 @@
 <div class="flex h-full">
   <!-- Board area -->
   <div class="flex flex-1 items-center justify-center p-4">
-    {#if gameStore.state}
-      <BoardCanvas
-        {boardSize}
-        stones={gameStore.state.stones}
-        currentColor={gameStore.state.current_color as StoneColor}
-        lastMove={gameStore.state.last_move}
-        showCoordinates={settingsStore.value.show_coordinates}
-        onIntersectionClick={handleIntersectionClick}
-      />
+    {#if displayState}
+      <div class="relative">
+        <BoardCanvas
+          {boardSize}
+          stones={displayState.stones}
+          currentColor={displayState.current_color as StoneColor}
+          lastMove={displayState.last_move}
+          showCoordinates={settingsStore.value.show_coordinates}
+          lastMoveSeverity={isViewingHistory ? null : coachingStore.lastMoveSeverity}
+          onIntersectionClick={isViewingHistory ? noop : handleIntersectionClick}
+        />
+        {#if isViewingHistory}
+          <div class="absolute bottom-3 left-1/2 -translate-x-1/2">
+            <button
+              onclick={returnToCurrent}
+              class="rounded bg-stone-700/90 px-3 py-1 text-xs font-semibold text-stone-200 hover:bg-stone-600 shadow-lg"
+            >
+              Return to current (move {gameStore.state?.move_number ?? 0})
+            </button>
+          </div>
+        {/if}
+      </div>
     {/if}
   </div>
 
@@ -224,9 +333,18 @@
           engineStore.aiThinking}
       />
 
-      <MoveHistory game={gameStore.state} />
+      <MoveHistory game={gameStore.state} viewingMove={viewingMove} onNavigate={handleNavigate} />
 
-      <CoachingPanel messages={coachingStore.messages} />
+      {#if pendingFeedback}
+        <button
+          onclick={revealPendingFeedback}
+          class="rounded bg-amber-800/60 px-3 py-1.5 text-xs text-amber-200 hover:bg-amber-700/60"
+        >
+          Show Feedback
+        </button>
+      {/if}
+
+      <CoachingPanel messages={coachingStore.messages} streamingMoveNumber={coachingStore.streamingMoveNumber} />
 
       {#if gameStore.state.phase === "Finished"}
         <div
@@ -263,3 +381,11 @@
     {/if}
   </div>
 </div>
+
+{#if difficultySuggestion}
+  <DifficultyPrompt
+    suggestion={difficultySuggestion}
+    onAccept={acceptDifficulty}
+    onDismiss={() => (difficultySuggestion = null)}
+  />
+{/if}

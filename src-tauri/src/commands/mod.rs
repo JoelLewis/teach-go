@@ -1,6 +1,7 @@
 pub mod coaching;
 pub mod game;
 pub mod katago;
+pub mod llm;
 pub mod problem;
 pub mod review;
 pub mod settings;

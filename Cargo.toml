@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/gosensei-core", "crates/gosensei-katago", "crates/gosensei-coaching", "src-tauri"]
+members = ["crates/gosensei-core", "crates/gosensei-katago", "crates/gosensei-coaching", "crates/gosensei-llm", "src-tauri"]
 resolver = "2"
 
 [workspace.package]

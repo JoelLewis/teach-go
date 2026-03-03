@@ -1,3 +1,5 @@
+use gosensei_katago::protocol::MoveInfo;
+
 use crate::types::{CoachingMessage, ErrorClass, Severity};
 
 /// Generate a coaching message from classification results.
@@ -6,9 +8,11 @@ pub fn generate_message(
     error_class: Option<ErrorClass>,
     score_loss: f64,
     suggested_move: Option<String>,
+    simplest_move: Option<String>,
     move_number: u16,
 ) -> CoachingMessage {
     let message = match (&severity, &error_class) {
+        (Severity::Excellent, _) => "Excellent move! This matches the engine's top recommendation.".into(),
         (Severity::Good, _) => "Good move! This is close to what the engine recommends.".into(),
         (Severity::Inaccuracy, Some(ErrorClass::Direction)) => {
             format!(
@@ -54,24 +58,126 @@ pub fn generate_message(
         error_class,
         message,
         suggested_move,
+        simplest_move,
         score_loss,
         move_number,
     }
 }
 
+const PRAISE_MESSAGES: &[&str] = &[
+    "Great read! You found the strongest continuation.",
+    "Well played — that's a move the pros would approve of.",
+    "Excellent judgment. You're reading the board well here.",
+    "Nice! That move shows real understanding of the position.",
+    "Spot on — you identified the key point in this area.",
+    "Strong move! Your positional sense is developing nicely.",
+];
+
+/// Generate praise for an excellent move, returning `Some(CoachingMessage)` roughly 30% of the time
+/// when the player's move is among the engine's top 3 candidates.
+pub fn maybe_praise(
+    move_number: u16,
+    player_move: &str,
+    move_infos: &[MoveInfo],
+    score_loss: f64,
+) -> Option<CoachingMessage> {
+    // Only praise if the player's move is among the top 3 engine candidates
+    let in_top3 = move_infos
+        .iter()
+        .take(3)
+        .any(|m| m.mv == player_move);
+    if !in_top3 {
+        return None;
+    }
+
+    // Rate-limit: praise roughly 30% of qualifying moves
+    // Use move_number for deterministic but varied selection
+    if move_number % 10 >= 3 {
+        return None;
+    }
+
+    let idx = (move_number as usize) % PRAISE_MESSAGES.len();
+    let message = PRAISE_MESSAGES[idx].to_string();
+
+    Some(CoachingMessage {
+        severity: Severity::Excellent,
+        error_class: None,
+        message,
+        suggested_move: None,
+        simplest_move: None,
+        score_loss,
+        move_number,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gosensei_katago::protocol::MoveInfo;
+
+    fn make_move_info(mv: &str, score_lead: f64) -> MoveInfo {
+        MoveInfo {
+            mv: mv.to_string(),
+            visits: 100,
+            winrate: 0.5,
+            score_lead,
+            prior: 0.1,
+            order: 0,
+            pv: vec![mv.to_string()],
+        }
+    }
 
     #[test]
     fn good_move_message() {
-        let msg = generate_message(Severity::Good, None, 0.3, None, 10);
+        let msg = generate_message(Severity::Good, None, 0.3, None, None, 10);
         assert!(msg.message.contains("Good move"));
     }
 
     #[test]
+    fn excellent_move_message() {
+        let msg = generate_message(Severity::Excellent, None, 0.1, None, None, 10);
+        assert!(msg.message.contains("Excellent"));
+    }
+
+    #[test]
     fn blunder_message_includes_score_loss() {
-        let msg = generate_message(Severity::Blunder, Some(ErrorClass::Direction), 15.2, None, 25);
+        let msg = generate_message(Severity::Blunder, Some(ErrorClass::Direction), 15.2, None, None, 25);
         assert!(msg.message.contains("15.2"));
+    }
+
+    #[test]
+    fn praise_for_top3_move_at_qualifying_number() {
+        let infos = vec![
+            make_move_info("D4", 5.0),
+            make_move_info("Q16", 4.8),
+            make_move_info("C3", 4.5),
+        ];
+        // move_number 0: 0 % 10 = 0 < 3 → should praise
+        let result = maybe_praise(0, "Q16", &infos, 0.2);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().severity, Severity::Excellent);
+    }
+
+    #[test]
+    fn no_praise_for_non_top3_move() {
+        let infos = vec![
+            make_move_info("D4", 5.0),
+            make_move_info("Q16", 4.8),
+            make_move_info("C3", 4.5),
+        ];
+        // R1 is not in top 3
+        let result = maybe_praise(0, "R1", &infos, 0.3);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn praise_rate_limited() {
+        let infos = vec![make_move_info("D4", 5.0)];
+        // move_number 5: 5 % 10 = 5 >= 3 → should NOT praise
+        let result = maybe_praise(5, "D4", &infos, 0.1);
+        assert!(result.is_none());
+        // move_number 2: 2 % 10 = 2 < 3 → should praise
+        let result = maybe_praise(2, "D4", &infos, 0.1);
+        assert!(result.is_some());
     }
 }

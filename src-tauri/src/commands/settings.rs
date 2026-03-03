@@ -12,6 +12,7 @@ pub struct Settings {
     pub show_move_numbers: bool,
     pub ai_strength: String,
     pub sound_enabled: bool,
+    pub feedback_timing: String,
 }
 
 impl Default for Settings {
@@ -23,6 +24,7 @@ impl Default for Settings {
             show_move_numbers: false,
             ai_strength: "beginner".to_string(),
             sound_enabled: true,
+            feedback_timing: "immediate".to_string(),
         }
     }
 }
@@ -54,6 +56,7 @@ pub fn get_settings(state: State<'_, AppState>) -> Result<Settings, AppError> {
             "show_move_numbers" => settings.show_move_numbers = value == "true",
             "ai_strength" => settings.ai_strength = value,
             "sound_enabled" => settings.sound_enabled = value == "true",
+            "feedback_timing" => settings.feedback_timing = value,
             _ => {}
         }
     }
@@ -75,6 +78,7 @@ pub fn update_settings(
         ("show_move_numbers", settings.show_move_numbers.to_string()),
         ("ai_strength", settings.ai_strength.clone()),
         ("sound_enabled", settings.sound_enabled.to_string()),
+        ("feedback_timing", settings.feedback_timing.clone()),
     ];
 
     for (key, value) in &pairs {

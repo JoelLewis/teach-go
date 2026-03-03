@@ -156,7 +156,7 @@ pub fn parse(input: &str) -> Result<SgfGame, SgfParseError> {
     })
 }
 
-fn parse_move(coord: &str) -> Move {
+pub(crate) fn parse_move(coord: &str) -> Move {
     if coord.is_empty() || coord == "tt" {
         return Move::Pass;
     }
