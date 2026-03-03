@@ -15,6 +15,7 @@ import type {
   Settings,
   SkillProfile,
   SolveMoveResult,
+  VariationMove,
 } from "./types";
 
 export async function newGame(
@@ -107,6 +108,10 @@ export async function getReviewPosition(moveNumber: number): Promise<GameState> 
 
 export async function getOwnershipAt(moveNumber: number): Promise<number[] | null> {
   return invoke("get_ownership_at", { moveNumber });
+}
+
+export async function getReviewVariations(moveNumber: number): Promise<VariationMove[]> {
+  return invoke("get_review_variations", { moveNumber });
 }
 
 export async function getSkillProfile(): Promise<SkillProfile> {

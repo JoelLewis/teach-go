@@ -55,6 +55,8 @@ export type SavedGame = {
 
 export type FeedbackTiming = "immediate" | "on_demand" | "post_game";
 
+export type ThemeName = "study" | "grid";
+
 export type Settings = {
   board_size: number;
   komi: number;
@@ -63,6 +65,7 @@ export type Settings = {
   ai_strength: string;
   sound_enabled: boolean;
   feedback_timing: FeedbackTiming;
+  theme: ThemeName;
 };
 
 export type MoveAnalysis = {
@@ -90,6 +93,14 @@ export type ReviewProgress = {
   total_positions: number;
   analyzed_positions: number;
   is_complete: boolean;
+};
+
+export type VariationMove = {
+  row: number;
+  col: number;
+  color: StoneColor;
+  comment: string | null;
+  continuation_length: number;
 };
 
 export type DifficultySuggestion = {
