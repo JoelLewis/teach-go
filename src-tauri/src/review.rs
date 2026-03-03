@@ -1,4 +1,5 @@
 use gosensei_coaching::types::Severity;
+use gosensei_core::sgf::tree::SgfNode;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -43,4 +44,6 @@ pub struct ReviewSession {
     /// Values range from -1.0 (White territory) to +1.0 (Black territory).
     pub ownership: Vec<Option<Vec<f32>>>,
     pub is_complete: bool,
+    /// Parsed SGF variation tree for exploring alternative lines.
+    pub variation_tree: Option<SgfNode>,
 }

@@ -47,6 +47,10 @@ pub async fn start_review(
 
     // Parse the game to get move history
     let game = Game::from_sgf(&sgf).map_err(AppError::Other)?;
+    let variation_tree = {
+        use gosensei_core::sgf::tree::parse_sgf_tree;
+        parse_sgf_tree(&sgf).ok().map(|t| t.root)
+    };
     let history = game.move_history().to_vec();
     let board_size = game.board().dimension();
     let komi = game.komi();
@@ -65,6 +69,7 @@ pub async fn start_review(
             results: vec![None; total_positions as usize],
             ownership: vec![None; total_positions as usize],
             is_complete: false,
+            variation_tree,
         });
     }
 
@@ -291,7 +296,7 @@ fn compute_score_loss_and_severity(session: &mut ReviewSession, board_size: u8, 
                 .as_ref()
                 .and_then(|a| a.player_move.as_deref())
                 .and_then(|gtp| convert::gtp_to_point(gtp, board_size))
-                .map(|point| classify::classify_error(i as u16, board_size, point.row, point.col, score_loss))
+                .map(|point| classify::classify_error_simple(i as u16, board_size, point.row, point.col, score_loss))
                 .unwrap_or(None);
 
             let suggested = results[i].as_ref().and_then(|a| a.best_move.clone());
@@ -477,6 +482,7 @@ mod tests {
                 }),
             ],
             is_complete: false,
+            variation_tree: None,
         };
 
         // Use beginner rank (25k) — same band as the old DDK thresholds
