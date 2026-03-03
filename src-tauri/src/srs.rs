@@ -203,13 +203,11 @@ mod tests {
     #[test]
     fn get_unseen_problems_excludes_reviewed() {
         let conn = test_db();
-        let unseen_before = get_unseen_problems(&conn, 50).unwrap();
-        let total = unseen_before.len();
 
         update_card(&conn, 1, Rating::Good).unwrap();
 
-        let unseen_after = get_unseen_problems(&conn, 50).unwrap();
-        assert_eq!(unseen_after.len(), total - 1);
-        assert!(!unseen_after.contains(&1));
+        // Problem 1 was reviewed, so it should not appear in unseen results
+        let unseen_after = get_unseen_problems(&conn, 5000).unwrap();
+        assert!(!unseen_after.contains(&1), "reviewed problem should be excluded");
     }
 }

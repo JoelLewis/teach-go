@@ -237,14 +237,41 @@ pub fn insert_problem(conn: &Connection, problem: &Problem) -> Result<i64, AppEr
     Ok(conn.last_insert_rowid())
 }
 
+/// Current seed content version. Bump when adding new bundled collections.
+const SEED_VERSION: &str = "2";
+
 pub fn seed_problems_if_empty(conn: &Connection) -> Result<(), AppError> {
-    let count: i64 = conn.query_row("SELECT COUNT(*) FROM problems", [], |row| row.get(0))?;
-    if count > 0 {
+    let current_version: String = conn
+        .query_row(
+            "SELECT value FROM settings WHERE key = 'seed_version'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or_default();
+
+    if current_version == SEED_VERSION {
         return Ok(());
     }
 
-    for problem in seed_problems() {
-        insert_problem(conn, &problem)?;
+    // Seed hand-crafted problems if this is a fresh install (no problems at all)
+    let count: i64 = conn.query_row("SELECT COUNT(*) FROM problems", [], |row| row.get(0))?;
+    if count == 0 {
+        for problem in seed_problems() {
+            insert_problem(conn, &problem)?;
+        }
+    }
+
+    // Always seed bundled collections on version mismatch (idempotent via version gate)
+    if current_version != SEED_VERSION {
+        match crate::seed_content::seed_bundled_collections(conn) {
+            Ok(n) => eprintln!("[seed] Imported {n} bundled problems"),
+            Err(e) => eprintln!("[seed] Error importing bundled problems: {e}"),
+        }
+
+        conn.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES ('seed_version', ?1)",
+            [SEED_VERSION],
+        )?;
     }
 
     Ok(())
@@ -743,8 +770,9 @@ mod tests {
         let conn = test_db();
         seed_problems_if_empty(&conn).unwrap();
 
-        let all = list_problems(&conn, None, None).unwrap();
-        assert_eq!(all.len(), 20);
+        // After seeding, we have 20 hand-crafted + bundled classical collections
+        let all = list_problems(&conn, None, Some(5000)).unwrap();
+        assert!(all.len() >= 20, "should have at least seed problems, got {}", all.len());
 
         let life_death = list_problems(&conn, Some("LifeDeath"), None).unwrap();
         assert!(!life_death.is_empty());

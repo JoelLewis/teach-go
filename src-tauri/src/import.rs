@@ -16,7 +16,10 @@ pub struct ImportResult {
 ///
 /// Each game tree is treated as a separate problem. The first move determines
 /// the player color. Variations become the solution tree.
-pub fn import_from_sgf(sgf_text: &str) -> ImportResult {
+///
+/// `default_difficulty`: fallback difficulty when no `DL[]` is present.
+/// Pass `None` to use the hardcoded default (22.0).
+pub fn import_from_sgf(sgf_text: &str, default_difficulty: Option<f64>) -> ImportResult {
     let mut result = ImportResult {
         problems: Vec::new(),
         errors: Vec::new(),
@@ -35,7 +38,7 @@ pub fn import_from_sgf(sgf_text: &str) -> ImportResult {
     };
 
     for (i, tree) in trees.into_iter().enumerate() {
-        match convert_tree_to_problem(tree, i) {
+        match convert_tree_to_problem(tree, i, default_difficulty) {
             Ok(problem) => result.problems.push(problem),
             Err(e) => result.errors.push(format!("Tree {}: {e}", i + 1)),
         }
@@ -45,7 +48,11 @@ pub fn import_from_sgf(sgf_text: &str) -> ImportResult {
 }
 
 /// Convert a parsed SGF tree into a Problem.
-fn convert_tree_to_problem(tree: SgfTreeRoot, index: usize) -> Result<Problem, String> {
+fn convert_tree_to_problem(
+    tree: SgfTreeRoot,
+    index: usize,
+    default_difficulty: Option<f64>,
+) -> Result<Problem, String> {
     let board_size = tree.board_size;
 
     // Determine player color from first move or PL[] property
@@ -71,8 +78,14 @@ fn convert_tree_to_problem(tree: SgfTreeRoot, index: usize) -> Result<Problem, S
     // Build prompt from comments and metadata
     let prompt = build_prompt(&tree, player_color);
 
-    // Infer difficulty (default 22.0 — mid-range)
-    let difficulty = 22.0;
+    // Use DL[] if present (0–5 scale → 1.0–25.0 rank), else caller's default
+    let difficulty = if let Some(dl) = tree.root.difficulty_level {
+        // DL[0] = hardest (1.0), DL[5] = easiest (25.0)
+        let clamped = (dl as f64).clamp(0.0, 5.0);
+        1.0 + (clamped / 5.0) * 24.0
+    } else {
+        default_difficulty.unwrap_or(22.0)
+    };
 
     // Extract tags from game name and comments
     let tags = build_tags(&tree, index);
@@ -314,7 +327,7 @@ mod tests {
     #[test]
     fn import_simple_problem() {
         let sgf = "(;SZ[9]AB[dd][de]AW[ed][ee]PL[B];B[df]C[Correct!]GB[1])";
-        let result = import_from_sgf(sgf);
+        let result = import_from_sgf(sgf, None);
         assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
         assert_eq!(result.problems.len(), 1);
 
@@ -331,7 +344,7 @@ mod tests {
         let sgf = "(;SZ[9]AB[aa][ba]AW[bb][cb]PL[B]\
                     (;B[ac]GB[1](;W[bd];B[cc]))\
                     (;B[bd]C[Wrong]))";
-        let result = import_from_sgf(sgf);
+        let result = import_from_sgf(sgf, None);
         assert!(result.errors.is_empty());
         assert_eq!(result.problems.len(), 1);
 
@@ -349,7 +362,7 @@ mod tests {
     #[test]
     fn import_collection() {
         let sgf = "(;SZ[9]PL[B];B[ee])(;SZ[9]PL[B];B[dd])";
-        let result = import_from_sgf(sgf);
+        let result = import_from_sgf(sgf, None);
         assert_eq!(result.problems.len(), 2);
     }
 
@@ -416,6 +429,7 @@ mod tests {
                 game_name: None,
                 good_for_black: false,
                 good_for_white: false,
+                difficulty_level: None,
                 children: vec![],
             },
         };
@@ -425,7 +439,7 @@ mod tests {
     #[test]
     fn import_no_solution_returns_error() {
         let sgf = "(;SZ[9])"; // No moves at all
-        let result = import_from_sgf(sgf);
+        let result = import_from_sgf(sgf, None);
         assert_eq!(result.problems.len(), 0);
         assert!(!result.errors.is_empty());
     }
@@ -433,7 +447,7 @@ mod tests {
     #[test]
     fn import_with_game_name_category() {
         let sgf = "(;SZ[9]GN[Tesuji Problem 5]PL[B];B[ee])";
-        let result = import_from_sgf(sgf);
+        let result = import_from_sgf(sgf, None);
         assert_eq!(result.problems.len(), 1);
         assert_eq!(result.problems[0].category, ProblemCategory::Tesuji);
     }

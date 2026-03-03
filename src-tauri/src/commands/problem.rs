@@ -380,7 +380,7 @@ pub async fn import_problems_from_sgf(
             }
         };
 
-        let result = import::import_from_sgf(&sgf_text);
+        let result = import::import_from_sgf(&sgf_text, None);
         all_errors.extend(
             result
                 .errors

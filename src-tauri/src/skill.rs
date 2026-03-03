@@ -1,5 +1,5 @@
 use gosensei_coaching::types::ErrorClass;
-use rusqlite::Connection;
+use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 
 use crate::error::AppError;
@@ -82,6 +82,7 @@ pub fn error_class_to_dimension(ec: ErrorClass) -> DimensionKind {
         ErrorClass::Endgame => DimensionKind::Endgame,
         ErrorClass::LifeAndDeath => DimensionKind::LifeDeath,
         ErrorClass::Ko => DimensionKind::Fighting,
+        ErrorClass::SenteGote => DimensionKind::Direction,
     }
 }
 
@@ -190,6 +191,108 @@ pub fn save_skill_profile(conn: &Connection, profile: &SkillProfile) -> Result<(
     Ok(())
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SkillSnapshot {
+    pub recorded_at: String,
+    pub source: String,
+    pub overall_rank: f64,
+    pub reading_mu: f64,
+    pub shape_mu: f64,
+    pub direction_mu: f64,
+    pub endgame_mu: f64,
+    pub life_death_mu: f64,
+    pub fighting_mu: f64,
+}
+
+/// Record a point-in-time snapshot of the player's skill profile.
+/// Non-fatal: callers should use `let _ =` to ignore errors.
+pub fn save_skill_snapshot(
+    conn: &Connection,
+    profile: &SkillProfile,
+    source: &str,
+) -> Result<(), AppError> {
+    conn.execute(
+        "INSERT INTO skill_history
+            (player_id, source, overall_rank, reading_mu, shape_mu,
+             direction_mu, endgame_mu, life_death_mu, fighting_mu)
+         VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        params![
+            source,
+            profile.overall_rank,
+            profile.reading.mu,
+            profile.shape.mu,
+            profile.direction.mu,
+            profile.endgame.mu,
+            profile.life_death.mu,
+            profile.fighting.mu,
+        ],
+    )?;
+    Ok(())
+}
+
+/// Retrieve skill history snapshots, optionally filtered by a time window.
+///
+/// - `window_days`: `None` = all time, `Some(7)` = last 7 days
+/// - `limit`: safety cap on returned rows (default 500)
+pub fn get_skill_history(
+    conn: &Connection,
+    window_days: Option<u32>,
+    limit: u32,
+) -> Result<Vec<SkillSnapshot>, AppError> {
+    let limit = limit.min(5000);
+    let (sql, time_param): (String, Option<String>) = match window_days {
+        Some(days) => (
+            format!(
+                "SELECT recorded_at, source, overall_rank, reading_mu, shape_mu,
+                        direction_mu, endgame_mu, life_death_mu, fighting_mu
+                 FROM skill_history
+                 WHERE player_id = 1 AND recorded_at >= datetime('now', ?1)
+                 ORDER BY recorded_at ASC
+                 LIMIT {limit}"
+            ),
+            Some(format!("-{days} days")),
+        ),
+        None => (
+            format!(
+                "SELECT recorded_at, source, overall_rank, reading_mu, shape_mu,
+                        direction_mu, endgame_mu, life_death_mu, fighting_mu
+                 FROM skill_history
+                 WHERE player_id = 1
+                 ORDER BY recorded_at ASC
+                 LIMIT {limit}"
+            ),
+            None,
+        ),
+    };
+
+    let mut stmt = conn.prepare(&sql)?;
+    let rows = if let Some(ref tp) = time_param {
+        stmt.query_map([tp], map_snapshot_row)?
+    } else {
+        stmt.query_map([], map_snapshot_row)?
+    };
+
+    let mut snapshots = Vec::new();
+    for row in rows {
+        snapshots.push(row?);
+    }
+    Ok(snapshots)
+}
+
+fn map_snapshot_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<SkillSnapshot> {
+    Ok(SkillSnapshot {
+        recorded_at: row.get(0)?,
+        source: row.get(1)?,
+        overall_rank: row.get(2)?,
+        reading_mu: row.get(3)?,
+        shape_mu: row.get(4)?,
+        direction_mu: row.get(5)?,
+        endgame_mu: row.get(6)?,
+        life_death_mu: row.get(7)?,
+        fighting_mu: row.get(8)?,
+    })
+}
+
 pub fn update_skill_after_game(
     conn: &Connection,
     errors: &[GameError],
@@ -217,6 +320,7 @@ pub fn update_skill_after_game(
     profile.overall_rank = compute_overall_rank(&profile);
 
     save_skill_profile(conn, &profile)?;
+    let _ = save_skill_snapshot(conn, &profile, "game");
     Ok(profile)
 }
 
@@ -242,6 +346,7 @@ pub fn update_skill_after_problem(
 
     profile.overall_rank = compute_overall_rank(&profile);
     save_skill_profile(conn, &profile)?;
+    let _ = save_skill_snapshot(conn, &profile, "problem");
     Ok(profile)
 }
 
@@ -355,5 +460,58 @@ mod tests {
         update_skill_after_game(&conn, &[]).unwrap();
         let profile = get_skill_profile(&conn).unwrap();
         assert_eq!(profile.games_played, 2);
+    }
+
+    #[test]
+    fn snapshot_saved_after_game() {
+        let conn = test_db();
+        update_skill_after_game(&conn, &[]).unwrap();
+        let history = get_skill_history(&conn, None, 500).unwrap();
+        assert_eq!(history.len(), 1);
+        assert_eq!(history[0].source, "game");
+        assert!((history[0].overall_rank - 25.0).abs() < 1.0);
+    }
+
+    #[test]
+    fn snapshot_saved_after_problem() {
+        let conn = test_db();
+        update_skill_after_problem(&conn, DimensionKind::Reading, true, 22.0).unwrap();
+        let history = get_skill_history(&conn, None, 500).unwrap();
+        assert_eq!(history.len(), 1);
+        assert_eq!(history[0].source, "problem");
+    }
+
+    #[test]
+    fn history_window_filters() {
+        let conn = test_db();
+        // Insert two snapshots — both are "now" so a 7-day window should include them
+        update_skill_after_game(&conn, &[]).unwrap();
+        update_skill_after_game(&conn, &[]).unwrap();
+        let all = get_skill_history(&conn, None, 500).unwrap();
+        assert_eq!(all.len(), 2);
+        let windowed = get_skill_history(&conn, Some(7), 500).unwrap();
+        assert_eq!(windowed.len(), 2);
+    }
+
+    #[test]
+    fn multiple_snapshots_ordered() {
+        let conn = test_db();
+        update_skill_after_game(&conn, &[]).unwrap();
+        update_skill_after_problem(&conn, DimensionKind::Shape, false, 20.0).unwrap();
+        update_skill_after_game(
+            &conn,
+            &[GameError { error_class: ErrorClass::Reading, score_loss: 10.0 }],
+        ).unwrap();
+
+        let history = get_skill_history(&conn, None, 500).unwrap();
+        assert_eq!(history.len(), 3);
+        // Verify ASC ordering (each recorded_at >= previous)
+        for i in 1..history.len() {
+            assert!(history[i].recorded_at >= history[i - 1].recorded_at);
+        }
+        // First two are improvements (lower rank), third has errors
+        assert_eq!(history[0].source, "game");
+        assert_eq!(history[1].source, "problem");
+        assert_eq!(history[2].source, "game");
     }
 }

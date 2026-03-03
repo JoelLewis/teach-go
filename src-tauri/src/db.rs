@@ -101,6 +101,22 @@ pub fn init_schema(conn: &Connection) -> Result<(), AppError> {
             llm_used INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL DEFAULT (datetime('now'))
         );
+
+        CREATE TABLE IF NOT EXISTS skill_history (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            player_id     INTEGER NOT NULL DEFAULT 1,
+            recorded_at   TEXT NOT NULL DEFAULT (datetime('now')),
+            source        TEXT NOT NULL DEFAULT 'game',
+            overall_rank  REAL NOT NULL,
+            reading_mu    REAL NOT NULL,
+            shape_mu      REAL NOT NULL,
+            direction_mu  REAL NOT NULL,
+            endgame_mu    REAL NOT NULL,
+            life_death_mu REAL NOT NULL,
+            fighting_mu   REAL NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_skill_history_player_recorded
+            ON skill_history (player_id, recorded_at);
         ",
     )?;
     Ok(())
@@ -110,6 +126,25 @@ pub fn init_schema(conn: &Connection) -> Result<(), AppError> {
 fn run_migrations(conn: &Connection) -> Result<(), AppError> {
     // Add player_color column to games table (added in coaching update)
     let _ = conn.execute_batch("ALTER TABLE games ADD COLUMN player_color TEXT NOT NULL DEFAULT 'black'");
+
+    // Add skill_history table (added in beta)
+    let _ = conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS skill_history (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            player_id     INTEGER NOT NULL DEFAULT 1,
+            recorded_at   TEXT NOT NULL DEFAULT (datetime('now')),
+            source        TEXT NOT NULL DEFAULT 'game',
+            overall_rank  REAL NOT NULL,
+            reading_mu    REAL NOT NULL,
+            shape_mu      REAL NOT NULL,
+            direction_mu  REAL NOT NULL,
+            endgame_mu    REAL NOT NULL,
+            life_death_mu REAL NOT NULL,
+            fighting_mu   REAL NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_skill_history_player_recorded
+            ON skill_history (player_id, recorded_at);",
+    );
     Ok(())
 }
 

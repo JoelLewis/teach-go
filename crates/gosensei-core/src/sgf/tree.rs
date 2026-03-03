@@ -16,6 +16,8 @@ pub struct SgfNode {
     pub good_for_black: bool,
     /// "Good for White" annotation (GW[]).
     pub good_for_white: bool,
+    /// Difficulty level from DL[] property (non-standard, 0–5 scale).
+    pub difficulty_level: Option<u8>,
     /// Child variations. A linear sequence has one child; branches have multiple.
     pub children: Vec<SgfNode>,
 }
@@ -203,6 +205,7 @@ fn chain_nodes(mut nodes: Vec<SgfNode>) -> SgfNode {
             game_name: None,
             good_for_black: false,
             good_for_white: false,
+            difficulty_level: None,
             children: Vec::new(),
         };
     }
@@ -229,6 +232,7 @@ fn parse_single_node(
         game_name: None,
         good_for_black: false,
         good_for_white: false,
+        difficulty_level: None,
         children: Vec::new(),
     };
 
@@ -266,6 +270,11 @@ fn parse_single_node(
                     }
                     "GW" => {
                         node.good_for_white = true;
+                    }
+                    "DL" => {
+                        if let Some(val) = values.first() {
+                            node.difficulty_level = val.parse().ok();
+                        }
                     }
                     // Root-only properties
                     "SZ" => {
@@ -322,8 +331,8 @@ fn parse_single_node(
                             && let Some(val) = values.first()
                         {
                             rp.player_to_move = match val.as_str() {
-                                "B" => Some(Color::Black),
-                                "W" => Some(Color::White),
+                                "B" | "1" => Some(Color::Black),
+                                "W" | "2" => Some(Color::White),
                                 _ => None,
                             };
                         }

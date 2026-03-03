@@ -7,6 +7,7 @@ mod generate;
 mod import;
 mod problem;
 mod review;
+mod seed_content;
 mod skill;
 mod solver;
 mod srs;
@@ -55,6 +56,7 @@ pub fn run() {
             commands::review::get_ownership_at,
             commands::review::get_review_variations,
             commands::skill::get_skill_profile,
+            commands::skill::get_skill_history,
             commands::problem::list_problems,
             commands::problem::start_problem,
             commands::problem::solve_move,

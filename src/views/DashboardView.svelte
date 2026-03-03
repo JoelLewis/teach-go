@@ -1,8 +1,11 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import RadarChart from "../components/RadarChart.svelte";
+  import SkillTrendChart from "../components/SkillTrendChart.svelte";
   import * as api from "../lib/api/commands";
-  import type { SkillProfile, ProblemStats } from "../lib/api/types";
+  import type { SkillProfile, SkillSnapshot, ProblemStats } from "../lib/api/types";
+
+  type WindowOption = 7 | 30 | null;
 
   type Props = {
     onGoHome: () => void;
@@ -12,20 +15,33 @@
 
   let profile = $state<SkillProfile | null>(null);
   let problemStats = $state<ProblemStats | null>(null);
+  let history = $state<SkillSnapshot[]>([]);
+  let historyWindow = $state<WindowOption>(null);
   let error = $state<string | null>(null);
 
   onMount(async () => {
     try {
-      const [p, ps] = await Promise.all([
+      const [p, ps, h] = await Promise.all([
         api.getSkillProfile(),
         api.getProblemStats(),
+        api.getSkillHistory(),
       ]);
       profile = p;
       problemStats = ps;
+      history = h;
     } catch (e) {
       error = String(e);
     }
   });
+
+  async function changeWindow(days: WindowOption) {
+    historyWindow = days;
+    try {
+      history = await api.getSkillHistory(days ?? undefined);
+    } catch {
+      // Keep existing history on error
+    }
+  }
 
   function formatRank(rank: number): string {
     const rounded = Math.round(rank);
@@ -72,6 +88,16 @@
       </div>
 
       <RadarChart {profile} />
+
+      {#if history.length >= 2}
+        <div class="mt-6">
+          <SkillTrendChart
+            snapshots={history}
+            onWindowChange={changeWindow}
+            activeWindow={historyWindow}
+          />
+        </div>
+      {/if}
 
       <div class="mt-6 flex justify-between text-sm text-stone-400">
         <span>{profile.games_played} game{profile.games_played === 1 ? "" : "s"} played</span>

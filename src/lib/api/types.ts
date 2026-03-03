@@ -133,6 +133,18 @@ export type SkillProfile = {
   last_updated: string;
 };
 
+export type SkillSnapshot = {
+  recorded_at: string;
+  source: string;
+  overall_rank: number;
+  reading_mu: number;
+  shape_mu: number;
+  direction_mu: number;
+  endgame_mu: number;
+  life_death_mu: number;
+  fighting_mu: number;
+};
+
 // --- Problem Training ---
 
 export type SolveStatus = "InProgress" | "Solved" | "Failed";

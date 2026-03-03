@@ -14,6 +14,7 @@ import type {
   SavedGame,
   Settings,
   SkillProfile,
+  SkillSnapshot,
   SolveMoveResult,
   VariationMove,
 } from "./types";
@@ -116,6 +117,10 @@ export async function getReviewVariations(moveNumber: number): Promise<Variation
 
 export async function getSkillProfile(): Promise<SkillProfile> {
   return invoke("get_skill_profile");
+}
+
+export async function getSkillHistory(windowDays?: number): Promise<SkillSnapshot[]> {
+  return invoke("get_skill_history", { windowDays: windowDays ?? null });
 }
 
 // --- Problem Training ---
