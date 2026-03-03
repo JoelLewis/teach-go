@@ -10,6 +10,8 @@
   import { coachingStore } from "../lib/stores/coaching.svelte";
   import { engineStore } from "../lib/stores/engine.svelte";
   import { settingsStore } from "../lib/stores/settings.svelte";
+  import { themeStore } from "../lib/stores/theme.svelte";
+  import { boardThemeForName } from "../lib/board/themes";
   import * as sounds from "../lib/audio/sounds";
   import { onEngineStatus, onAiThinking, onCoachingStream } from "../lib/api/events";
   import * as api from "../lib/api/commands";
@@ -271,6 +273,8 @@
           lastMove={displayState.last_move}
           showCoordinates={settingsStore.value.show_coordinates}
           lastMoveSeverity={isViewingHistory ? null : coachingStore.lastMoveSeverity}
+          theme={boardThemeForName(themeStore.active)}
+          animate={!isViewingHistory}
           onIntersectionClick={isViewingHistory ? noop : handleIntersectionClick}
         />
         {#if isViewingHistory}

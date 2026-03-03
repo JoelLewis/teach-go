@@ -1,6 +1,7 @@
 <script lang="ts">
   import { BoardRenderer, type Highlight } from "./renderer";
   import type { Severity, StoneColor, StonePosition } from "../api/types";
+  import type { BoardTheme } from "./themes";
 
   type Props = {
     boardSize: number;
@@ -11,10 +12,12 @@
     ownership?: number[] | null;
     highlights?: Highlight[];
     lastMoveSeverity?: Severity | null;
+    theme?: BoardTheme;
+    animate?: boolean;
     onIntersectionClick: (row: number, col: number) => void;
   };
 
-  let { boardSize, stones, currentColor, lastMove, showCoordinates = false, ownership = null, highlights = [], lastMoveSeverity = null, onIntersectionClick }: Props = $props();
+  let { boardSize, stones, currentColor, lastMove, showCoordinates = false, ownership = null, highlights = [], lastMoveSeverity = null, theme, animate = false, onIntersectionClick }: Props = $props();
 
   let canvasEl: HTMLCanvasElement;
   let renderer: BoardRenderer | null = null;
@@ -24,10 +27,13 @@
   $effect(() => {
     if (!canvasEl) return;
 
+    // Recreate renderer when boardSize or theme changes
+    const _theme = theme;
     renderer?.destroy();
     renderer = new BoardRenderer({
       boardSize,
       canvasSize: CANVAS_SIZE,
+      theme: _theme,
       showCoordinates,
       onIntersectionClick,
     });
@@ -42,7 +48,7 @@
   $effect(() => {
     if (!renderer) return;
     renderer.setHoverColor(currentColor);
-    renderer.drawStones(stones, lastMove);
+    renderer.drawStones(stones, lastMove, animate);
   });
 
   $effect(() => {

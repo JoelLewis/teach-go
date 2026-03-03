@@ -3,6 +3,8 @@
   import BoardCanvas from "../lib/board/BoardCanvas.svelte";
   import { problemStore } from "../lib/stores/problem.svelte";
   import { settingsStore } from "../lib/stores/settings.svelte";
+  import { themeStore } from "../lib/stores/theme.svelte";
+  import { boardThemeForName } from "../lib/board/themes";
   import { play as playSound } from "../lib/audio/sounds";
   import type { Highlight } from "../lib/board/renderer";
   import * as api from "../lib/api/commands";
@@ -310,6 +312,8 @@
         lastMove={problemStore.state.board_state.last_move}
         showCoordinates={settingsStore.value.show_coordinates}
         {highlights}
+        theme={boardThemeForName(themeStore.active)}
+        animate
         onIntersectionClick={handleSolveMove}
       />
     </div>

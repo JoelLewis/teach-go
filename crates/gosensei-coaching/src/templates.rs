@@ -14,6 +14,7 @@ pub fn generate_message(
     let message = match (&severity, &error_class) {
         (Severity::Excellent, _) => "Excellent move! This matches the engine's top recommendation.".into(),
         (Severity::Good, _) => "Good move! This is close to what the engine recommends.".into(),
+        // Direction
         (Severity::Inaccuracy, Some(ErrorClass::Direction)) => {
             format!(
                 "This move is a small inaccuracy — the direction of play could be better. \
@@ -21,6 +22,14 @@ pub fn generate_message(
                  (Lost about {score_loss:.1} points)"
             )
         }
+        (Severity::Mistake | Severity::Blunder, Some(ErrorClass::Direction)) => {
+            format!(
+                "The biggest action is elsewhere on the board. Look for the largest open area \
+                 or the most urgent fight before playing locally. \
+                 (Lost about {score_loss:.1} points)"
+            )
+        }
+        // Shape
         (Severity::Inaccuracy, Some(ErrorClass::Shape)) => {
             format!(
                 "The shape here isn't quite right. A more efficient stone placement \
@@ -28,13 +37,69 @@ pub fn generate_message(
                  (Lost about {score_loss:.1} points)"
             )
         }
-        (Severity::Mistake, Some(ErrorClass::LifeAndDeath)) => {
+        (Severity::Mistake | Severity::Blunder, Some(ErrorClass::Shape)) => {
+            format!(
+                "This creates an inefficient shape. Watch for empty triangles and \
+                 overconcentrated formations — try to keep your stones working together. \
+                 (Lost about {score_loss:.1} points)"
+            )
+        }
+        // Reading
+        (_, Some(ErrorClass::Reading)) => {
+            format!(
+                "There's a deeper tactical sequence here that changes the outcome. \
+                 Try reading a few moves ahead — the position is more complex than it appears. \
+                 (Lost about {score_loss:.1} points)"
+            )
+        }
+        // Life & Death
+        (Severity::Inaccuracy, Some(ErrorClass::LifeAndDeath)) => {
+            format!(
+                "This area involves life and death — be careful with your group's safety. \
+                 Check whether your stones have enough room to make two eyes. \
+                 (Lost about {score_loss:.1} points)"
+            )
+        }
+        (Severity::Mistake | Severity::Blunder, Some(ErrorClass::LifeAndDeath)) => {
             format!(
                 "This is a life-and-death mistake — your group's safety is at risk! \
                  Look for moves that secure two eyes or threaten your opponent's eyespace. \
                  (Lost about {score_loss:.1} points)"
             )
         }
+        // Ko
+        (_, Some(ErrorClass::Ko)) => {
+            format!(
+                "This position involves a ko fight. Consider the value of ko threats \
+                 available to each side before deciding whether to fight or concede. \
+                 (Lost about {score_loss:.1} points)"
+            )
+        }
+        // Sente/Gote
+        (_, Some(ErrorClass::SenteGote)) => {
+            format!(
+                "This move loses the initiative. The engine suggests a move that \
+                 forces a response — keeping sente (the initiative) is often worth \
+                 more than the local gain. \
+                 (Lost about {score_loss:.1} points)"
+            )
+        }
+        // Opening / Endgame generic
+        (_, Some(ErrorClass::Opening)) => {
+            format!(
+                "In the opening, focus on balance: claim corners, then sides, then center. \
+                 Consider whether this move develops your position efficiently. \
+                 (Lost about {score_loss:.1} points)"
+            )
+        }
+        (_, Some(ErrorClass::Endgame)) => {
+            format!(
+                "In the endgame, counting is key. Look for the largest remaining boundary \
+                 plays — a few points here can decide the game. \
+                 (Lost about {score_loss:.1} points)"
+            )
+        }
+        // Severity-only fallback
         (Severity::Mistake, _) => {
             format!(
                 "This move loses some ground. The engine suggests a different approach here. \

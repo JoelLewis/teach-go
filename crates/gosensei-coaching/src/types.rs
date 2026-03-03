@@ -47,6 +47,7 @@ pub enum ErrorClass {
     Endgame,
     Opening,
     Ko,
+    SenteGote,
 }
 
 impl std::str::FromStr for ErrorClass {
@@ -61,6 +62,7 @@ impl std::str::FromStr for ErrorClass {
             "Endgame" => Ok(Self::Endgame),
             "Opening" => Ok(Self::Opening),
             "Ko" => Ok(Self::Ko),
+            "SenteGote" => Ok(Self::SenteGote),
             _ => Err(format!("unknown error class: {s}")),
         }
     }

@@ -149,8 +149,34 @@ pub async fn get_coaching_feedback(
         return Ok(None);
     }
 
-    let error_class = classify::classify_error(move_number, board_size, point.row, point.col, score_loss);
-    let suggested = response.move_infos.first().map(|m| m.mv.clone());
+    // Extract best move coordinates and PV for richer classification
+    let best_move_info = response.move_infos.first();
+    let (best_row, best_col) = best_move_info
+        .and_then(|m| convert::gtp_to_point(&m.mv, board_size))
+        .map(|p| (p.row, p.col))
+        .unwrap_or((point.row, point.col));
+    let pv_length = best_move_info.map(|m| m.pv.len()).unwrap_or(0);
+
+    // Convert ownership from f32 to f64 for the classifier
+    let ownership_f64: Vec<f64> = response.ownership.iter().map(|&v| v as f64).collect();
+    let ownership_ref = if ownership_f64.is_empty() {
+        None
+    } else {
+        Some(ownership_f64.as_slice())
+    };
+
+    let error_class = classify::classify_error(&classify::ClassifyInput {
+        move_number,
+        board_size,
+        player_row: point.row,
+        player_col: point.col,
+        best_row,
+        best_col,
+        pv_length,
+        ownership: ownership_ref,
+        score_loss,
+    });
+    let suggested = best_move_info.map(|m| m.mv.clone());
 
     // For DDK players (rank >= 10 kyu), suggest the simplest good move instead of the absolute best
     let simplest_move = if player_rank >= SIMPLEST_MOVE_RANK_THRESHOLD {

@@ -1,3 +1,5 @@
+import type { ThemeName } from "../api/types";
+
 export type BoardTheme = {
   boardColor: number;
   lineColor: number;
@@ -9,6 +11,14 @@ export type BoardTheme = {
   hoverAlpha: number;
   coordinateColor: number;
   lastMoveIndicator: number;
+  // Visual flags for themed rendering
+  useWoodTexture?: boolean;
+  useGradientStones?: boolean;
+  contactShadowAlpha?: number;
+  glowLines?: boolean;
+  glowColor?: number;
+  pulsingStarPoints?: boolean;
+  rimLightStones?: boolean;
 };
 
 export const defaultTheme: BoardTheme = {
@@ -23,6 +33,48 @@ export const defaultTheme: BoardTheme = {
   coordinateColor: 0x2c1810,
   lastMoveIndicator: 0xff4444,
 };
+
+export const studyBoardTheme: BoardTheme = {
+  boardColor: 0xd4c5a9,
+  lineColor: 0x3d2b1f,
+  lineWidth: 1,
+  starPointRadius: 3.5,
+  stoneBlack: 0x1a1a1a,
+  stoneWhite: 0xf0f0e8,
+  stoneStroke: 0x333333,
+  hoverAlpha: 0.3,
+  coordinateColor: 0x6b5e4f,
+  lastMoveIndicator: 0xc9a84c,
+  useWoodTexture: true,
+  useGradientStones: true,
+  contactShadowAlpha: 0.15,
+};
+
+export const gridBoardTheme: BoardTheme = {
+  boardColor: 0x0a0a0f,
+  lineColor: 0x1e3a5f,
+  lineWidth: 1,
+  starPointRadius: 2.5,
+  stoneBlack: 0x1a1a2e,
+  stoneWhite: 0xe0e0e8,
+  stoneStroke: 0x00e5ff,
+  hoverAlpha: 0.4,
+  coordinateColor: 0x5a5a7a,
+  lastMoveIndicator: 0x00e5ff,
+  glowLines: true,
+  glowColor: 0x00e5ff,
+  pulsingStarPoints: true,
+  rimLightStones: true,
+};
+
+export function boardThemeForName(name: ThemeName): BoardTheme {
+  switch (name) {
+    case "study":
+      return studyBoardTheme;
+    case "grid":
+      return gridBoardTheme;
+  }
+}
 
 /// Star point positions for each board size.
 export function starPoints(boardSize: number): [number, number][] {
