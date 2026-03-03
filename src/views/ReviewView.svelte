@@ -6,9 +6,12 @@
   import ReviewMovePanel from "../components/ReviewMovePanel.svelte";
   import { reviewStore } from "../lib/stores/review.svelte";
   import { settingsStore } from "../lib/stores/settings.svelte";
+  import { themeStore } from "../lib/stores/theme.svelte";
+  import { boardThemeForName } from "../lib/board/themes";
   import { onReviewProgress } from "../lib/api/events";
   import * as api from "../lib/api/commands";
   import type { GameState, StoneColor } from "../lib/api/types";
+  import type { Highlight } from "../lib/board/renderer";
 
   type Props = {
     gameId?: number;
@@ -116,6 +119,23 @@
     }
   }
 
+  // Reactively fetch variations when move changes and review is complete
+  $effect(() => {
+    const move = reviewStore.currentMove;
+    if (reviewStore.data) {
+      fetchVariations(move);
+    }
+  });
+
+  async function fetchVariations(moveNumber: number) {
+    try {
+      const vars = await api.getReviewVariations(moveNumber);
+      reviewStore.setVariations(vars);
+    } catch {
+      reviewStore.setVariations([]);
+    }
+  }
+
   function handleMoveSelect(move: number) {
     reviewStore.goToMove(move);
   }
@@ -152,6 +172,14 @@
         )
       : 0,
   );
+  let variationHighlights: Highlight[] = $derived(
+    reviewStore.variations.length > 0
+      ? [{
+          type: "candidates" as const,
+          points: reviewStore.variations.map((v): [number, number] => [v.row, v.col]),
+        }]
+      : [],
+  );
 </script>
 
 <div class="flex h-full">
@@ -165,6 +193,8 @@
         lastMove={boardState.last_move}
         showCoordinates={settingsStore.value.show_coordinates}
         ownership={reviewStore.showOwnership ? reviewStore.ownership : null}
+        highlights={variationHighlights}
+        theme={boardThemeForName(themeStore.active)}
         onIntersectionClick={noop}
       />
     {:else}
@@ -244,6 +274,24 @@
 
       <!-- Move annotation panel -->
       <ReviewMovePanel analysis={reviewStore.currentAnalysis} />
+
+      <!-- Alternative moves from SGF variations -->
+      {#if reviewStore.variations.length > 0}
+        <div class="rounded bg-stone-800 p-3 text-sm">
+          <h3 class="mb-1 text-xs font-semibold text-stone-400">Alternative Moves</h3>
+          {#each reviewStore.variations as v}
+            <div class="flex items-center gap-2 text-stone-300">
+              <span class="font-mono text-amber-400">
+                {String.fromCharCode(65 + (v.col >= 8 ? v.col + 1 : v.col))}{boardState ? boardState.board_size - v.row : ""}
+              </span>
+              {#if v.comment}
+                <span class="truncate text-stone-400">{v.comment}</span>
+              {/if}
+              <span class="text-xs text-stone-500">({v.continuation_length} moves)</span>
+            </div>
+          {/each}
+        </div>
+      {/if}
 
       <!-- Summary stats -->
       {#if reviewStore.data.top_mistakes.length > 0}

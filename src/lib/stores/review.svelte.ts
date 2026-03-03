@@ -1,4 +1,4 @@
-import type { MoveAnalysis, ReviewData, ReviewProgress } from "../api/types";
+import type { MoveAnalysis, ReviewData, ReviewProgress, VariationMove } from "../api/types";
 
 export const reviewStore = createReviewStore();
 
@@ -8,6 +8,7 @@ function createReviewStore() {
   let currentMove = $state(0);
   let ownership = $state<number[] | null>(null);
   let showOwnership = $state(false);
+  let variations = $state<VariationMove[]>([]);
 
   return {
     get data() {
@@ -29,6 +30,9 @@ function createReviewStore() {
     get showOwnership() {
       return showOwnership;
     },
+    get variations() {
+      return variations;
+    },
     setData(reviewData: ReviewData) {
       data = reviewData;
       currentMove = 0;
@@ -41,6 +45,9 @@ function createReviewStore() {
     },
     toggleOwnership() {
       showOwnership = !showOwnership;
+    },
+    setVariations(v: VariationMove[]) {
+      variations = v;
     },
     goToMove(n: number) {
       if (!data) return;
@@ -73,6 +80,7 @@ function createReviewStore() {
       currentMove = 0;
       ownership = null;
       showOwnership = false;
+      variations = [];
     },
   };
 }
