@@ -66,6 +66,8 @@ export type Settings = {
   sound_enabled: boolean;
   feedback_timing: FeedbackTiming;
   theme: ThemeName;
+  onboarding_completed: boolean;
+  experience_level: string;
 };
 
 export type MoveAnalysis = {

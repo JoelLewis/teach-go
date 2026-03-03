@@ -13,6 +13,9 @@ pub struct Settings {
     pub ai_strength: String,
     pub sound_enabled: bool,
     pub feedback_timing: String,
+    pub theme: String,
+    pub onboarding_completed: bool,
+    pub experience_level: String,
 }
 
 impl Default for Settings {
@@ -25,6 +28,9 @@ impl Default for Settings {
             ai_strength: "beginner".to_string(),
             sound_enabled: true,
             feedback_timing: "immediate".to_string(),
+            theme: "study".to_string(),
+            onboarding_completed: false,
+            experience_level: String::new(),
         }
     }
 }
@@ -57,6 +63,9 @@ pub fn get_settings(state: State<'_, AppState>) -> Result<Settings, AppError> {
             "ai_strength" => settings.ai_strength = value,
             "sound_enabled" => settings.sound_enabled = value == "true",
             "feedback_timing" => settings.feedback_timing = value,
+            "theme" => settings.theme = value,
+            "onboarding_completed" => settings.onboarding_completed = value == "true",
+            "experience_level" => settings.experience_level = value,
             _ => {}
         }
     }
@@ -79,6 +88,9 @@ pub fn update_settings(
         ("ai_strength", settings.ai_strength.clone()),
         ("sound_enabled", settings.sound_enabled.to_string()),
         ("feedback_timing", settings.feedback_timing.clone()),
+        ("theme", settings.theme.clone()),
+        ("onboarding_completed", settings.onboarding_completed.to_string()),
+        ("experience_level", settings.experience_level.clone()),
     ];
 
     for (key, value) in &pairs {

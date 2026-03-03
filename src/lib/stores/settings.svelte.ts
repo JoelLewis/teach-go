@@ -8,6 +8,9 @@ const DEFAULT_SETTINGS: Settings = {
   ai_strength: "beginner",
   sound_enabled: true,
   feedback_timing: "immediate",
+  theme: "study",
+  onboarding_completed: false,
+  experience_level: "",
 };
 
 export const settingsStore = createSettingsStore();
