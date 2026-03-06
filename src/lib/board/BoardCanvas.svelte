@@ -75,5 +75,5 @@
   bind:this={canvasEl}
   width={CANVAS_SIZE}
   height={CANVAS_SIZE}
-  class="max-w-full aspect-square cursor-pointer rounded-lg shadow-lg"
+  class="max-w-full max-h-full aspect-square cursor-pointer rounded-lg shadow-lg"
 ></canvas>

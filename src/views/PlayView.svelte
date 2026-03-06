@@ -5,8 +5,10 @@
   import MoveHistory from "../components/MoveHistory.svelte";
   import CoachingPanel from "../components/CoachingPanel.svelte";
   import DifficultyPrompt from "../components/DifficultyPrompt.svelte";
+  import SetupDialog from "../components/SetupDialog.svelte";
   import ScoreBar from "../components/ScoreBar.svelte";
   import { gameStore } from "../lib/stores/game.svelte";
+  import { setupStore } from "../lib/stores/setup.svelte";
   import { coachingStore } from "../lib/stores/coaching.svelte";
   import { engineStore } from "../lib/stores/engine.svelte";
   import { settingsStore } from "../lib/stores/settings.svelte";
@@ -32,6 +34,8 @@
   let pendingFeedback = $state<CoachingMessage | null>(null);
   let difficultySuggestion = $state<DifficultySuggestion | null>(null);
   let difficultyChecked = $state(false);
+  let engineError = $state<string | null>(null);
+  let showSetupDialog = $state(false);
   let unlisteners: Array<() => void> = [];
 
   const noop = () => {};
@@ -61,10 +65,11 @@
       }
     }).then((u) => unlisteners.push(u));
 
-    startNewGame();
+    checkSetupAndStart();
 
     return () => {
       for (const unlisten of unlisteners) unlisten();
+      setupStore.cleanup();
     };
   });
 
@@ -75,6 +80,15 @@
       checkDifficulty();
     }
   });
+
+  async function checkSetupAndStart() {
+    await setupStore.refresh();
+    if (setupStore.status !== "ready") {
+      showSetupDialog = true;
+      return;
+    }
+    startNewGame();
+  }
 
   async function startNewGame() {
     try {
@@ -100,9 +114,15 @@
     try {
       const state = await api.requestAiMove();
       gameStore.set(state);
+      engineError = null;
     } catch (e) {
-      // Non-fatal — show as warning, game continues as human-vs-human
-      console.warn("AI move failed:", e);
+      const msg = String(e);
+      console.warn("AI move failed:", msg);
+      if (msg.includes("not found") || msg.includes("not available")) {
+        engineError = "KataGo engine not found. Install KataGo or set KATAGO_BINARY to play against AI.";
+      } else {
+        engineError = `AI engine error: ${msg}`;
+      }
     }
   }
 
@@ -312,7 +332,12 @@
         &mdash; Move {gameStore.state.move_number}
       </div>
 
-      {#if engineStore.aiThinking}
+      {#if engineError}
+        <div class="rounded bg-amber-900/50 p-2 text-xs text-amber-200">
+          {engineError}
+          <div class="mt-1 text-amber-400/70">Game continues as human-vs-human.</div>
+        </div>
+      {:else if engineStore.aiThinking}
         <div
           class="flex items-center gap-2 rounded bg-blue-900/40 p-2 text-sm text-blue-200"
         >
@@ -385,6 +410,13 @@
     {/if}
   </div>
 </div>
+
+{#if showSetupDialog}
+  <SetupDialog
+    onComplete={() => { showSetupDialog = false; startNewGame(); }}
+    onSkip={() => { showSetupDialog = false; startNewGame(); }}
+  />
+{/if}
 
 {#if difficultySuggestion}
   <DifficultyPrompt

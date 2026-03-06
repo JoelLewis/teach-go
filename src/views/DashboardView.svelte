@@ -50,7 +50,7 @@
   }
 </script>
 
-<div class="flex h-full flex-col items-center p-8">
+<div class="flex h-full flex-col items-center overflow-y-auto p-8">
   <div class="mb-6 flex w-full max-w-md items-center justify-between">
     <h1 class="text-2xl font-bold text-stone-100">Progress</h1>
     <button

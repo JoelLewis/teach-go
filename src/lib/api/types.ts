@@ -220,3 +220,13 @@ export type LlmDownloadProgress = {
 };
 
 export type LlmStatus = "not_installed" | "ready" | "loading" | "disabled";
+
+// --- KataGo Setup ---
+
+export type KataGoSetupProgress = {
+  phase: "binary" | "model" | "done";
+  downloaded: number;
+  total: number;
+};
+
+export type KataGoStatus = "not_installed" | "partial" | "ready";

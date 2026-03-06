@@ -3,16 +3,33 @@ use std::path::PathBuf;
 use gosensei_core::game::GameState;
 use gosensei_katago::client::KataGoClient;
 use gosensei_katago::process::KataGoProcess;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tracing::{info, warn};
 
 use crate::convert;
 use crate::error::AppError;
+use crate::setup;
 use crate::state::AppState;
 
 const MAX_VISITS: u32 = 200;
 
-fn resolve_binary_path() -> Result<PathBuf, AppError> {
+fn katago_dir(app: &AppHandle) -> Result<PathBuf, AppError> {
+    Ok(app
+        .path()
+        .app_data_dir()
+        .map_err(|e| AppError::KataGo(format!("app data dir: {e}")))?
+        .join("katago"))
+}
+
+fn resolve_binary_path(app: &AppHandle) -> Result<PathBuf, AppError> {
+    // 1. Downloaded location
+    if let Ok(dir) = katago_dir(app)
+        && let Some(p) = setup::binary_path(&dir)
+    {
+        return Ok(p);
+    }
+
+    // 2. Env var override
     if let Ok(path) = std::env::var("KATAGO_BINARY") {
         let p = PathBuf::from(path);
         if p.exists() {
@@ -20,6 +37,7 @@ fn resolve_binary_path() -> Result<PathBuf, AppError> {
         }
     }
 
+    // 3. Dev path
     if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
         let dev_path = PathBuf::from(manifest_dir).join("binaries").join("katago");
         if dev_path.exists() {
@@ -27,23 +45,25 @@ fn resolve_binary_path() -> Result<PathBuf, AppError> {
         }
     }
 
-    // Check PATH via `which`
-    if let Ok(output) = std::process::Command::new("which").arg("katago").output()
-        && output.status.success()
-    {
-        let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        if !path.is_empty() {
-            return Ok(PathBuf::from(path));
-        }
+    // 4. System PATH
+    if let Ok(path) = which::which("katago") {
+        return Ok(path);
     }
 
     Err(AppError::KataGo(
-        "KataGo binary not found. Set KATAGO_BINARY env var or place binary in src-tauri/binaries/"
-            .into(),
+        "KataGo binary not found. Use Setup to download, or set KATAGO_BINARY env var.".into(),
     ))
 }
 
-fn resolve_config_path() -> Option<PathBuf> {
+fn resolve_config_path(app: &AppHandle) -> Option<PathBuf> {
+    // Downloaded config
+    if let Ok(dir) = katago_dir(app)
+        && let Some(p) = setup::config_path(&dir)
+    {
+        return Some(p);
+    }
+
+    // Dev path
     if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
         let config_path = PathBuf::from(manifest_dir)
             .join("binaries")
@@ -55,7 +75,15 @@ fn resolve_config_path() -> Option<PathBuf> {
     None
 }
 
-fn resolve_model_path() -> Result<PathBuf, AppError> {
+fn resolve_model_path(app: &AppHandle) -> Result<PathBuf, AppError> {
+    // Downloaded model
+    if let Ok(dir) = katago_dir(app)
+        && let Some(p) = setup::model_path(&dir)
+    {
+        return Ok(p);
+    }
+
+    // Env var override
     if let Ok(path) = std::env::var("KATAGO_MODEL") {
         let p = PathBuf::from(path);
         if p.exists() {
@@ -63,9 +91,9 @@ fn resolve_model_path() -> Result<PathBuf, AppError> {
         }
     }
 
+    // Dev path — look for any .bin.gz model file
     if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
         let binaries_dir = PathBuf::from(manifest_dir).join("binaries");
-        // Look for any .bin.gz model file
         if let Ok(entries) = std::fs::read_dir(&binaries_dir) {
             for entry in entries.flatten() {
                 let name = entry.file_name();
@@ -78,9 +106,31 @@ fn resolve_model_path() -> Result<PathBuf, AppError> {
     }
 
     Err(AppError::KataGo(
-        "KataGo model not found. Set KATAGO_MODEL env var or place model in src-tauri/binaries/"
-            .into(),
+        "KataGo model not found. Use Setup to download, or set KATAGO_MODEL env var.".into(),
     ))
+}
+
+#[tauri::command]
+pub fn get_katago_status(app: AppHandle) -> Result<String, AppError> {
+    let dir = katago_dir(&app)?;
+    Ok(setup::setup_status(&dir).to_string())
+}
+
+#[tauri::command]
+pub async fn setup_katago(app: AppHandle) -> Result<String, AppError> {
+    let dir = katago_dir(&app)?;
+    let app_clone = app.clone();
+
+    tokio::task::spawn_blocking(move || {
+        setup::ensure_katago(&dir, |progress| {
+            let _ = app_clone.emit("katago-setup-progress", progress);
+        })
+    })
+    .await
+    .map_err(|e| AppError::KataGo(format!("task join: {e}")))?
+    .map_err(AppError::KataGo)?;
+
+    Ok("ready".to_string())
 }
 
 #[tauri::command]
@@ -94,9 +144,9 @@ pub async fn start_engine(state: State<'_, AppState>, app: AppHandle) -> Result<
     let _ = app.emit("engine-status", "starting");
     info!("Starting KataGo engine...");
 
-    let binary_path = resolve_binary_path()?;
-    let model_path = resolve_model_path()?;
-    let config_path = resolve_config_path();
+    let binary_path = resolve_binary_path(&app)?;
+    let model_path = resolve_model_path(&app)?;
+    let config_path = resolve_config_path(&app);
 
     info!("KataGo binary: {}", binary_path.display());
     info!("KataGo model: {}", model_path.display());

@@ -8,6 +8,7 @@ mod import;
 mod problem;
 mod review;
 mod seed_content;
+mod setup;
 mod skill;
 mod solver;
 mod srs;
@@ -41,6 +42,8 @@ pub fn run() {
             commands::game::load_saved_game,
             commands::game::get_game_position,
             commands::game::check_difficulty_suggestion,
+            commands::katago::get_katago_status,
+            commands::katago::setup_katago,
             commands::katago::start_engine,
             commands::katago::stop_engine,
             commands::katago::request_ai_move,

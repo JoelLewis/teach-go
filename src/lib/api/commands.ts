@@ -5,6 +5,7 @@ import type {
   GameResult,
   GameState,
   HintData,
+  KataGoStatus,
   LlmStatus,
   ProblemState,
   ProblemStats,
@@ -171,6 +172,16 @@ export type ImportProblemResult = {
 
 export async function importProblemsFromSgf(): Promise<ImportProblemResult | null> {
   return invoke("import_problems_from_sgf");
+}
+
+// --- KataGo Setup ---
+
+export async function getKataGoStatus(): Promise<KataGoStatus> {
+  return invoke("get_katago_status");
+}
+
+export async function setupKataGo(): Promise<string> {
+  return invoke("setup_katago");
 }
 
 // --- LLM Coaching ---

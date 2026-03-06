@@ -1,8 +1,10 @@
 <script lang="ts">
   import BoardCanvas from "../lib/board/BoardCanvas.svelte";
+  import SetupDialog from "../components/SetupDialog.svelte";
   import { boardThemeForName } from "../lib/board/themes";
   import { themeStore } from "../lib/stores/theme.svelte";
   import { settingsStore } from "../lib/stores/settings.svelte";
+  import { setupStore } from "../lib/stores/setup.svelte";
   import { tutorialExercises, type TutorialExercise } from "../lib/onboarding/exercises";
   import * as api from "../lib/api/commands";
   import type { StoneColor, StonePosition, GameState } from "../lib/api/types";
@@ -25,6 +27,10 @@
   let calibrationState = $state<GameState | null>(null);
   let calibrationMoveCount = $state(0);
 
+  // Setup state
+  let showSetupDialog = $state(false);
+  let pendingCalibrationLevel = $state("");
+
   // Profile state
   let profileRank = $state(25);
 
@@ -44,8 +50,18 @@
     if (level === "never") {
       step = "tutorial";
     } else {
-      startCalibration(level);
+      checkSetupAndCalibrate(level);
     }
+  }
+
+  async function checkSetupAndCalibrate(level: string) {
+    await setupStore.refresh();
+    if (setupStore.status !== "ready") {
+      pendingCalibrationLevel = level;
+      showSetupDialog = true;
+      return;
+    }
+    startCalibration(level);
   }
 
   function handleTutorialClick(row: number, col: number) {
@@ -58,7 +74,7 @@
         if (tutorialIndex < tutorialExercises.length - 1) {
           tutorialIndex++;
         } else {
-          startCalibration("never");
+          checkSetupAndCalibrate("never");
         }
       }, 2500);
     } else {
@@ -283,3 +299,10 @@
     </div>
   {/if}
 </div>
+
+{#if showSetupDialog}
+  <SetupDialog
+    onComplete={() => { showSetupDialog = false; startCalibration(pendingCalibrationLevel); }}
+    onSkip={() => { showSetupDialog = false; finishOnboarding(); }}
+  />
+{/if}

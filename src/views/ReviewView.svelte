@@ -4,7 +4,9 @@
   import WinRateChart from "../components/WinRateChart.svelte";
   import ReviewControls from "../components/ReviewControls.svelte";
   import ReviewMovePanel from "../components/ReviewMovePanel.svelte";
+  import SetupDialog from "../components/SetupDialog.svelte";
   import { reviewStore } from "../lib/stores/review.svelte";
+  import { setupStore } from "../lib/stores/setup.svelte";
   import { settingsStore } from "../lib/stores/settings.svelte";
   import { themeStore } from "../lib/stores/theme.svelte";
   import { boardThemeForName } from "../lib/board/themes";
@@ -23,11 +25,12 @@
   let boardState = $state<GameState | null>(null);
   let error = $state<string | null>(null);
   let unlisteners: Array<() => void> = [];
+  let showSetupDialog = $state(false);
   let generatingProblems = $state(false);
   let generatedCount = $state<number | null>(null);
 
   onMount(() => {
-    startReview();
+    checkSetupAndReview();
 
     // Keyboard navigation
     function handleKeydown(e: KeyboardEvent) {
@@ -52,8 +55,18 @@
       for (const unlisten of unlisteners) unlisten();
       window.removeEventListener("keydown", handleKeydown);
       reviewStore.clear();
+      setupStore.cleanup();
     };
   });
+
+  async function checkSetupAndReview() {
+    await setupStore.refresh();
+    if (setupStore.status !== "ready") {
+      showSetupDialog = true;
+      return;
+    }
+    startReview();
+  }
 
   async function startReview() {
     try {
@@ -317,3 +330,10 @@
     {/if}
   </div>
 </div>
+
+{#if showSetupDialog}
+  <SetupDialog
+    onComplete={() => { showSetupDialog = false; startReview(); }}
+    onSkip={() => { showSetupDialog = false; onGoHome(); }}
+  />
+{/if}

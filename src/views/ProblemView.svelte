@@ -228,7 +228,7 @@
 
 {#if showList}
   <!-- Problem list view -->
-  <div class="flex h-full flex-col items-center p-8">
+  <div class="flex h-full flex-col items-center overflow-y-auto p-8">
     <div class="mb-6 flex w-full max-w-lg items-center justify-between">
       <h1 class="text-2xl font-bold text-stone-100">Practice Problems</h1>
       <button
