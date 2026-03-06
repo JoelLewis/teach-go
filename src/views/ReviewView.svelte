@@ -195,24 +195,24 @@
         onIntersectionClick={noop}
       />
     {:else}
-      <div class="text-stone-500">Loading board...</div>
+      <div style="color: var(--text-dim);">Loading board...</div>
     {/if}
   </div>
 
   <!-- Right panel -->
-  <div class="flex w-80 flex-col gap-3 border-l border-stone-700 p-4">
+  <div class="flex w-80 flex-col gap-3 border-l p-4" style="border-color: var(--panel-border);">
     <div class="flex items-center justify-between">
-      <h2 class="text-lg font-semibold text-stone-200">Game Review</h2>
+      <h2 class="text-lg font-semibold" style="color: var(--text-primary);">Game Review</h2>
       <button
         onclick={handleGoHome}
-        class="text-sm text-stone-400 hover:text-stone-200"
+        class="text-sm" style="color: var(--text-secondary);"
       >
         Home
       </button>
     </div>
 
     {#if error}
-      <div class="rounded bg-red-900/50 p-3 text-sm text-red-200">
+      <div class="rounded p-3 text-sm" style="background: color-mix(in srgb, var(--danger) 30%, transparent); color: var(--danger);">
         {error}
       </div>
     {/if}
@@ -220,17 +220,17 @@
     {#if isAnalyzing}
       <!-- Progress bar during analysis -->
       <div class="flex flex-col gap-2">
-        <div class="text-sm text-stone-400">
+        <div class="text-sm" style="color: var(--text-secondary);">
           Analyzing positions... {progressPercent}%
         </div>
-        <div class="h-2 w-full overflow-hidden rounded bg-stone-700">
+        <div class="h-2 w-full overflow-hidden rounded" style="background: var(--surface-secondary);">
           <div
-            class="h-full rounded bg-amber-600 transition-all duration-300"
-            style="width: {progressPercent}%"
+            class="h-full rounded transition-all duration-300"
+            style="width: {progressPercent}%; background: var(--accent-primary);"
           ></div>
         </div>
         {#if reviewStore.progress}
-          <div class="text-xs text-stone-500">
+          <div class="text-xs" style="color: var(--text-dim);">
             {reviewStore.progress.analyzed_positions} / {reviewStore.progress.total_positions} positions
           </div>
         {/if}
@@ -262,9 +262,8 @@
       <!-- Territory toggle -->
       <button
         onclick={() => reviewStore.toggleOwnership()}
-        class="rounded px-3 py-1.5 text-sm font-medium {reviewStore.showOwnership
-          ? 'bg-emerald-700 text-emerald-100'
-          : 'bg-stone-700 text-stone-300 hover:bg-stone-600'}"
+        class="rounded px-3 py-1.5 text-sm font-medium"
+        style="background: {reviewStore.showOwnership ? 'var(--success)' : 'var(--surface-secondary)'}; color: {reviewStore.showOwnership ? 'var(--text-primary)' : 'var(--text-secondary)'};"
       >
         {reviewStore.showOwnership ? 'Hide' : 'Show'} Territory
       </button>
@@ -274,17 +273,17 @@
 
       <!-- Alternative moves from SGF variations -->
       {#if reviewStore.variations.length > 0}
-        <div class="rounded bg-stone-800 p-3 text-sm">
-          <h3 class="mb-1 text-xs font-semibold text-stone-400">Alternative Moves</h3>
+        <div class="rounded p-3 text-sm" style="background: var(--panel-bg);">
+          <h3 class="mb-1 text-xs font-semibold" style="color: var(--text-secondary);">Alternative Moves</h3>
           {#each reviewStore.variations as v}
-            <div class="flex items-center gap-2 text-stone-300">
-              <span class="font-mono text-amber-400">
+            <div class="flex items-center gap-2" style="color: var(--text-secondary);">
+              <span class="font-mono" style="color: var(--accent-primary);">
                 {String.fromCharCode(65 + (v.col >= 8 ? v.col + 1 : v.col))}{boardState ? boardState.board_size - v.row : ""}
               </span>
               {#if v.comment}
-                <span class="truncate text-stone-400">{v.comment}</span>
+                <span class="truncate" style="color: var(--text-secondary);">{v.comment}</span>
               {/if}
-              <span class="text-xs text-stone-500">({v.continuation_length} moves)</span>
+              <span class="text-xs" style="color: var(--text-dim);">({v.continuation_length} moves)</span>
             </div>
           {/each}
         </div>
@@ -292,7 +291,7 @@
 
       <!-- Summary stats -->
       {#if reviewStore.data.top_mistakes.length > 0}
-        <div class="rounded bg-stone-800 p-2 text-xs text-stone-400">
+        <div class="rounded p-2 text-xs" style="background: var(--panel-bg); color: var(--text-secondary);">
           Top mistakes at moves: {reviewStore.data.top_mistakes.join(", ")}
         </div>
 
@@ -300,7 +299,8 @@
         <button
           onclick={handleGenerateProblems}
           disabled={generatingProblems}
-          class="rounded bg-teal-800 px-3 py-1.5 text-sm font-medium text-teal-100 transition hover:bg-teal-700 disabled:opacity-50"
+          class="rounded px-3 py-1.5 text-sm font-medium transition disabled:opacity-50"
+          style="background: var(--accent-secondary); color: var(--text-primary);"
         >
           {generatingProblems
             ? "Generating..."
@@ -310,7 +310,7 @@
         </button>
       {/if}
     {:else if !isAnalyzing && !error}
-      <div class="text-sm text-stone-500">Starting analysis...</div>
+      <div class="text-sm" style="color: var(--text-dim);">Starting analysis...</div>
     {/if}
   </div>
 </div>

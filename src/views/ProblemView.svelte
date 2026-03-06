@@ -196,12 +196,12 @@
     }
   }
 
-  let feedbackColorClass = $derived(
-    problemStore.feedbackType === "correct" ? "text-emerald-400" :
-    problemStore.feedbackType === "solved" ? "text-emerald-300" :
-    problemStore.feedbackType === "wrong" ? "text-red-400" :
-    problemStore.feedbackType === "failed" ? "text-stone-400" :
-    "text-stone-300"
+  let feedbackColor = $derived(
+    problemStore.feedbackType === "correct" ? "var(--success)" :
+    problemStore.feedbackType === "solved" ? "var(--success)" :
+    problemStore.feedbackType === "wrong" ? "var(--danger)" :
+    problemStore.feedbackType === "failed" ? "var(--text-secondary)" :
+    "var(--text-secondary)"
   );
 
   let flashHighlight = $state<Highlight | null>(null);
@@ -240,10 +240,11 @@
   <!-- Problem list view -->
   <div class="flex h-full flex-col items-center overflow-y-auto p-8">
     <div class="mb-6 flex w-full max-w-lg items-center justify-between">
-      <h1 class="text-2xl font-bold text-stone-100">Practice Problems</h1>
+      <h1 class="text-2xl font-bold" style="color: var(--text-primary);">Practice Problems</h1>
       <button
         onclick={handleGoHome}
-        class="text-sm text-stone-400 hover:text-stone-200"
+        class="text-sm"
+        style="color: var(--text-secondary);"
       >
         Home
       </button>
@@ -254,20 +255,22 @@
       <div class="flex gap-2">
         <button
           onclick={startRecommended}
-          class="flex-1 rounded-lg bg-teal-700 px-6 py-3 text-sm font-semibold text-white transition hover:bg-teal-600"
+          class="flex-1 rounded-lg px-6 py-3 text-sm font-semibold transition"
+          style="background-color: var(--accent-secondary); color: white;"
         >
           Recommended Problem
         </button>
         <button
           onclick={handleImport}
           disabled={importing}
-          class="rounded-lg bg-stone-700 px-4 py-3 text-sm text-stone-300 transition hover:bg-stone-600 disabled:opacity-50"
+          class="rounded-lg px-4 py-3 text-sm transition disabled:opacity-50"
+          style="background-color: var(--panel-bg); color: var(--text-secondary);"
         >
           {importing ? "Importing..." : "Import SGF"}
         </button>
       </div>
       {#if importMessage}
-        <div class="rounded bg-stone-700/50 px-3 py-2 text-xs text-stone-300">
+        <div class="rounded px-3 py-2 text-xs" style="background-color: var(--panel-bg); color: var(--text-secondary);">
           {importMessage}
         </div>
       {/if}
@@ -275,11 +278,8 @@
         {#each CATEGORIES as cat}
           <button
             onclick={() => { categoryFilter = cat.value; loadProblems(); }}
-            class="rounded-full px-3 py-1 text-xs font-medium transition {
-              categoryFilter === cat.value
-                ? 'bg-teal-700 text-teal-100'
-                : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
-            }"
+            class="rounded-full px-3 py-1 text-xs font-medium transition"
+            style="background-color: {categoryFilter === cat.value ? 'var(--accent-secondary)' : 'var(--panel-bg)'}; color: {categoryFilter === cat.value ? 'white' : 'var(--text-secondary)'};"
           >
             {cat.label}
           </button>
@@ -288,23 +288,24 @@
     </div>
 
     {#if problemStore.error}
-      <div class="rounded bg-red-900/50 p-3 text-sm text-red-200">{problemStore.error}</div>
+      <div class="rounded p-3 text-sm" style="background-color: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger);">{problemStore.error}</div>
     {:else if problemStore.problems.length === 0}
-      <p class="mt-8 text-sm text-stone-500">No problems available.</p>
+      <p class="mt-8 text-sm" style="color: var(--text-dim);">No problems available.</p>
     {:else}
       <div class="flex w-full max-w-lg flex-col gap-1">
         {#each problemStore.problems as problem}
           <button
             onclick={() => selectProblem(problem.id)}
-            class="flex items-center justify-between rounded bg-stone-800 px-4 py-3 text-left text-sm text-stone-300 transition hover:bg-stone-700"
+            class="flex items-center justify-between rounded px-4 py-3 text-left text-sm transition"
+            style="background-color: var(--surface-secondary); color: var(--text-secondary);"
           >
             <div class="flex flex-col gap-0.5">
-              <span class="text-stone-100">{problem.prompt}</span>
-              <span class="text-xs text-stone-500">
+              <span style="color: var(--text-primary);">{problem.prompt}</span>
+              <span class="text-xs" style="color: var(--text-dim);">
                 {categoryLabel(problem.category)} · {problem.board_size}×{problem.board_size}
               </span>
             </div>
-            <span class="text-xs text-stone-400">{difficultyLabel(problem.difficulty)}</span>
+            <span class="text-xs" style="color: var(--text-secondary);">{difficultyLabel(problem.difficulty)}</span>
           </button>
         {/each}
       </div>
@@ -329,34 +330,35 @@
     </div>
 
     <!-- Right panel -->
-    <div class="flex w-72 flex-col gap-3 border-l border-stone-700 p-4">
+    <div class="flex w-72 flex-col gap-3 border-l p-4" style="border-color: var(--panel-border);">
       <div class="flex items-center justify-between">
-        <h2 class="text-sm font-semibold text-stone-400">{categoryLabel(problemStore.state.category)}</h2>
+        <h2 class="text-sm font-semibold" style="color: var(--text-secondary);">{categoryLabel(problemStore.state.category)}</h2>
         <button
           onclick={handleGoHome}
-          class="text-sm text-stone-400 hover:text-stone-200"
+          class="text-sm"
+          style="color: var(--text-secondary);"
         >
           Home
         </button>
       </div>
 
       <!-- Prompt -->
-      <p class="text-lg font-medium text-stone-100">{problemStore.state.prompt}</p>
+      <p class="text-lg font-medium" style="color: var(--text-primary);">{problemStore.state.prompt}</p>
 
       <!-- Status badge -->
       {#if problemStore.state.status === "Solved"}
-        <div class="rounded bg-emerald-900/50 px-3 py-1.5 text-center text-sm font-semibold text-emerald-300">
+        <div class="rounded px-3 py-1.5 text-center text-sm font-semibold" style="background-color: color-mix(in srgb, var(--success) 20%, transparent); color: var(--success);">
           Solved!
         </div>
       {:else if problemStore.state.status === "Failed"}
-        <div class="rounded bg-red-900/50 px-3 py-1.5 text-center text-sm font-semibold text-red-300">
+        <div class="rounded px-3 py-1.5 text-center text-sm font-semibold" style="background-color: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger);">
           Failed
         </div>
       {/if}
 
       <!-- Feedback -->
       {#if problemStore.feedback}
-        <p class="text-sm font-medium {feedbackColorClass}">
+        <p class="text-sm font-medium" style="color: {feedbackColor};">
           {problemStore.feedback}
         </p>
       {/if}
@@ -364,23 +366,26 @@
       <!-- Hints -->
       {#if problemStore.state.status === "InProgress"}
         <div class="flex flex-col gap-1.5">
-          <p class="text-xs font-semibold text-stone-500">Hints</p>
+          <p class="text-xs font-semibold" style="color: var(--text-dim);">Hints</p>
           <div class="flex gap-2">
             <button
               onclick={() => handleHint("Area")}
-              class="rounded bg-stone-700 px-3 py-1.5 text-xs text-stone-300 hover:bg-stone-600"
+              class="rounded px-3 py-1.5 text-xs"
+              style="background-color: var(--panel-bg); color: var(--text-secondary);"
             >
               Area
             </button>
             <button
               onclick={() => handleHint("Candidates")}
-              class="rounded bg-stone-700 px-3 py-1.5 text-xs text-stone-300 hover:bg-stone-600"
+              class="rounded px-3 py-1.5 text-xs"
+              style="background-color: var(--panel-bg); color: var(--text-secondary);"
             >
               Candidates
             </button>
             <button
               onclick={() => handleHint("Answer")}
-              class="rounded bg-stone-700 px-3 py-1.5 text-xs text-stone-300 hover:bg-stone-600"
+              class="rounded px-3 py-1.5 text-xs"
+              style="background-color: var(--panel-bg); color: var(--text-secondary);"
             >
               Answer
             </button>
@@ -389,7 +394,7 @@
 
         <!-- Hint display -->
         {#if problemStore.hintData && problemStore.hintData.type !== "None"}
-          <div class="rounded bg-amber-900/30 px-3 py-2 text-xs text-amber-200">
+          <div class="rounded px-3 py-2 text-xs" style="background-color: color-mix(in srgb, var(--accent-primary) 20%, transparent); color: var(--accent-primary);">
             {#if problemStore.hintData.type === "Area"}
               Look in rows {problemStore.hintData.min_row + 1}-{problemStore.hintData.max_row + 1},
               columns {problemStore.hintData.min_col + 1}-{problemStore.hintData.max_col + 1}
@@ -406,7 +411,8 @@
 
         <button
           onclick={handleSkip}
-          class="mt-2 rounded bg-stone-700 px-3 py-1.5 text-sm text-stone-400 hover:bg-stone-600 hover:text-stone-200"
+          class="mt-2 rounded px-3 py-1.5 text-sm"
+          style="background-color: var(--panel-bg); color: var(--text-secondary);"
         >
           Skip
         </button>
@@ -414,14 +420,15 @@
         <!-- Problem finished — show next button -->
         <button
           onclick={handleNextProblem}
-          class="mt-2 rounded bg-teal-700 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-600"
+          class="mt-2 rounded px-4 py-2 text-sm font-semibold"
+          style="background-color: var(--accent-secondary); color: white;"
         >
           Next Problem
         </button>
       {/if}
 
       <!-- Stats -->
-      <div class="mt-auto flex justify-between text-xs text-stone-500">
+      <div class="mt-auto flex justify-between text-xs" style="color: var(--text-dim);">
         <span>Attempts: {problemStore.state.attempts}</span>
         <span>Hints: {problemStore.state.hints_used}</span>
       </div>

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Settings } from "../lib/api/types";
+  import type { Settings, ThemeName } from "../lib/api/types";
   import { llmStore } from "../lib/stores/llm.svelte";
   import { onMount } from "svelte";
 
@@ -16,6 +16,7 @@
   let aiStrength = $state(settings.ai_strength);
   let soundEnabled = $state(settings.sound_enabled);
   let feedbackTiming = $state(settings.feedback_timing);
+  let theme = $state<ThemeName>(settings.theme as ThemeName);
 
   onMount(() => {
     llmStore.refresh();
@@ -30,14 +31,17 @@
       ai_strength: aiStrength,
       sound_enabled: soundEnabled,
       feedback_timing: feedbackTiming,
+      theme,
     });
   }
 </script>
 
+<svelte:window onkeydown={(e) => { if (e.key === 'Escape') onClose(); }} />
+
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={onClose}>
   <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="w-80 rounded-lg bg-stone-800 p-6 shadow-xl" role="dialog" aria-modal="true" tabindex="-1" onkeydown={(e) => { if (e.key === 'Escape') onClose(); }} onclick={(e) => e.stopPropagation()}>
+  <div class="w-80 rounded-lg bg-stone-800 p-6 shadow-xl" role="dialog" aria-modal="true" tabindex="-1" onclick={(e) => e.stopPropagation()}>
 
     <h2 class="mb-4 text-lg font-semibold text-stone-100">Settings</h2>
 
@@ -78,6 +82,17 @@
         <input type="checkbox" bind:checked={soundEnabled} class="rounded" />
         Sound effects
       </label>
+    </div>
+
+    <div class="mb-4">
+      <label class="mb-1 block text-sm text-stone-400">Theme</label>
+      <select
+        bind:value={theme}
+        class="w-full rounded bg-stone-700 px-3 py-2 text-stone-100"
+      >
+        <option value="study">Study (warm wood)</option>
+        <option value="grid">Grid (cyberpunk)</option>
+      </select>
     </div>
 
     <div class="mb-6">

@@ -305,7 +305,8 @@
           <div class="absolute bottom-3 left-1/2 -translate-x-1/2">
             <button
               onclick={returnToCurrent}
-              class="rounded bg-stone-700/90 px-3 py-1 text-xs font-semibold text-stone-200 hover:bg-stone-600 shadow-lg"
+              class="rounded px-3 py-1 text-xs font-semibold shadow-lg"
+              style="background-color: var(--panel-bg); color: var(--text-primary);"
             >
               Return to current (move {gameStore.state?.move_number ?? 0})
             </button>
@@ -316,19 +317,20 @@
   </div>
 
   <!-- Right panel -->
-  <div class="flex w-80 flex-col gap-4 border-l border-stone-700 p-4">
+  <div class="flex w-80 flex-col gap-4 border-l p-4" style="border-color: var(--panel-border);">
     <div class="flex items-center justify-between">
-      <h2 class="text-lg font-semibold text-stone-200">Game</h2>
+      <h2 class="text-lg font-semibold" style="color: var(--text-primary);">Game</h2>
       <button
         onclick={onGoHome}
-        class="text-sm text-stone-400 hover:text-stone-200"
+        class="text-sm"
+        style="color: var(--text-secondary);"
       >
         Home
       </button>
     </div>
 
     {#if gameStore.state}
-      <div class="text-sm text-stone-300">
+      <div class="text-sm" style="color: var(--text-secondary);">
         <span
           class="inline-block h-3 w-3 rounded-full {gameStore.state.current_color === 'black' ? 'bg-stone-900 ring-1 ring-stone-500' : 'bg-stone-100'}"
         ></span>
@@ -337,15 +339,16 @@
       </div>
 
       {#if engineError}
-        <div class="rounded bg-amber-900/50 p-2 text-xs text-amber-200">
+        <div class="rounded p-2 text-xs" style="background-color: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger);">
           {engineError}
-          <div class="mt-1 text-amber-400/70">Game continues as human-vs-human.</div>
+          <div class="mt-1" style="color: var(--text-dim);">Game continues as human-vs-human.</div>
         </div>
       {:else if engineStore.aiThinking}
         <div
-          class="flex items-center gap-2 rounded bg-blue-900/40 p-2 text-sm text-blue-200"
+          class="flex items-center gap-2 rounded p-2 text-sm"
+          style="background-color: color-mix(in srgb, var(--info) 20%, transparent); color: var(--info);"
         >
-          <span class="inline-block h-3 w-3 animate-spin rounded-full border-2 border-blue-400 border-t-transparent"></span>
+          <span class="inline-block h-3 w-3 animate-spin rounded-full border-2 border-t-transparent" style="border-color: var(--info); border-top-color: transparent;"></span>
           AI is thinking&hellip;
         </div>
       {/if}
@@ -371,7 +374,8 @@
       {#if pendingFeedback}
         <button
           onclick={revealPendingFeedback}
-          class="rounded bg-amber-800/60 px-3 py-1.5 text-xs text-amber-200 hover:bg-amber-700/60"
+          class="rounded px-3 py-1.5 text-xs"
+          style="background-color: var(--btn-bg); color: var(--btn-text);"
         >
           Show Feedback
         </button>
@@ -381,7 +385,8 @@
 
       {#if gameStore.state.phase === "Finished"}
         <div
-          class="rounded bg-amber-900/50 p-3 text-center text-sm text-amber-200"
+          class="rounded p-3 text-center text-sm"
+          style="background-color: var(--surface-secondary); color: var(--text-primary);"
         >
           Game Over
           {#if gameStore.state.result}
@@ -399,18 +404,19 @@
           {/if}
           <button
             onclick={onStartReview}
-            class="mt-2 rounded bg-amber-700 px-4 py-1 text-sm font-semibold text-white hover:bg-amber-600"
+            class="mt-2 rounded px-4 py-1 text-sm font-semibold"
+            style="background-color: var(--btn-bg); color: var(--btn-text);"
           >
             Review Game
           </button>
         </div>
       {/if}
     {:else if gameStore.error}
-      <div class="rounded bg-red-900/50 p-3 text-sm text-red-200">
+      <div class="rounded p-3 text-sm" style="background-color: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger);">
         {gameStore.error}
       </div>
     {:else}
-      <p class="text-sm text-stone-500">Loading...</p>
+      <p class="text-sm" style="color: var(--text-dim);">Loading...</p>
     {/if}
   </div>
 </div>
