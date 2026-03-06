@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import BoardCanvas from "../lib/board/BoardCanvas.svelte";
+  import BoardSvg from "../lib/board/BoardSvg.svelte";
   import WinRateChart from "../components/WinRateChart.svelte";
   import ReviewControls from "../components/ReviewControls.svelte";
   import ReviewMovePanel from "../components/ReviewMovePanel.svelte";
@@ -13,7 +13,7 @@
   import { onReviewProgress } from "../lib/api/events";
   import * as api from "../lib/api/commands";
   import type { GameState, StoneColor } from "../lib/api/types";
-  import type { Highlight } from "../lib/board/renderer";
+  import type { Highlight } from "../lib/board/BoardSvg.svelte";
 
   type Props = {
     gameId?: number;
@@ -24,10 +24,11 @@
 
   let boardState = $state<GameState | null>(null);
   let error = $state<string | null>(null);
-  let unlisteners: Array<() => void> = [];
+  let pendingUnlisteners: Array<Promise<() => void>> = [];
   let showSetupDialog = $state(false);
   let generatingProblems = $state(false);
   let generatedCount = $state<number | null>(null);
+  let moveGeneration = 0;
 
   onMount(() => {
     checkSetupAndReview();
@@ -52,7 +53,9 @@
     window.addEventListener("keydown", handleKeydown);
 
     return () => {
-      for (const unlisten of unlisteners) unlisten();
+      for (const p of pendingUnlisteners) {
+        p.then((unlisten) => unlisten()).catch(() => {});
+      }
       window.removeEventListener("keydown", handleKeydown);
       reviewStore.clear();
       setupStore.cleanup();
@@ -71,13 +74,12 @@
   async function startReview() {
     try {
       // Subscribe to progress events
-      const unlisten = await onReviewProgress((progress) => {
+      pendingUnlisteners.push(onReviewProgress((progress) => {
         reviewStore.setProgress(progress);
         if (progress.is_complete) {
           loadReviewData();
         }
-      });
-      unlisteners.push(unlisten);
+      }));
 
       // Start the review analysis
       await api.startReview(gameId);
@@ -98,56 +100,38 @@
     }
   }
 
-  // Reactively fetch board position when currentMove changes
-  $effect(() => {
-    const move = reviewStore.currentMove;
-    fetchPosition(move);
-  });
-
-  async function fetchPosition(moveNumber: number) {
-    try {
-      boardState = await api.getReviewPosition(moveNumber);
-    } catch (e) {
-      console.warn("Failed to fetch position:", e);
-    }
-  }
-
-  // Reactively fetch ownership when toggle is on and move changes
+  // Reactively fetch position, ownership, and variations when currentMove changes.
+  // Uses a generation counter to discard stale responses from rapid navigation.
   $effect(() => {
     const move = reviewStore.currentMove;
     const show = reviewStore.showOwnership;
-    if (show && reviewStore.data) {
-      fetchOwnership(move);
+    const hasData = !!reviewStore.data;
+    const gen = ++moveGeneration;
+
+    api.getReviewPosition(move).then((state) => {
+      if (gen === moveGeneration && state) boardState = state;
+    }).catch((e) => {
+      console.warn("Failed to fetch position:", e);
+    });
+
+    if (show && hasData) {
+      api.getOwnershipAt(move).then((data) => {
+        if (gen === moveGeneration) reviewStore.setOwnership(data);
+      }).catch((e) => {
+        console.warn("Failed to fetch ownership:", e);
+      });
     } else {
       reviewStore.setOwnership(null);
     }
-  });
 
-  async function fetchOwnership(moveNumber: number) {
-    try {
-      const data = await api.getOwnershipAt(moveNumber);
-      reviewStore.setOwnership(data);
-    } catch (e) {
-      console.warn("Failed to fetch ownership:", e);
-    }
-  }
-
-  // Reactively fetch variations when move changes and review is complete
-  $effect(() => {
-    const move = reviewStore.currentMove;
-    if (reviewStore.data) {
-      fetchVariations(move);
+    if (hasData) {
+      api.getReviewVariations(move).then((vars) => {
+        if (gen === moveGeneration) reviewStore.setVariations(vars);
+      }).catch(() => {
+        if (gen === moveGeneration) reviewStore.setVariations([]);
+      });
     }
   });
-
-  async function fetchVariations(moveNumber: number) {
-    try {
-      const vars = await api.getReviewVariations(moveNumber);
-      reviewStore.setVariations(vars);
-    } catch {
-      reviewStore.setVariations([]);
-    }
-  }
 
   function handleMoveSelect(move: number) {
     reviewStore.goToMove(move);
@@ -199,7 +183,7 @@
   <!-- Board area -->
   <div class="flex flex-1 items-center justify-center p-4">
     {#if boardState}
-      <BoardCanvas
+      <BoardSvg
         boardSize={boardState.board_size}
         stones={boardState.stones}
         currentColor={boardState.current_color as StoneColor}

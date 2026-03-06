@@ -1,12 +1,12 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import BoardCanvas from "../lib/board/BoardCanvas.svelte";
+  import BoardSvg from "../lib/board/BoardSvg.svelte";
   import { problemStore } from "../lib/stores/problem.svelte";
   import { settingsStore } from "../lib/stores/settings.svelte";
   import { themeStore } from "../lib/stores/theme.svelte";
   import { boardThemeForName } from "../lib/board/themes";
   import { play as playSound } from "../lib/audio/sounds";
-  import type { Highlight } from "../lib/board/renderer";
+  import type { Highlight } from "../lib/board/BoardSvg.svelte";
   import * as api from "../lib/api/commands";
   import type { StoneColor, ProblemSummary } from "../lib/api/types";
 
@@ -21,6 +21,9 @@
   let sourceFilter = $state<"all" | "generated">("all");
   let importing = $state(false);
   let importMessage = $state<string | null>(null);
+  let activeTimeouts: ReturnType<typeof setTimeout>[] = [];
+  let flashTimeoutId: ReturnType<typeof setTimeout> | undefined;
+  let importTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
   const CATEGORIES = [
     { value: null, label: "All" },
@@ -35,6 +38,7 @@
   onMount(() => {
     loadProblems();
     return () => {
+      activeTimeouts.forEach(clearTimeout);
       problemStore.clear();
     };
   });
@@ -96,7 +100,8 @@
           playSound("correct");
         } else {
           problemStore.setFeedback("Correct! Continue...", "correct");
-          setTimeout(() => problemStore.clearFeedback(), 1500);
+          const id = setTimeout(() => problemStore.clearFeedback(), 1500);
+          activeTimeouts.push(id);
         }
       } else {
         playSound("wrong");
@@ -128,11 +133,12 @@
       await api.skipProblem();
       problemStore.setFeedback("Skipped", "failed");
       // Return to list after a beat
-      setTimeout(() => {
+      const id = setTimeout(() => {
         problemStore.clear();
         showList = true;
         loadProblems();
       }, 800);
+      activeTimeouts.push(id);
     } catch (e) {
       problemStore.setError(String(e));
     }
@@ -160,7 +166,9 @@
     }
 
     importing = false;
-    setTimeout(() => { importMessage = null; }, 5000);
+    clearTimeout(importTimeoutId);
+    importTimeoutId = setTimeout(() => { importMessage = null; }, 5000);
+    activeTimeouts.push(importTimeoutId);
   }
 
   function handleNextProblem() {
@@ -221,8 +229,10 @@
   });
 
   function showFlash(point: [number, number], color: "correct" | "wrong") {
+    clearTimeout(flashTimeoutId);
     flashHighlight = { type: "flash", point, color };
-    setTimeout(() => { flashHighlight = null; }, 500);
+    flashTimeoutId = setTimeout(() => { flashHighlight = null; }, 500);
+    activeTimeouts.push(flashTimeoutId);
   }
 </script>
 
@@ -305,7 +315,7 @@
   <div class="flex h-full">
     <!-- Board area -->
     <div class="flex flex-1 items-center justify-center p-4">
-      <BoardCanvas
+      <BoardSvg
         boardSize={problemStore.state.board_state.board_size}
         stones={problemStore.state.board_state.stones}
         currentColor={problemStore.state.board_state.current_color as StoneColor}

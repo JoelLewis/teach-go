@@ -27,8 +27,10 @@
   onDestroy(() => setupStore.cleanup());
 </script>
 
-<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-  <div class="w-96 rounded-lg p-6 shadow-xl" style="background-color: var(--panel-bg, #292524); color: var(--text-primary, #f5f5f4);">
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={onSkip}>
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div class="w-96 rounded-lg p-6 shadow-xl" style="background-color: var(--panel-bg, #292524); color: var(--text-primary, #f5f5f4);" role="dialog" aria-modal="true" tabindex="-1" onkeydown={(e) => { if (e.key === 'Escape') onSkip(); }} onclick={(e) => e.stopPropagation()}>
     {#if setupStore.error && !downloading}
       <!-- Error state -->
       <h2 class="mb-3 text-lg font-semibold" style="color: var(--danger, #ef4444);">Download Failed</h2>

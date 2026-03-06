@@ -5,9 +5,10 @@
   type Props = {
     messages: CoachingMessage[];
     streamingMoveNumber?: number | null;
+    onNavigate?: (moveNumber: number) => void;
   };
 
-  let { messages, streamingMoveNumber = null }: Props = $props();
+  let { messages, streamingMoveNumber = null, onNavigate }: Props = $props();
 
   function hexColor(severity: CoachingMessage["severity"]): string {
     return `#${severityColor(severity).toString(16).padStart(6, "0")}`;
@@ -22,8 +23,12 @@
         Coaching feedback will appear here during play.
       </p>
     {:else}
-      {#each messages as msg}
-        <div class="rounded bg-stone-800 p-2 text-xs">
+      {#each messages as msg (msg.move_number)}
+        <button
+          type="button"
+          class="w-full rounded bg-stone-800 p-2 text-left text-xs {onNavigate ? 'cursor-pointer hover:bg-stone-700' : ''}"
+          onclick={() => onNavigate?.(msg.move_number)}
+        >
           <span
             class="inline-block rounded px-1.5 py-0.5 text-[10px] font-bold"
             style="background-color: {hexColor(msg.severity)}; color: white;"
@@ -40,7 +45,7 @@
               <span class="text-stone-500">(simpler alternative)</span>
             </p>
           {/if}
-        </div>
+        </button>
       {/each}
     {/if}
   </div>

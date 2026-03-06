@@ -180,7 +180,7 @@ export async function getKataGoStatus(): Promise<KataGoStatus> {
   return invoke("get_katago_status");
 }
 
-export async function setupKataGo(): Promise<string> {
+export async function setupKataGo(): Promise<KataGoStatus> {
   return invoke("setup_katago");
 }
 

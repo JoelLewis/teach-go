@@ -5,14 +5,14 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use tracing::info;
 
-const KATAGO_VERSION: &str = "v1.15.3";
+const KATAGO_VERSION: &str = "v1.16.4";
 
 #[cfg(target_os = "linux")]
-const BINARY_ASSET: &str = "katago-v1.15.3-cuda12-linux-x64.zip";
+const BINARY_ASSET: &str = "katago-v1.16.4-cuda12.1-cudnn8.9.7-linux-x64.zip";
 #[cfg(target_os = "macos")]
-const BINARY_ASSET: &str = "katago-v1.15.3-eigen-macos-x64.zip";
+const BINARY_ASSET: &str = "katago-v1.16.4-eigenavx2-linux-x64.zip"; // no macOS build in v1.16.4; users should set KATAGO_BINARY
 #[cfg(target_os = "windows")]
-const BINARY_ASSET: &str = "katago-v1.15.3-opencl-windows-x64.zip";
+const BINARY_ASSET: &str = "katago-v1.16.4-opencl-windows-x64.zip";
 
 const MODEL_URL: &str = "https://media.katagotraining.org/uploaded/networks/models/kata1/kata1-b18c384nbt-s9996604416-d4316597426.bin.gz";
 const MODEL_FILENAME: &str = "kata1-b18c384nbt-s9996604416-d4316597426.bin.gz";
@@ -31,14 +31,21 @@ pub struct SetupProgress {
     pub total: u64,
 }
 
-/// Returns `"ready"`, `"partial"`, or `"not_installed"`.
-pub fn setup_status(katago_dir: &Path) -> &'static str {
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum KataGoStatus {
+    Ready,
+    Partial,
+    NotInstalled,
+}
+
+pub fn setup_status(katago_dir: &Path) -> KataGoStatus {
     let has_binary = katago_dir.join(BINARY_NAME).exists();
     let has_model = katago_dir.join(MODEL_FILENAME).exists();
     match (has_binary, has_model) {
-        (true, true) => "ready",
-        (true, false) | (false, true) => "partial",
-        (false, false) => "not_installed",
+        (true, true) => KataGoStatus::Ready,
+        (true, false) | (false, true) => KataGoStatus::Partial,
+        (false, false) => KataGoStatus::NotInstalled,
     }
 }
 

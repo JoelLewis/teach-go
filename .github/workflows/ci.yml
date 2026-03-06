@@ -50,3 +50,48 @@ jobs:
 
       - run: npm ci
       - run: npm run check
+
+  e2e:
+    name: E2E tests
+    needs: [rust, frontend]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf webkit2gtk-driver xvfb
+
+      - name: Install tauri-driver
+        run: cargo install tauri-driver
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Tauri app (release, no MCP)
+        run: npx tauri build -- --no-default-features
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ""
+
+      - name: Install E2E dependencies
+        run: cd tests/e2e && npm install
+
+      - name: Run E2E tests (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run npm run test:e2e
+
+      - name: Run E2E tests (Windows)
+        if: runner.os == 'Windows'
+        run: npm run test:e2e

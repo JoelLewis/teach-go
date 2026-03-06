@@ -4,6 +4,7 @@ use thiserror::Error;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, Command};
 use tokio::sync::mpsc;
+use tracing::debug;
 
 #[derive(Debug, Error)]
 pub enum ProcessError {
@@ -53,6 +54,7 @@ impl KataGoProcess {
 
         let stdin = child.stdin.take().expect("stdin should be piped");
         let stdout = child.stdout.take().expect("stdout should be piped");
+        let stderr = child.stderr.take().expect("stderr should be piped");
 
         let (stdin_tx, mut stdin_rx) = mpsc::channel::<String>(32);
         let (stdout_tx, stdout_rx) = mpsc::channel::<String>(32);
@@ -82,11 +84,31 @@ impl KataGoProcess {
             }
         });
 
+        // Stderr drain task — log to file for debugging and prevent pipe buffer deadlock
+        tokio::spawn(async move {
+            use tokio::io::AsyncWriteExt as _;
+            let log_path = std::env::temp_dir().join("katago-stderr.log");
+            let mut log_file = tokio::fs::File::create(&log_path).await.ok();
+            let reader = BufReader::new(stderr);
+            let mut lines = reader.lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                debug!(target: "katago::stderr", "{}", line);
+                if let Some(ref mut f) = log_file {
+                    let _ = f.write_all(format!("{line}\n").as_bytes()).await;
+                }
+            }
+        });
+
         Ok(Self {
             child,
             stdin_tx,
             stdout_rx,
         })
+    }
+
+    /// Clone the stdin sender for use by the client.
+    pub fn sender(&self) -> mpsc::Sender<String> {
+        self.stdin_tx.clone()
     }
 
     /// Send a query line to KataGo.

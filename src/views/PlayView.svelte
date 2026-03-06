@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import BoardCanvas from "../lib/board/BoardCanvas.svelte";
+  import BoardSvg from "../lib/board/BoardSvg.svelte";
   import GameControls from "../components/GameControls.svelte";
   import MoveHistory from "../components/MoveHistory.svelte";
   import CoachingPanel from "../components/CoachingPanel.svelte";
@@ -36,7 +36,7 @@
   let difficultyChecked = $state(false);
   let engineError = $state<string | null>(null);
   let showSetupDialog = $state(false);
-  let unlisteners: Array<() => void> = [];
+  let pendingUnlisteners: Array<Promise<() => void>> = [];
 
   const noop = () => {};
 
@@ -51,24 +51,28 @@
 
   onMount(() => {
     // Subscribe to backend events
-    onEngineStatus((status) => engineStore.setStatus(status)).then((u) =>
-      unlisteners.push(u),
+    pendingUnlisteners.push(
+      onEngineStatus((status) => engineStore.setStatus(status)),
     );
-    onAiThinking((thinking) => engineStore.setAiThinking(thinking)).then((u) =>
-      unlisteners.push(u),
+    pendingUnlisteners.push(
+      onAiThinking((thinking) => engineStore.setAiThinking(thinking)),
     );
-    onCoachingStream((chunk) => {
-      if (chunk.is_complete) {
-        coachingStore.completeStream(chunk.move_number);
-      } else {
-        coachingStore.appendStream(chunk.move_number, chunk.text_delta);
-      }
-    }).then((u) => unlisteners.push(u));
+    pendingUnlisteners.push(
+      onCoachingStream((chunk) => {
+        if (chunk.is_complete) {
+          coachingStore.completeStream(chunk.move_number);
+        } else {
+          coachingStore.appendStream(chunk.move_number, chunk.text_delta);
+        }
+      }),
+    );
 
     checkSetupAndStart();
 
     return () => {
-      for (const unlisten of unlisteners) unlisten();
+      for (const p of pendingUnlisteners) {
+        p.then((unlisten) => unlisten()).catch(() => {});
+      }
       setupStore.cleanup();
     };
   });
@@ -286,7 +290,7 @@
   <div class="flex flex-1 items-center justify-center p-4">
     {#if displayState}
       <div class="relative">
-        <BoardCanvas
+        <BoardSvg
           {boardSize}
           stones={displayState.stones}
           currentColor={displayState.current_color as StoneColor}
@@ -373,7 +377,7 @@
         </button>
       {/if}
 
-      <CoachingPanel messages={coachingStore.messages} streamingMoveNumber={coachingStore.streamingMoveNumber} />
+      <CoachingPanel messages={coachingStore.messages} streamingMoveNumber={coachingStore.streamingMoveNumber} onNavigate={handleNavigate} />
 
       {#if gameStore.state.phase === "Finished"}
         <div

@@ -22,8 +22,11 @@
   }
 </script>
 
-<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-  <div class="w-80 rounded-lg bg-stone-800 p-6 shadow-xl">
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={onClose}>
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div class="w-80 rounded-lg bg-stone-800 p-6 shadow-xl" role="dialog" aria-modal="true" tabindex="-1" onkeydown={(e) => { if (e.key === 'Escape') onClose(); }} onclick={(e) => e.stopPropagation()}>
+
     <h2 class="mb-4 text-lg font-semibold text-stone-100">New Game</h2>
 
     <div class="mb-4">

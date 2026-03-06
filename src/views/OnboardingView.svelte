@@ -1,5 +1,5 @@
 <script lang="ts">
-  import BoardCanvas from "../lib/board/BoardCanvas.svelte";
+  import BoardSvg from "../lib/board/BoardSvg.svelte";
   import SetupDialog from "../components/SetupDialog.svelte";
   import { boardThemeForName } from "../lib/board/themes";
   import { themeStore } from "../lib/stores/theme.svelte";
@@ -222,7 +222,7 @@
       <div class="flex flex-col items-center gap-3">
         <h2 class="text-xl font-bold" style="color: var(--text-primary);">{currentExercise.title}</h2>
         <p class="max-w-xs text-sm" style="color: var(--text-secondary);">{currentExercise.instruction}</p>
-        <BoardCanvas
+        <BoardSvg
           boardSize={currentExercise.boardSize}
           stones={tutorialStones}
           currentColor={currentExercise.playerColor}
@@ -251,7 +251,7 @@
         <p class="max-w-xs text-sm" style="color: var(--text-secondary);">
           Play a few moves so GoSensei can estimate your level. No pressure — just play naturally!
         </p>
-        <BoardCanvas
+        <BoardSvg
           boardSize={calibrationState.board_size}
           stones={calibrationState.stones}
           currentColor={calibrationState.current_color}

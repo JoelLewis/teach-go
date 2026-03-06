@@ -10,8 +10,10 @@
   let { suggestion, onAccept, onDismiss }: Props = $props();
 </script>
 
-<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-  <div class="w-72 rounded-lg bg-stone-800 p-5 shadow-xl text-center">
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={onDismiss}>
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div class="w-72 rounded-lg bg-stone-800 p-5 shadow-xl text-center" role="dialog" aria-modal="true" tabindex="-1" onkeydown={(e) => { if (e.key === 'Escape') onDismiss(); }} onclick={(e) => e.stopPropagation()}>
     <div class="mb-3 text-2xl">
       {suggestion.direction === "up" ? "🎯" : "📖"}
     </div>

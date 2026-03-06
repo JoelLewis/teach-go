@@ -111,13 +111,17 @@ fn resolve_model_path(app: &AppHandle) -> Result<PathBuf, AppError> {
 }
 
 #[tauri::command]
-pub fn get_katago_status(app: AppHandle) -> Result<String, AppError> {
+pub fn get_katago_status(app: AppHandle) -> Result<setup::KataGoStatus, AppError> {
+    // If we can resolve both binary and model from any source, it's ready
+    if resolve_binary_path(&app).is_ok() && resolve_model_path(&app).is_ok() {
+        return Ok(setup::KataGoStatus::Ready);
+    }
     let dir = katago_dir(&app)?;
-    Ok(setup::setup_status(&dir).to_string())
+    Ok(setup::setup_status(&dir))
 }
 
 #[tauri::command]
-pub async fn setup_katago(app: AppHandle) -> Result<String, AppError> {
+pub async fn setup_katago(app: AppHandle) -> Result<setup::KataGoStatus, AppError> {
     let dir = katago_dir(&app)?;
     let app_clone = app.clone();
 
@@ -130,15 +134,15 @@ pub async fn setup_katago(app: AppHandle) -> Result<String, AppError> {
     .map_err(|e| AppError::KataGo(format!("task join: {e}")))?
     .map_err(AppError::KataGo)?;
 
-    Ok("ready".to_string())
+    Ok(setup::KataGoStatus::Ready)
 }
 
 #[tauri::command]
-pub async fn start_engine(state: State<'_, AppState>, app: AppHandle) -> Result<String, AppError> {
+pub async fn start_engine(state: State<'_, AppState>, app: AppHandle) -> Result<setup::KataGoStatus, AppError> {
     let mut katago = state.katago.lock().await;
 
     if katago.is_some() {
-        return Ok("ready".into());
+        return Ok(setup::KataGoStatus::Ready);
     }
 
     let _ = app.emit("engine-status", "starting");
@@ -157,7 +161,7 @@ pub async fn start_engine(state: State<'_, AppState>, app: AppHandle) -> Result<
             *katago = Some(client);
             let _ = app.emit("engine-status", "ready");
             info!("KataGo engine ready");
-            Ok("ready".into())
+            Ok(setup::KataGoStatus::Ready)
         }
         Err(e) => {
             let msg = format!("Failed to start KataGo: {e}");
@@ -186,9 +190,8 @@ pub async fn request_ai_move(
 
     // Ensure engine is started (lazy init) and healthy
     {
-        let mut katago = state.katago.lock().await;
+        let katago = state.katago.lock().await;
         if katago.is_none() {
-            *katago = None;
             drop(katago);
             start_engine(state.clone(), app.clone()).await?;
         }
@@ -227,11 +230,15 @@ pub async fn request_ai_move(
     );
 
     let response = {
-        let katago = state.katago.lock().await;
-        let client = katago
-            .as_ref()
-            .ok_or(AppError::KataGo("Engine not available".into()))?;
-        client.query(query).await?
+        let rx = {
+            let katago = state.katago.lock().await;
+            let client = katago
+                .as_ref()
+                .ok_or(AppError::KataGo("Engine not available".into()))?;
+            client.query_fire(query).await?
+        };
+        // Lock released — await response without holding state.katago
+        rx.await.map_err(|_| AppError::KataGo("Engine response cancelled".into()))?
     };
 
     // Parse best move

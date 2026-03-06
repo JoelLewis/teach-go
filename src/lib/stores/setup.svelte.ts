@@ -52,8 +52,7 @@ function createSetupStore() {
       }
 
       try {
-        const result = await setupKataGo();
-        status = result === "ready" ? "ready" : "not_installed";
+        status = await setupKataGo();
         progress = null;
       } catch (e) {
         status = "not_installed";

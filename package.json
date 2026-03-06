@@ -8,11 +8,12 @@
     "build": "vite build",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "test:e2e": "cd tests/e2e && npm test",
+    "test:e2e:build": "npm run tauri build -- --no-default-features && npm run test:e2e"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2",
-    "pixi.js": "^8.6"
+    "@tauri-apps/api": "^2"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^5",
@@ -21,6 +22,7 @@
     "svelte": "^5",
     "svelte-check": "^4",
     "tailwindcss": "^4",
+    "tauri-plugin-mcp-server": "^0.1.0",
     "typescript": "^5.7",
     "vite": "^6"
   }
