@@ -21,6 +21,9 @@ src-tauri/binaries/katago*
 .DS_Store
 Thumbs.db
 
+# macOS icon generation intermediate files
+src-tauri/icons/*.iconset/
+
 # Environment
 .env
 .env.*

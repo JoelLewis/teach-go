@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>GoSensei</string>
+
+    <key>CFBundleDisplayName</key>
+    <string>GoSensei</string>
+
+    <key>CFBundleIdentifier</key>
+    <string>com.gosensei.app</string>
+
+    <key>CFBundleVersion</key>
+    <string>1</string>
+
+    <key>CFBundleShortVersionString</key>
+    <string>0.1.0</string>
+
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.board-games</string>
+
+    <key>LSMinimumSystemVersion</key>
+    <string>11.0</string>
+
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright © 2025 Joel Lewis. MIT License.</string>
+
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Smart Game Format</string>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>com.gosensei.sgf</string>
+            </array>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>sgf</string>
+            </array>
+        </dict>
+    </array>
+
+    <key>UTExportedTypeDeclarations</key>
+    <array>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>com.gosensei.sgf</string>
+            <key>UTTypeDescription</key>
+            <string>Smart Game Format File</string>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.text</string>
+            </array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>sgf</string>
+                </array>
+            </dict>
+        </dict>
+    </array>
+</dict>
+</plist>

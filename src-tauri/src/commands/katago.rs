@@ -29,7 +29,15 @@ fn resolve_binary_path(app: &AppHandle) -> Result<PathBuf, AppError> {
         return Ok(p);
     }
 
-    // 2. Env var override
+    // 2. Bundled inside .app/Contents/Resources/katago/ (macOS App Store)
+    if let Ok(resource_dir) = app.path().resource_dir() {
+        let bundled_path = resource_dir.join("katago").join("katago");
+        if bundled_path.exists() {
+            return Ok(bundled_path);
+        }
+    }
+
+    // 3. Env var override
     if let Ok(path) = std::env::var("KATAGO_BINARY") {
         let p = PathBuf::from(path);
         if p.exists() {
@@ -37,7 +45,7 @@ fn resolve_binary_path(app: &AppHandle) -> Result<PathBuf, AppError> {
         }
     }
 
-    // 3. Dev path
+    // 4. Dev path
     if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
         let dev_path = PathBuf::from(manifest_dir).join("binaries").join("katago");
         if dev_path.exists() {
@@ -45,7 +53,7 @@ fn resolve_binary_path(app: &AppHandle) -> Result<PathBuf, AppError> {
         }
     }
 
-    // 4. System PATH
+    // 5. System PATH
     if let Ok(path) = which::which("katago") {
         return Ok(path);
     }
@@ -61,6 +69,14 @@ fn resolve_config_path(app: &AppHandle) -> Option<PathBuf> {
         && let Some(p) = setup::config_path(&dir)
     {
         return Some(p);
+    }
+
+    // Bundled inside .app/Contents/Resources/katago/ (macOS App Store)
+    if let Ok(resource_dir) = app.path().resource_dir() {
+        let bundled_config = resource_dir.join("katago").join("analysis.cfg");
+        if bundled_config.exists() {
+            return Some(bundled_config);
+        }
     }
 
     // Dev path
@@ -81,6 +97,20 @@ fn resolve_model_path(app: &AppHandle) -> Result<PathBuf, AppError> {
         && let Some(p) = setup::model_path(&dir)
     {
         return Ok(p);
+    }
+
+    // Bundled inside .app/Contents/Resources/katago/ (macOS App Store)
+    if let Ok(resource_dir) = app.path().resource_dir() {
+        let katago_res = resource_dir.join("katago");
+        if let Ok(entries) = std::fs::read_dir(&katago_res) {
+            for entry in entries.flatten() {
+                let name = entry.file_name();
+                let name_str = name.to_string_lossy();
+                if name_str.ends_with(".bin.gz") || name_str.ends_with(".gz") {
+                    return Ok(entry.path());
+                }
+            }
+        }
     }
 
     // Env var override
