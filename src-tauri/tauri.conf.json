@@ -30,12 +30,16 @@
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
-      "icons/128x128@2x.png"
+<<<<<<< HEAD
+      "icons/128x128@2x.png",
+      "icons/icon.icns"
     ],
+    "category": "public.app-category.board-games",
     "macOS": {
-      "entitlements": "entitlements.plist",
-      "signingIdentity": null,
-      "minimumSystemVersion": "13.0"
+      "entitlements": "entitlements/GoSensei.entitlements",
+      "minimumSystemVersion": "11.0",
+      "signingIdentity": "-",
+      "frameworks": []
     }
   }
 }
