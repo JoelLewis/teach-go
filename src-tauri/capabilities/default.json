@@ -9,6 +9,7 @@
     "shell:allow-stdin-write",
     "fs:allow-read-text-file",
     "fs:allow-write-text-file",
+    "fs:allow-app-read",
     "dialog:default"
   ]
 }
