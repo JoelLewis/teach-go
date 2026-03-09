@@ -1,10 +1,9 @@
 <script lang="ts">
   import BoardSvg from "../lib/board/BoardSvg.svelte";
-  import SetupDialog from "../components/SetupDialog.svelte";
   import { boardThemeForName } from "../lib/board/themes";
   import { themeStore } from "../lib/stores/theme.svelte";
   import { settingsStore } from "../lib/stores/settings.svelte";
-  import { setupStore } from "../lib/stores/setup.svelte";
+  import { downloadStore } from "../lib/stores/download.svelte";
   import { tutorialExercises, type TutorialExercise } from "../lib/onboarding/exercises";
   import * as api from "../lib/api/commands";
   import type { StoneColor, StonePosition, GameState } from "../lib/api/types";
@@ -27,8 +26,7 @@
   let calibrationState = $state<GameState | null>(null);
   let calibrationMoveCount = $state(0);
 
-  // Setup state
-  let showSetupDialog = $state(false);
+  // Download state tracking for calibration
   let pendingCalibrationLevel = $state("");
 
   // Profile state
@@ -54,14 +52,22 @@
     }
   }
 
-  async function checkSetupAndCalibrate(level: string) {
-    await setupStore.refresh();
-    if (setupStore.status !== "ready") {
-      pendingCalibrationLevel = level;
-      showSetupDialog = true;
-      return;
+  // Auto-start calibration when KataGo becomes ready
+  $effect(() => {
+    if (downloadStore.katagoReady && pendingCalibrationLevel && step !== "calibration") {
+      startCalibration(pendingCalibrationLevel);
     }
-    startCalibration(level);
+  });
+
+  async function checkSetupAndCalibrate(level: string) {
+    await downloadStore.refresh();
+    if (downloadStore.katagoReady) {
+      startCalibration(level);
+    } else {
+      pendingCalibrationLevel = level;
+      step = "calibration";
+      downloadStore.startListening();
+    }
   }
 
   function handleTutorialClick(row: number, col: number) {
@@ -244,6 +250,38 @@
       </div>
     </div>
 
+  {:else if step === "calibration" && !downloadStore.katagoReady}
+    <div class="flex max-w-md flex-col items-center gap-6 text-center">
+      <h2 class="text-2xl font-bold" style="color: var(--text-primary);">Preparing Calibration</h2>
+      <p class="text-sm" style="color: var(--text-secondary);">
+        Downloading KataGo AI engine. This is a one-time download.
+      </p>
+      {#if downloadStore.katagoDownloading}
+        <div class="w-full max-w-xs">
+          <div class="h-2 w-full overflow-hidden rounded" style="background-color: var(--surface-secondary);">
+            <div class="h-full rounded transition-all duration-300" style="width: {downloadStore.katagoProgress}%; background-color: var(--accent-primary);"></div>
+          </div>
+          <div class="mt-1 text-xs" style="color: var(--text-dim);">{Math.round(downloadStore.katagoProgress)}%</div>
+        </div>
+      {:else if downloadStore.katagoError}
+        <div class="text-sm" style="color: var(--danger);">Download failed: {downloadStore.katagoError}</div>
+        <div class="flex gap-2">
+          <button
+            onclick={() => downloadStore.retry()}
+            class="rounded px-4 py-2 text-sm font-semibold"
+            style="background-color: var(--btn-bg); color: var(--btn-text);"
+          >
+            Retry
+          </button>
+          <button onclick={finishOnboarding} class="rounded px-4 py-2 text-sm" style="background-color: var(--surface-secondary); color: var(--text-secondary);">
+            Skip for now
+          </button>
+        </div>
+      {:else}
+        <div class="text-sm" style="color: var(--text-dim);">Starting download...</div>
+      {/if}
+    </div>
+
   {:else if step === "calibration" && calibrationState}
     <div class="flex gap-6">
       <div class="flex flex-col items-center gap-3">
@@ -300,9 +338,3 @@
   {/if}
 </div>
 
-{#if showSetupDialog}
-  <SetupDialog
-    onComplete={() => { showSetupDialog = false; startCalibration(pendingCalibrationLevel); }}
-    onSkip={() => { showSetupDialog = false; finishOnboarding(); }}
-  />
-{/if}
