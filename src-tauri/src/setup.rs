@@ -1,27 +1,28 @@
 use std::fs;
-use std::io::{self, Read, Write};
+#[cfg(target_os = "linux")]
+use std::io;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use tracing::info;
 
+#[cfg(target_os = "linux")]
 const KATAGO_VERSION: &str = "v1.16.4";
-
 #[cfg(target_os = "linux")]
 const BINARY_ASSET: &str = "katago-v1.16.4-cuda12.1-cudnn8.9.7-linux-x64.zip";
+
+/// Self-hosted Metal build for macOS (no official macOS release exists).
+/// Built via .github/workflows/build-katago.yml and uploaded to GoSensei releases.
 #[cfg(target_os = "macos")]
-const BINARY_ASSET: &str = "katago-v1.16.4-eigenavx2-linux-x64.zip"; // no macOS build in v1.16.4; users should set KATAGO_BINARY
-#[cfg(target_os = "windows")]
-const BINARY_ASSET: &str = "katago-v1.16.4-opencl-windows-x64.zip";
+const MACOS_BINARY_URL: &str =
+    "https://github.com/jlewis/gosensei/releases/download/katago-builds/katago";
 
 const MODEL_URL: &str = "https://media.katagotraining.org/uploaded/networks/models/kata1/kata1-b18c384nbt-s9996604416-d4316597426.bin.gz";
 const MODEL_FILENAME: &str = "kata1-b18c384nbt-s9996604416-d4316597426.bin.gz";
 
 const ANALYSIS_CFG: &[u8] = include_bytes!("../binaries/analysis.cfg");
 
-#[cfg(target_os = "windows")]
-const BINARY_NAME: &str = "katago.exe";
-#[cfg(not(target_os = "windows"))]
 const BINARY_NAME: &str = "katago";
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -58,22 +59,52 @@ pub fn ensure_katago(
 
     let binary_path = katago_dir.join(BINARY_NAME);
     if !binary_path.exists() {
-        let url = format!(
-            "https://github.com/lightvector/KataGo/releases/download/{KATAGO_VERSION}/{BINARY_ASSET}"
-        );
-        info!("Downloading KataGo binary from {url}");
+        #[cfg(target_os = "macos")]
+        {
+            // macOS: download pre-built Metal binary directly (no zip)
+            info!("Downloading KataGo Metal binary from {MACOS_BINARY_URL}");
+            download_file(MACOS_BINARY_URL, &binary_path, |downloaded, total| {
+                on_progress(SetupProgress {
+                    phase: "binary".into(),
+                    downloaded,
+                    total,
+                });
+            })?;
+        }
 
-        let zip_path = katago_dir.join("katago-download.zip");
-        download_file(&url, &zip_path, |downloaded, total| {
-            on_progress(SetupProgress {
-                phase: "binary".into(),
-                downloaded,
-                total,
-            });
-        })?;
+        #[cfg(target_os = "linux")]
+        {
+            // Linux: download zip from official KataGo releases
+            let url = format!(
+                "https://github.com/lightvector/KataGo/releases/download/{KATAGO_VERSION}/{BINARY_ASSET}"
+            );
+            info!("Downloading KataGo binary from {url}");
 
-        extract_katago_binary(&zip_path, &binary_path)?;
-        fs::remove_file(&zip_path).ok();
+            let zip_path = katago_dir.join("katago-download.zip");
+            download_file(&url, &zip_path, |downloaded, total| {
+                on_progress(SetupProgress {
+                    phase: "binary".into(),
+                    downloaded,
+                    total,
+                });
+            })?;
+
+            extract_katago_binary(&zip_path, &binary_path)?;
+            fs::remove_file(&zip_path).ok();
+        }
+
+        // Ad-hoc codesign so macOS doesn't block execution
+        #[cfg(target_os = "macos")]
+        {
+            let output = std::process::Command::new("codesign")
+                .args(["--sign", "-", "--force", binary_path.to_str().unwrap_or_default()])
+                .output();
+            match output {
+                Ok(o) if o.status.success() => info!("Ad-hoc codesigned KataGo binary"),
+                Ok(o) => tracing::warn!("codesign exited {}: {}", o.status, String::from_utf8_lossy(&o.stderr)),
+                Err(e) => tracing::warn!("codesign failed to run: {e}"),
+            }
+        }
 
         #[cfg(unix)]
         {
@@ -82,7 +113,7 @@ pub fn ensure_katago(
                 .map_err(|e| format!("chmod: {e}"))?;
         }
 
-        info!("KataGo binary extracted to {}", binary_path.display());
+        info!("KataGo binary ready at {}", binary_path.display());
     }
 
     let model_path = katago_dir.join(MODEL_FILENAME);
@@ -133,21 +164,30 @@ fn download_file(
     let mut downloaded: u64 = 0;
     let mut buf = [0u8; 65_536];
 
-    loop {
-        let n = reader.read(&mut buf).map_err(|e| format!("read: {e}"))?;
-        if n == 0 {
-            break;
+    let result: Result<(), String> = (|| {
+        loop {
+            let n = reader.read(&mut buf).map_err(|e| format!("read: {e}"))?;
+            if n == 0 {
+                break;
+            }
+            file.write_all(&buf[..n])
+                .map_err(|e| format!("write: {e}"))?;
+            downloaded += n as u64;
+            on_progress(downloaded, total);
         }
-        file.write_all(&buf[..n])
-            .map_err(|e| format!("write: {e}"))?;
-        downloaded += n as u64;
-        on_progress(downloaded, total);
+        file.flush().map_err(|e| format!("flush: {e}"))?;
+        Ok(())
+    })();
+
+    if result.is_err() {
+        // Remove partial file so next attempt starts fresh
+        let _ = fs::remove_file(dest);
     }
 
-    file.flush().map_err(|e| format!("flush: {e}"))?;
-    Ok(())
+    result
 }
 
+#[cfg(target_os = "linux")]
 fn extract_katago_binary(zip_path: &Path, dest: &Path) -> Result<(), String> {
     let file = fs::File::open(zip_path).map_err(|e| format!("open zip: {e}"))?;
     let mut archive = zip::ZipArchive::new(file).map_err(|e| format!("read zip: {e}"))?;
