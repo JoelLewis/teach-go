@@ -238,7 +238,19 @@ pub async fn request_ai_move(
             client.query_fire(query).await?
         };
         // Lock released — await response without holding state.katago
-        rx.await.map_err(|_| AppError::KataGo("Engine response cancelled".into()))?
+        match tokio::time::timeout(std::time::Duration::from_secs(30), rx).await {
+            Ok(Ok(resp)) => resp,
+            Ok(Err(_)) => {
+                let _ = app.emit("ai-thinking", false);
+                return Err(AppError::KataGo("Engine response cancelled".into()));
+            }
+            Err(_) => {
+                let _ = app.emit("ai-thinking", false);
+                return Err(AppError::KataGo(
+                    "AI move timed out after 30 seconds. The engine may be overloaded.".into(),
+                ));
+            }
+        }
     };
 
     // Parse best move
