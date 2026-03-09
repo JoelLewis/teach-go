@@ -1,6 +1,6 @@
 # GoSensei
 
-A free, open-source desktop app that teaches Go (Weiqi/Baduk) to beginners through AI coaching. Built with Rust, Tauri v2, Svelte 5, and Pixi.js.
+A free, open-source desktop app that teaches Go (Weiqi/Baduk) to beginners through AI coaching. Built with Rust, Tauri v2, and Svelte 5.
 
 GoSensei combines KataGo's analysis engine with error classification and natural-language coaching to explain not just *what* went wrong, but *why* — in language calibrated to your level.
 
@@ -13,6 +13,7 @@ GoSensei combines KataGo's analysis engine with error classification and natural
 - **SGF import/export** for games and problem collections
 - **Onboarding flow** with interactive tutorial and calibration game
 - **Two visual themes** (Study and Grid) with animated stone placement
+- **Local AI coaching** via Gemma 3 1B (optional, downloaded on first launch)
 
 ## Prerequisites
 
@@ -33,10 +34,6 @@ Xcode Command Line Tools (Tauri uses WebKit, which ships with macOS):
 ```bash
 xcode-select --install
 ```
-
-### Windows
-
-No additional system dependencies required. WebView2 ships with Windows 10+.
 
 ## Getting Started
 
@@ -67,7 +64,7 @@ gosensei/
     gosensei-coaching/   # Error classification, severity, coaching templates
     gosensei-llm/        # Local LLM coaching (Gemma 3 1B, optional)
   src-tauri/             # Tauri app: IPC commands, SQLite state, KataGo setup
-  src/                   # Svelte 5 frontend: Pixi.js board, stores, views
+  src/                   # Svelte 5 frontend: SVG board, stores, views
 ```
 
 ## Testing
@@ -90,8 +87,7 @@ GoSensei downloads platform-appropriate KataGo binaries automatically:
 | Platform | Backend | Notes |
 |----------|---------|-------|
 | Linux | CUDA 12 | Requires NVIDIA GPU + drivers |
-| macOS | Eigen (CPU) | Works on all Macs |
-| Windows | OpenCL | Works with NVIDIA and AMD GPUs |
+| macOS | Metal (GPU) | Requires macOS 13+ |
 
 You can also provide your own KataGo binary via the `KATAGO_BINARY` environment variable, or place it on your system PATH.
 
