@@ -206,5 +206,16 @@ pub fn get_download_status() -> DownloadStatus {
 
 #[tauri::command]
 pub async fn retry_downloads(app_handle: tauri::AppHandle) {
+    // Reset error states so UI shows "starting" immediately
+    {
+        let mut s = global_status().lock().unwrap();
+        if matches!(s.katago, DownloadState::Error { .. }) {
+            s.katago = DownloadState::NotInstalled;
+        }
+        if matches!(s.llm, DownloadState::Error { .. }) {
+            s.llm = DownloadState::NotInstalled;
+        }
+    }
+    emit_status(&app_handle);
     run_initial_downloads(app_handle).await;
 }
