@@ -221,12 +221,15 @@ export type LlmDownloadProgress = {
 
 export type LlmStatus = "not_installed" | "ready" | "loading" | "disabled";
 
-// --- KataGo Setup ---
+// --- Download Manager ---
 
-export type KataGoSetupProgress = {
-  phase: "binary" | "model" | "done";
-  downloaded: number;
-  total: number;
+export type DownloadState =
+  | { state: "not_installed" }
+  | { state: "downloading"; progress: number; phase: string }
+  | { state: "ready" }
+  | { state: "error"; message: string };
+
+export type DownloadStatus = {
+  katago: DownloadState;
+  llm: DownloadState;
 };
-
-export type KataGoStatus = "not_installed" | "partial" | "ready";

@@ -1,0 +1,41 @@
+name: Build KataGo (Metal, macOS arm64)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout KataGo
+        uses: actions/checkout@v4
+        with:
+          repository: lightvector/KataGo
+          ref: v1.16.4
+
+      - name: Install dependencies
+        run: brew install ninja cmake
+
+      - name: Configure CMake
+        run: cmake -S cpp -B build -G Ninja -DUSE_BACKEND=METAL -DCMAKE_OSX_ARCHITECTURES=arm64
+
+      - name: Build
+        run: ninja -C build
+
+      - name: Verify binary
+        run: file build/katago
+
+      - name: Checkout GoSensei (for release context)
+        uses: actions/checkout@v4
+        with:
+          path: gosensei
+
+      - name: Upload KataGo binary as release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: katago-builds
+          name: KataGo Builds
+          files: build/katago
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

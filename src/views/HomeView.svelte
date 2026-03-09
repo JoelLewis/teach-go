@@ -1,9 +1,10 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import NewGameDialog from "../components/NewGameDialog.svelte";
   import SettingsDialog from "../components/SettingsDialog.svelte";
   import { settingsStore } from "../lib/stores/settings.svelte";
   import { themeStore } from "../lib/stores/theme.svelte";
+  import { downloadStore } from "../lib/stores/download.svelte";
   import * as api from "../lib/api/commands";
   import type { SavedGame, NewGameConfig, ThemeName } from "../lib/api/types";
 
@@ -33,11 +34,17 @@
   }
 
   onMount(async () => {
+    downloadStore.startListening();
+    downloadStore.refresh();
     try {
       recentGames = await api.listGames();
     } catch {
       // Silently fail — no games yet is fine
     }
+  });
+
+  onDestroy(() => {
+    downloadStore.cleanup();
   });
 
   function formatResult(result: string): string {
@@ -88,6 +95,43 @@
       </button>
     </div>
   </div>
+
+  {#if downloadStore.anyDownloading}
+    <div class="w-full max-w-md rounded p-3 text-sm" style="background-color: color-mix(in srgb, var(--info) 10%, transparent); color: var(--text-secondary);">
+      {#if downloadStore.katagoDownloading}
+        <div class="flex items-center gap-2">
+          <span class="inline-block h-3 w-3 animate-spin rounded-full border-2 border-t-transparent" style="border-color: var(--info); border-top-color: transparent;"></span>
+          Downloading KataGo... {Math.round(downloadStore.katagoProgress)}%
+        </div>
+      {:else if downloadStore.llmDownloading}
+        <div class="flex items-center gap-2">
+          <span class="inline-block h-3 w-3 animate-spin rounded-full border-2 border-t-transparent" style="border-color: var(--info); border-top-color: transparent;"></span>
+          Downloading AI coach... {Math.round(downloadStore.llmProgress)}%
+        </div>
+      {/if}
+      <div class="mt-1 h-1.5 w-full overflow-hidden rounded" style="background-color: var(--surface-secondary);">
+        <div class="h-full rounded transition-all duration-300" style="width: {downloadStore.katagoDownloading ? downloadStore.katagoProgress : downloadStore.llmProgress}%; background-color: var(--accent-primary);"></div>
+      </div>
+    </div>
+  {/if}
+
+  {#if downloadStore.katagoError || downloadStore.llmError}
+    <div class="w-full max-w-md rounded p-3 text-sm" style="background-color: color-mix(in srgb, var(--danger) 10%, transparent); color: var(--danger);">
+      {#if downloadStore.katagoError}
+        <div>KataGo download failed: {downloadStore.katagoError}</div>
+      {/if}
+      {#if downloadStore.llmError}
+        <div>AI coach download failed: {downloadStore.llmError}</div>
+      {/if}
+      <button
+        onclick={() => downloadStore.retry()}
+        class="mt-2 rounded px-3 py-1 text-xs font-semibold"
+        style="background-color: var(--btn-bg); color: var(--btn-text);"
+      >
+        Retry
+      </button>
+    </div>
+  {/if}
 
   <p class="max-w-md text-center text-sm" style="color: var(--text-dim);">
     Choose your board size and color, then let GoSensei guide you.

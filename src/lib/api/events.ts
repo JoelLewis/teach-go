@@ -1,5 +1,5 @@
 import { listen } from "@tauri-apps/api/event";
-import type { CoachingStreamChunk, KataGoSetupProgress, LlmDownloadProgress, ReviewProgress } from "./types";
+import type { CoachingStreamChunk, DownloadStatus, LlmDownloadProgress, ReviewProgress } from "./types";
 
 export type EngineStatus = "starting" | "ready" | "error" | "stopped";
 
@@ -35,18 +35,18 @@ export function onCoachingStream(
   }).then((unlisten) => unlisten);
 }
 
-export function onKataGoSetupProgress(
-  callback: (progress: KataGoSetupProgress) => void,
-): Promise<() => void> {
-  return listen<KataGoSetupProgress>("katago-setup-progress", (event) => {
-    callback(event.payload);
-  }).then((unlisten) => unlisten);
-}
-
 export function onLlmDownloadProgress(
   callback: (progress: LlmDownloadProgress) => void,
 ): Promise<() => void> {
   return listen<LlmDownloadProgress>("llm-download-progress", (event) => {
+    callback(event.payload);
+  }).then((unlisten) => unlisten);
+}
+
+export function onDownloadProgress(
+  callback: (status: DownloadStatus) => void,
+): Promise<() => void> {
+  return listen<DownloadStatus>("download-progress", (event) => {
     callback(event.payload);
   }).then((unlisten) => unlisten);
 }

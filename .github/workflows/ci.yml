@@ -15,7 +15,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -58,7 +58,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -92,6 +92,6 @@ jobs:
         if: runner.os == 'Linux'
         run: xvfb-run npm run test:e2e
 
-      - name: Run E2E tests (Windows)
-        if: runner.os == 'Windows'
+      - name: Run E2E tests (macOS)
+        if: runner.os == 'macOS'
         run: npm run test:e2e

@@ -9,10 +9,7 @@ const projectRoot = path.resolve(__dirname, "../..");
 let tauriDriver: ChildProcess | null = null;
 let shuttingDown = false;
 
-// Platform-specific binary name
-const appBinary = process.platform === "win32"
-  ? path.join(projectRoot, "src-tauri", "target", "release", "gosensei-app.exe")
-  : path.join(projectRoot, "src-tauri", "target", "release", "gosensei-app");
+const appBinary = path.join(projectRoot, "src-tauri", "target", "release", "gosensei-app");
 
 export const config: WebdriverIO.Config = {
   runner: "local",
@@ -48,7 +45,7 @@ export const config: WebdriverIO.Config = {
       os.homedir(),
       ".cargo",
       "bin",
-      process.platform === "win32" ? "tauri-driver.exe" : "tauri-driver",
+      "tauri-driver",
     );
 
     tauriDriver = spawn(driverPath, [], {

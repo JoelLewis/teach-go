@@ -2,6 +2,7 @@ mod coaching_db;
 mod commands;
 mod convert;
 mod db;
+mod download_manager;
 mod error;
 mod generate;
 mod import;
@@ -42,6 +43,13 @@ pub fn run() {
             let conn = db::init_db(&db_path.to_string_lossy())?;
             problem::seed_problems_if_empty(&conn)?;
             app.manage(AppState::with_db(conn));
+
+            // Spawn background downloads for KataGo + LLM
+            let handle = app.handle().clone();
+            tokio::spawn(async move {
+                download_manager::run_initial_downloads(handle).await;
+            });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -54,8 +62,6 @@ pub fn run() {
             commands::game::load_saved_game,
             commands::game::get_game_position,
             commands::game::check_difficulty_suggestion,
-            commands::katago::get_katago_status,
-            commands::katago::setup_katago,
             commands::katago::start_engine,
             commands::katago::stop_engine,
             commands::katago::request_ai_move,
@@ -84,6 +90,8 @@ pub fn run() {
             commands::problem::import_problems_from_sgf,
             commands::llm::init_llm_model,
             commands::llm::get_llm_status,
+            download_manager::get_download_status,
+            download_manager::retry_downloads,
         ])
         .run(tauri::generate_context!())
         .expect("error while running GoSensei");

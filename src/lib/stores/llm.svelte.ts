@@ -5,7 +5,7 @@ import { onLlmDownloadProgress } from "../api/events";
 export const llmStore = createLlmStore();
 
 function createLlmStore() {
-  let status = $state<LlmStatus>("disabled");
+  let status = $state<LlmStatus>("not_installed");
   let downloadProgress = $state<LlmDownloadProgress | null>(null);
   let error = $state<string | null>(null);
   let unlisten: (() => void) | null = null;

@@ -111,33 +111,6 @@ fn resolve_model_path(app: &AppHandle) -> Result<PathBuf, AppError> {
 }
 
 #[tauri::command]
-pub fn get_katago_status(app: AppHandle) -> Result<setup::KataGoStatus, AppError> {
-    // If we can resolve both binary and model from any source, it's ready
-    if resolve_binary_path(&app).is_ok() && resolve_model_path(&app).is_ok() {
-        return Ok(setup::KataGoStatus::Ready);
-    }
-    let dir = katago_dir(&app)?;
-    Ok(setup::setup_status(&dir))
-}
-
-#[tauri::command]
-pub async fn setup_katago(app: AppHandle) -> Result<setup::KataGoStatus, AppError> {
-    let dir = katago_dir(&app)?;
-    let app_clone = app.clone();
-
-    tokio::task::spawn_blocking(move || {
-        setup::ensure_katago(&dir, |progress| {
-            let _ = app_clone.emit("katago-setup-progress", progress);
-        })
-    })
-    .await
-    .map_err(|e| AppError::KataGo(format!("task join: {e}")))?
-    .map_err(AppError::KataGo)?;
-
-    Ok(setup::KataGoStatus::Ready)
-}
-
-#[tauri::command]
 pub async fn start_engine(state: State<'_, AppState>, app: AppHandle) -> Result<setup::KataGoStatus, AppError> {
     let mut katago = state.katago.lock().await;
 

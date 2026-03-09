@@ -5,7 +5,6 @@ import type {
   GameResult,
   GameState,
   HintData,
-  KataGoStatus,
   LlmStatus,
   ProblemState,
   ProblemStats,
@@ -174,16 +173,6 @@ export async function importProblemsFromSgf(): Promise<ImportProblemResult | nul
   return invoke("import_problems_from_sgf");
 }
 
-// --- KataGo Setup ---
-
-export async function getKataGoStatus(): Promise<KataGoStatus> {
-  return invoke("get_katago_status");
-}
-
-export async function setupKataGo(): Promise<KataGoStatus> {
-  return invoke("setup_katago");
-}
-
 // --- LLM Coaching ---
 
 export async function initLlmModel(): Promise<string> {
@@ -192,4 +181,16 @@ export async function initLlmModel(): Promise<string> {
 
 export async function getLlmStatus(): Promise<LlmStatus> {
   return invoke("get_llm_status");
+}
+
+// --- Download Manager ---
+
+import type { DownloadStatus } from "./types";
+
+export async function getDownloadStatus(): Promise<DownloadStatus> {
+  return invoke("get_download_status");
+}
+
+export async function retryDownloads(): Promise<void> {
+  return invoke("retry_downloads");
 }

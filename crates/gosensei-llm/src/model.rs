@@ -29,7 +29,7 @@ const N_CTX: u32 = 512;
 /// Manages a loaded LLM model. `LlamaModel` is `Send+Sync`, so this can live in an `Arc`.
 /// `LlamaContext` is `!Send`, so each `generate()` call creates a fresh context.
 /// Clone is cheap — both fields are `Arc`.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ModelManager {
     backend: Arc<LlamaBackend>,
     model: Arc<LlamaModel>,

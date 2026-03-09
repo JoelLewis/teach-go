@@ -50,13 +50,8 @@ pub fn ensure_model(model_dir: &Path, on_progress: impl Fn(u64, u64)) -> Result<
     if downloaded_path != model_path {
         // If hf-hub stored it somewhere else, create a symlink
         if !model_path.exists() {
-            #[cfg(unix)]
-            std::os::unix::fs::symlink(&downloaded_path, &model_path)
+                std::os::unix::fs::symlink(&downloaded_path, &model_path)
                 .map_err(|e| LlmError::DownloadFailed(format!("symlink: {e}")))?;
-
-            #[cfg(not(unix))]
-            std::fs::copy(&downloaded_path, &model_path)
-                .map_err(|e| LlmError::DownloadFailed(format!("copy: {e}")))?;
         }
     }
 

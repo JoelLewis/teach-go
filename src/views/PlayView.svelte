@@ -5,10 +5,9 @@
   import MoveHistory from "../components/MoveHistory.svelte";
   import CoachingPanel from "../components/CoachingPanel.svelte";
   import DifficultyPrompt from "../components/DifficultyPrompt.svelte";
-  import SetupDialog from "../components/SetupDialog.svelte";
   import ScoreBar from "../components/ScoreBar.svelte";
   import { gameStore } from "../lib/stores/game.svelte";
-  import { setupStore } from "../lib/stores/setup.svelte";
+  import { downloadStore } from "../lib/stores/download.svelte";
   import { coachingStore } from "../lib/stores/coaching.svelte";
   import { engineStore } from "../lib/stores/engine.svelte";
   import { settingsStore } from "../lib/stores/settings.svelte";
@@ -35,7 +34,6 @@
   let difficultySuggestion = $state<DifficultySuggestion | null>(null);
   let difficultyChecked = $state(false);
   let engineError = $state<string | null>(null);
-  let showSetupDialog = $state(false);
   let pendingUnlisteners: Array<Promise<() => void>> = [];
 
   const noop = () => {};
@@ -67,14 +65,23 @@
       }),
     );
 
+    downloadStore.startListening();
+    downloadStore.refresh();
     checkSetupAndStart();
 
     return () => {
       for (const p of pendingUnlisteners) {
         p.then((unlisten) => unlisten()).catch(() => {});
       }
-      setupStore.cleanup();
+      downloadStore.cleanup();
     };
+  });
+
+  // Auto-start game when KataGo becomes ready
+  $effect(() => {
+    if (downloadStore.katagoReady && !gameStore.state) {
+      startNewGame();
+    }
   });
 
   // Check for difficulty suggestion when game finishes (once per game)
@@ -86,12 +93,11 @@
   });
 
   async function checkSetupAndStart() {
-    await setupStore.refresh();
-    if (setupStore.status !== "ready") {
-      showSetupDialog = true;
-      return;
+    await downloadStore.refresh();
+    if (downloadStore.katagoReady) {
+      startNewGame();
     }
-    startNewGame();
+    // If not ready, the $effect above will start the game when KataGo finishes downloading
   }
 
   async function startNewGame() {
@@ -329,6 +335,29 @@
       </button>
     </div>
 
+    {#if !downloadStore.katagoReady}
+      <div class="rounded p-3 text-sm" style="background-color: color-mix(in srgb, var(--info) 15%, transparent); color: var(--info);">
+        {#if downloadStore.katagoDownloading}
+          <div class="mb-1 font-semibold">Downloading KataGo{downloadStore.katagoPhase ? ` (${downloadStore.katagoPhase})` : ""}...</div>
+          <div class="h-2 w-full overflow-hidden rounded" style="background-color: var(--surface-secondary);">
+            <div class="h-full rounded transition-all duration-300" style="width: {downloadStore.katagoProgress}%; background-color: var(--accent-primary);"></div>
+          </div>
+          <div class="mt-1 text-xs" style="color: var(--text-dim);">{Math.round(downloadStore.katagoProgress)}%</div>
+        {:else if downloadStore.katagoError}
+          <div style="color: var(--danger);">Download failed: {downloadStore.katagoError}</div>
+          <button
+            onclick={() => downloadStore.retry()}
+            class="mt-2 rounded px-3 py-1 text-xs font-semibold"
+            style="background-color: var(--btn-bg); color: var(--btn-text);"
+          >
+            Retry
+          </button>
+        {:else}
+          <div>Waiting for KataGo download...</div>
+        {/if}
+      </div>
+    {/if}
+
     {#if gameStore.state}
       <div class="text-sm" style="color: var(--text-secondary);">
         <span
@@ -420,13 +449,6 @@
     {/if}
   </div>
 </div>
-
-{#if showSetupDialog}
-  <SetupDialog
-    onComplete={() => { showSetupDialog = false; startNewGame(); }}
-    onSkip={() => { showSetupDialog = false; startNewGame(); }}
-  />
-{/if}
 
 {#if difficultySuggestion}
   <DifficultyPrompt
