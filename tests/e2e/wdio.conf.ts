@@ -9,7 +9,7 @@ const projectRoot = path.resolve(__dirname, "../..");
 let tauriDriver: ChildProcess | null = null;
 let shuttingDown = false;
 
-const appBinary = path.join(projectRoot, "src-tauri", "target", "release", "gosensei-app");
+const appBinary = path.join(projectRoot, "target", "release", "gosensei-app");
 
 export const config: WebdriverIO.Config = {
   runner: "local",
