@@ -59,10 +59,7 @@ pub fn setup_status(katago_dir: &Path) -> KataGoStatus {
 }
 
 /// Download KataGo binary + model, write analysis.cfg. Calls `on_progress` throughout.
-pub fn ensure_katago(
-    katago_dir: &Path,
-    on_progress: impl Fn(SetupProgress),
-) -> Result<(), String> {
+pub fn ensure_katago(katago_dir: &Path, on_progress: impl Fn(SetupProgress)) -> Result<(), String> {
     fs::create_dir_all(katago_dir).map_err(|e| format!("create dir: {e}"))?;
 
     let binary_path = katago_dir.join(BINARY_NAME);
@@ -110,7 +107,11 @@ pub fn ensure_katago(
                 .output();
             match output {
                 Ok(o) if o.status.success() => info!("Ad-hoc codesigned KataGo binary"),
-                Ok(o) => tracing::warn!("codesign exited {}: {}", o.status, String::from_utf8_lossy(&o.stderr)),
+                Ok(o) => tracing::warn!(
+                    "codesign exited {}: {}",
+                    o.status,
+                    String::from_utf8_lossy(&o.stderr)
+                ),
                 Err(e) => tracing::warn!("codesign failed to run: {e}"),
             }
         }
@@ -153,11 +154,7 @@ pub fn ensure_katago(
     Ok(())
 }
 
-fn download_file(
-    url: &str,
-    dest: &Path,
-    on_progress: impl Fn(u64, u64),
-) -> Result<(), String> {
+fn download_file(url: &str, dest: &Path, on_progress: impl Fn(u64, u64)) -> Result<(), String> {
     let response = reqwest::blocking::Client::builder()
         .timeout(std::time::Duration::from_secs(600))
         .build()
@@ -203,9 +200,7 @@ fn extract_katago_binary(zip_path: &Path, dest: &Path) -> Result<(), String> {
     let mut archive = zip::ZipArchive::new(file).map_err(|e| format!("read zip: {e}"))?;
 
     for i in 0..archive.len() {
-        let mut entry = archive
-            .by_index(i)
-            .map_err(|e| format!("zip entry: {e}"))?;
+        let mut entry = archive.by_index(i).map_err(|e| format!("zip entry: {e}"))?;
 
         let name = entry.name().to_string();
         let is_katago = name.ends_with(BINARY_NAME) && !name.contains("__MACOSX");
@@ -231,7 +226,9 @@ fn verify_sha256(path: &Path, expected: Option<&str>) -> Result<(), String> {
     let mut hasher = Sha256::new();
     let mut buf = [0u8; 65_536];
     loop {
-        let n = file.read(&mut buf).map_err(|e| format!("read for verify: {e}"))?;
+        let n = file
+            .read(&mut buf)
+            .map_err(|e| format!("read for verify: {e}"))?;
         if n == 0 {
             break;
         }

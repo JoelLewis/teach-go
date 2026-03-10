@@ -35,7 +35,10 @@ fn global_status() -> &'static Arc<Mutex<DownloadStatus>> {
 }
 
 pub fn get_status() -> DownloadStatus {
-    global_status().lock().unwrap_or_else(|e| e.into_inner()).clone()
+    global_status()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone()
 }
 
 fn emit_status(app_handle: &tauri::AppHandle) {
