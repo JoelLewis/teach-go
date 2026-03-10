@@ -35,7 +35,10 @@ fn global_status() -> &'static Arc<Mutex<DownloadStatus>> {
 }
 
 pub fn get_status() -> DownloadStatus {
-    global_status().lock().unwrap().clone()
+    global_status()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone()
 }
 
 fn emit_status(app_handle: &tauri::AppHandle) {
@@ -64,7 +67,7 @@ pub async fn run_initial_downloads(app_handle: tauri::AppHandle) {
     if needs_download {
         info!("KataGo not installed, starting download…");
         {
-            let mut s = global_status().lock().unwrap();
+            let mut s = global_status().lock().unwrap_or_else(|e| e.into_inner());
             s.katago = DownloadState::Downloading {
                 progress: 0.0,
                 phase: "starting".into(),
@@ -81,7 +84,7 @@ pub async fn run_initial_downloads(app_handle: tauri::AppHandle) {
                 } else {
                     0.0
                 };
-                let mut s = global_status().lock().unwrap();
+                let mut s = global_status().lock().unwrap_or_else(|e| e.into_inner());
                 s.katago = DownloadState::Downloading {
                     progress,
                     phase: sp.phase.clone(),
@@ -96,19 +99,19 @@ pub async fn run_initial_downloads(app_handle: tauri::AppHandle) {
         match result {
             Ok(Ok(())) => {
                 info!("KataGo download complete");
-                let mut s = global_status().lock().unwrap();
+                let mut s = global_status().lock().unwrap_or_else(|e| e.into_inner());
                 s.katago = DownloadState::Ready;
             }
             Ok(Err(e)) => {
                 tracing::error!("KataGo download failed: {e}");
-                let mut s = global_status().lock().unwrap();
+                let mut s = global_status().lock().unwrap_or_else(|e| e.into_inner());
                 s.katago = DownloadState::Error {
                     message: e.to_string(),
                 };
             }
             Err(e) => {
                 tracing::error!("KataGo download task panicked: {e}");
-                let mut s = global_status().lock().unwrap();
+                let mut s = global_status().lock().unwrap_or_else(|e| e.into_inner());
                 s.katago = DownloadState::Error {
                     message: format!("task panicked: {e}"),
                 };
@@ -117,7 +120,7 @@ pub async fn run_initial_downloads(app_handle: tauri::AppHandle) {
         emit_status(&app_handle);
     } else {
         info!("KataGo already installed");
-        let mut s = global_status().lock().unwrap();
+        let mut s = global_status().lock().unwrap_or_else(|e| e.into_inner());
         s.katago = DownloadState::Ready;
         drop(s);
         emit_status(&app_handle);
@@ -131,7 +134,7 @@ pub async fn run_initial_downloads(app_handle: tauri::AppHandle) {
         if !model_path.exists() {
             info!("LLM model not found, starting download…");
             {
-                let mut s = global_status().lock().unwrap();
+                let mut s = global_status().lock().unwrap_or_else(|e| e.into_inner());
                 s.llm = DownloadState::Downloading {
                     progress: 0.0,
                     phase: "model".into(),
@@ -148,7 +151,7 @@ pub async fn run_initial_downloads(app_handle: tauri::AppHandle) {
                     } else {
                         0.0
                     };
-                    let mut s = global_status().lock().unwrap();
+                    let mut s = global_status().lock().unwrap_or_else(|e| e.into_inner());
                     s.llm = DownloadState::Downloading {
                         progress,
                         phase: "model".into(),
@@ -163,19 +166,19 @@ pub async fn run_initial_downloads(app_handle: tauri::AppHandle) {
             match result {
                 Ok(Ok(_)) => {
                     info!("LLM model download complete");
-                    let mut s = global_status().lock().unwrap();
+                    let mut s = global_status().lock().unwrap_or_else(|e| e.into_inner());
                     s.llm = DownloadState::Ready;
                 }
                 Ok(Err(e)) => {
                     tracing::error!("LLM download failed: {e}");
-                    let mut s = global_status().lock().unwrap();
+                    let mut s = global_status().lock().unwrap_or_else(|e| e.into_inner());
                     s.llm = DownloadState::Error {
                         message: e.to_string(),
                     };
                 }
                 Err(e) => {
                     tracing::error!("LLM download task panicked: {e}");
-                    let mut s = global_status().lock().unwrap();
+                    let mut s = global_status().lock().unwrap_or_else(|e| e.into_inner());
                     s.llm = DownloadState::Error {
                         message: format!("task panicked: {e}"),
                     };
@@ -184,7 +187,7 @@ pub async fn run_initial_downloads(app_handle: tauri::AppHandle) {
             emit_status(&app_handle);
         } else {
             info!("LLM model already present");
-            let mut s = global_status().lock().unwrap();
+            let mut s = global_status().lock().unwrap_or_else(|e| e.into_inner());
             s.llm = DownloadState::Ready;
             drop(s);
             emit_status(&app_handle);
@@ -193,7 +196,7 @@ pub async fn run_initial_downloads(app_handle: tauri::AppHandle) {
 
     #[cfg(not(feature = "llm"))]
     {
-        let mut s = global_status().lock().unwrap();
+        let mut s = global_status().lock().unwrap_or_else(|e| e.into_inner());
         s.llm = DownloadState::Ready;
         drop(s);
         emit_status(&app_handle);
@@ -211,7 +214,7 @@ pub fn get_download_status() -> DownloadStatus {
 pub async fn retry_downloads(app_handle: tauri::AppHandle) {
     // Reset error states so UI shows "starting" immediately
     {
-        let mut s = global_status().lock().unwrap();
+        let mut s = global_status().lock().unwrap_or_else(|e| e.into_inner());
         if matches!(s.katago, DownloadState::Error { .. }) {
             s.katago = DownloadState::NotInstalled;
         }

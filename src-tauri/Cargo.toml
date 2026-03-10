@@ -28,6 +28,7 @@ gosensei-katago = { path = "../crates/gosensei-katago" }
 gosensei-coaching = { path = "../crates/gosensei-coaching" }
 gosensei-llm = { path = "../crates/gosensei-llm", optional = true }
 reqwest = { version = "0.12", features = ["blocking"] }
+sha2 = "0.10"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 which = "7"
 zip = "2"

@@ -125,7 +125,10 @@ fn resolve_model_path(app: &AppHandle) -> Result<PathBuf, AppError> {
 }
 
 #[tauri::command]
-pub async fn start_engine(state: State<'_, AppState>, app: AppHandle) -> Result<setup::KataGoStatus, AppError> {
+pub async fn start_engine(
+    state: State<'_, AppState>,
+    app: AppHandle,
+) -> Result<setup::KataGoStatus, AppError> {
     info!("start_engine command invoked");
     let mut katago = state.katago.lock().await;
 
