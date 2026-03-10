@@ -5,6 +5,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use tracing::info;
 
 #[cfg(target_os = "linux")]
@@ -22,6 +23,13 @@ const MODEL_URL: &str = "https://media.katagotraining.org/uploaded/networks/mode
 const MODEL_FILENAME: &str = "kata1-b18c384nbt-s9996604416-d4316597426.bin.gz";
 
 const ANALYSIS_CFG: &[u8] = include_bytes!("../binaries/analysis.cfg");
+
+/// Expected SHA256 digests for integrity verification.
+/// Set via environment variables at build time. When set, downloads are verified
+/// after completion. Update these when upgrading KataGo or the model.
+#[cfg(target_os = "macos")]
+const KATAGO_BINARY_SHA256: Option<&str> = option_env!("KATAGO_BINARY_SHA256");
+const MODEL_SHA256: Option<&str> = option_env!("KATAGO_MODEL_SHA256");
 
 const BINARY_NAME: &str = "katago";
 
@@ -70,6 +78,7 @@ pub fn ensure_katago(
                     total,
                 });
             })?;
+            verify_sha256(&binary_path, KATAGO_BINARY_SHA256)?;
         }
 
         #[cfg(target_os = "linux")]
@@ -97,7 +106,7 @@ pub fn ensure_katago(
         #[cfg(target_os = "macos")]
         {
             let output = std::process::Command::new("codesign")
-                .args(["--sign", "-", "--force", binary_path.to_str().unwrap_or_default()])
+                .args(["--sign", "-", "--force", &binary_path.to_string_lossy()])
                 .output();
             match output {
                 Ok(o) if o.status.success() => info!("Ad-hoc codesigned KataGo binary"),
@@ -126,6 +135,7 @@ pub fn ensure_katago(
                 total,
             });
         })?;
+        verify_sha256(&model_path, MODEL_SHA256)?;
         info!("Model saved to {}", model_path.display());
     }
 
@@ -208,6 +218,36 @@ fn extract_katago_binary(zip_path: &Path, dest: &Path) -> Result<(), String> {
     }
 
     Err("katago binary not found in zip archive".into())
+}
+
+/// Verify a file's SHA256 digest against an expected hex string.
+/// Returns Ok(()) if the digest matches or if no expected digest is provided.
+fn verify_sha256(path: &Path, expected: Option<&str>) -> Result<(), String> {
+    let Some(expected_hex) = expected else {
+        return Ok(());
+    };
+
+    let mut file = fs::File::open(path).map_err(|e| format!("open for verify: {e}"))?;
+    let mut hasher = Sha256::new();
+    let mut buf = [0u8; 65_536];
+    loop {
+        let n = file.read(&mut buf).map_err(|e| format!("read for verify: {e}"))?;
+        if n == 0 {
+            break;
+        }
+        hasher.update(&buf[..n]);
+    }
+    let digest = format!("{:x}", hasher.finalize());
+    if digest != expected_hex {
+        // Remove the corrupted file
+        let _ = fs::remove_file(path);
+        return Err(format!(
+            "SHA256 mismatch for {}: expected {expected_hex}, got {digest}",
+            path.display()
+        ));
+    }
+    info!("SHA256 verified for {}", path.display());
+    Ok(())
 }
 
 /// Path to the downloaded binary, if present.

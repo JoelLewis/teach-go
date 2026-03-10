@@ -25,6 +25,7 @@
   // Calibration state
   let calibrationState = $state<GameState | null>(null);
   let calibrationMoveCount = $state(0);
+  let calibrationMovePending = $state(false);
 
   // Download state tracking for calibration
   let pendingCalibrationLevel = $state("");
@@ -112,6 +113,8 @@
 
   async function handleCalibrationMove(row: number, col: number) {
     if (!calibrationState || calibrationState.phase !== "Playing") return;
+    if (calibrationMovePending) return;
+    calibrationMovePending = true;
     try {
       calibrationState = await api.playMove(row, col);
       calibrationMoveCount++;
@@ -121,6 +124,8 @@
       }
     } catch (e) {
       console.error("Calibration move failed:", e);
+    } finally {
+      calibrationMovePending = false;
     }
   }
 
