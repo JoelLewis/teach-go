@@ -1,5 +1,5 @@
 <script lang="ts">
-  import BoardSvg from "../lib/board/BoardSvg.svelte";
+  import BoardSvg, { type Highlight } from "../lib/board/BoardSvg.svelte";
   import { boardThemeForName } from "../lib/board/themes";
   import { themeStore } from "../lib/stores/theme.svelte";
   import { settingsStore } from "../lib/stores/settings.svelte";
@@ -21,10 +21,14 @@
   // Tutorial state
   let tutorialIndex = $state(0);
   let tutorialFeedback = $state<string | null>(null);
+  let tutorialBusy = $state(false);
+  let tutorialStones = $state<StonePosition[]>([]);
 
   // Calibration state
   let calibrationState = $state<GameState | null>(null);
   let calibrationMoveCount = $state(0);
+  let calibrationBusy = $state(false);
+  let calibrationError = $state<string | null>(null);
 
   // Download state tracking for calibration
   let pendingCalibrationLevel = $state("");
@@ -34,12 +38,22 @@
 
   const currentExercise = $derived(tutorialExercises[tutorialIndex] ?? null);
 
-  const tutorialStones = $derived<StonePosition[]>(
-    currentExercise
-      ? [
-          ...currentExercise.setupBlack.map(([row, col]) => ({ row, col, color: "black" as StoneColor })),
-          ...currentExercise.setupWhite.map(([row, col]) => ({ row, col, color: "white" as StoneColor })),
-        ]
+  // Reset tutorial stones when exercise changes
+  $effect(() => {
+    const ex = currentExercise;
+    if (ex) {
+      tutorialStones = [
+        ...ex.setupBlack.map(([row, col]) => ({ row, col, color: "black" as StoneColor })),
+        ...ex.setupWhite.map(([row, col]) => ({ row, col, color: "white" as StoneColor })),
+      ];
+    } else {
+      tutorialStones = [];
+    }
+  });
+
+  const tutorialHints = $derived<Highlight[]>(
+    currentExercise && !tutorialBusy
+      ? [{ type: "candidates", points: [currentExercise.correctMove] }]
       : [],
   );
 
@@ -54,7 +68,7 @@
 
   // Auto-start calibration when KataGo becomes ready
   $effect(() => {
-    if (downloadStore.katagoReady && pendingCalibrationLevel && step !== "calibration") {
+    if (downloadStore.katagoReady && pendingCalibrationLevel && !calibrationState) {
       startCalibration(pendingCalibrationLevel);
     }
   });
@@ -66,17 +80,33 @@
     } else {
       pendingCalibrationLevel = level;
       step = "calibration";
-      downloadStore.startListening();
+      await downloadStore.startListening();
     }
   }
 
   function handleTutorialClick(row: number, col: number) {
-    if (!currentExercise) return;
+    if (!currentExercise || tutorialBusy) return;
     const [cr, cc] = currentExercise.correctMove;
     if (row === cr && col === cc) {
+      tutorialBusy = true;
+      // Place the player's stone
+      tutorialStones = [
+        ...tutorialStones,
+        { row, col, color: currentExercise.playerColor },
+      ];
+      // Remove captured stones
+      if (currentExercise.captures.length > 0) {
+        const captureSet = new Set(
+          currentExercise.captures.map(([r, c]) => `${r},${c}`),
+        );
+        tutorialStones = tutorialStones.filter(
+          (s) => !captureSet.has(`${s.row},${s.col}`),
+        );
+      }
       tutorialFeedback = currentExercise.successMessage;
       setTimeout(() => {
         tutorialFeedback = null;
+        tutorialBusy = false;
         if (tutorialIndex < tutorialExercises.length - 1) {
           tutorialIndex++;
         } else {
@@ -84,8 +114,21 @@
         }
       }, 2500);
     } else {
+      tutorialBusy = true;
       tutorialFeedback = "Not quite — try again!";
-      setTimeout(() => (tutorialFeedback = null), 1500);
+      setTimeout(() => {
+        tutorialFeedback = null;
+        tutorialBusy = false;
+      }, 3000);
+    }
+  }
+
+  function skipExercise() {
+    if (tutorialBusy) return;
+    if (tutorialIndex < tutorialExercises.length - 1) {
+      tutorialIndex++;
+    } else {
+      checkSetupAndCalibrate("never");
     }
   }
 
@@ -98,11 +141,15 @@
           ? "intermediate"
           : "advanced";
     try {
+      console.log("[CALIBRATION] Starting with strength:", strength);
       const settings = { ...settingsStore.value, ai_strength: strength };
       await api.updateSettings(settings);
       settingsStore.update(settings);
+      console.log("[CALIBRATION] Settings updated, starting engine...");
       await api.startEngine();
+      console.log("[CALIBRATION] Engine started, creating game...");
       calibrationState = await api.newGame(9, 6.5, "black");
+      console.log("[CALIBRATION] Game created, phase:", calibrationState?.phase);
       calibrationMoveCount = 0;
     } catch (e) {
       console.error("Failed to start calibration:", e);
@@ -111,16 +158,51 @@
   }
 
   async function handleCalibrationMove(row: number, col: number) {
-    if (!calibrationState || calibrationState.phase !== "Playing") return;
+    if (!calibrationState || calibrationState.phase !== "Playing" || calibrationBusy) return;
+    calibrationBusy = true;
+    calibrationError = null;
     try {
+      console.log("[CALIBRATION] Playing move...");
       calibrationState = await api.playMove(row, col);
       calibrationMoveCount++;
+      console.log("[CALIBRATION] Move played, phase:", calibrationState.phase);
       if (calibrationState.phase === "Playing") {
-        calibrationState = await api.requestAiMove();
-        calibrationMoveCount++;
+        try {
+          calibrationState = await api.requestAiMove();
+          console.log("[CALIBRATION] AI moved, phase:", calibrationState.phase);
+        } catch (aiErr) {
+          console.error("[CALIBRATION] AI move failed:", aiErr);
+          calibrationError = "AI couldn't respond — you can keep playing or end calibration.";
+        }
       }
     } catch (e) {
-      console.error("Calibration move failed:", e);
+      console.error("[CALIBRATION] Move failed:", e);
+      calibrationError = "Move failed — try again.";
+    } finally {
+      calibrationBusy = false;
+    }
+  }
+
+  async function handleCalibrationPass() {
+    if (!calibrationState || calibrationState.phase !== "Playing" || calibrationBusy) return;
+    calibrationBusy = true;
+    calibrationError = null;
+    try {
+      calibrationState = await api.passTurn();
+      calibrationMoveCount++;
+      if (calibrationState.phase === "Playing") {
+        try {
+          calibrationState = await api.requestAiMove();
+        } catch (aiErr) {
+          console.error("[CALIBRATION] AI move failed after pass:", aiErr);
+          calibrationError = "AI couldn't respond — you can keep playing or end calibration.";
+        }
+      }
+    } catch (e) {
+      console.error("[CALIBRATION] Pass failed:", e);
+      calibrationError = "Pass failed — try again.";
+    } finally {
+      calibrationBusy = false;
     }
   }
 
@@ -132,6 +214,12 @@
       profileRank = 25;
     }
     step = "profile";
+  }
+
+  function difficultyLabel(level: string): string {
+    if (level === "ranked") return "advanced";
+    if (level === "casual") return "intermediate";
+    return "beginner";
   }
 
   async function finishOnboarding() {
@@ -233,19 +321,30 @@
           stones={tutorialStones}
           currentColor={currentExercise.playerColor}
           lastMove={null}
+          highlights={tutorialHints}
           theme={boardThemeForName(themeStore.active)}
           onIntersectionClick={handleTutorialClick}
         />
         {#if tutorialFeedback}
           <div
-            class="rounded px-4 py-2 text-sm font-medium"
+            class="max-w-xs rounded px-4 py-2 text-sm font-medium"
             style="background-color: var(--panel-bg); color: {tutorialFeedback.startsWith('Not') ? 'var(--danger)' : 'var(--success)'};"
           >
             {tutorialFeedback}
           </div>
         {/if}
-        <div class="text-xs" style="color: var(--text-dim);">
-          Exercise {tutorialIndex + 1} of {tutorialExercises.length}
+        <div class="flex items-center gap-3">
+          <span class="text-xs" style="color: var(--text-dim);">
+            Exercise {tutorialIndex + 1} of {tutorialExercises.length}
+          </span>
+          <button
+            onclick={skipExercise}
+            disabled={tutorialBusy}
+            class="text-xs underline disabled:opacity-50"
+            style="color: var(--text-dim);"
+          >
+            Skip
+          </button>
         </div>
       </div>
     </div>
@@ -298,8 +397,24 @@
           theme={boardThemeForName(themeStore.active)}
           onIntersectionClick={handleCalibrationMove}
         />
+        {#if calibrationError}
+          <div class="rounded px-4 py-2 text-sm" style="background-color: var(--panel-bg); color: var(--danger);">
+            {calibrationError}
+          </div>
+        {/if}
+        {#if calibrationBusy}
+          <div class="text-xs" style="color: var(--text-dim);">Thinking...</div>
+        {/if}
         <div class="flex items-center gap-3">
-          <span class="text-xs" style="color: var(--text-dim);">Move {calibrationMoveCount}</span>
+          <span class="text-xs" style="color: var(--text-dim);">Your moves: {calibrationMoveCount}</span>
+          <button
+            onclick={handleCalibrationPass}
+            disabled={calibrationBusy}
+            class="rounded px-3 py-1 text-xs disabled:opacity-50"
+            style="background-color: var(--surface-secondary); color: var(--text-secondary);"
+          >
+            Pass
+          </button>
           {#if calibrationMoveCount >= 10}
             <button
               onclick={endCalibration}
@@ -324,7 +439,7 @@
       </div>
       <p class="text-sm" style="color: var(--text-secondary);">
         We recommend starting with <strong style="color: var(--text-primary);">9x9 games</strong> at
-        <strong style="color: var(--text-primary);">{experienceLevel === "ranked" ? "advanced" : "beginner"} difficulty</strong>.
+        <strong style="color: var(--text-primary);">{difficultyLabel(experienceLevel)} difficulty</strong>.
         GoSensei will adjust as you improve.
       </p>
       <button
@@ -337,4 +452,3 @@
     </div>
   {/if}
 </div>
-
