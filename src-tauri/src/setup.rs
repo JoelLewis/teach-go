@@ -16,7 +16,7 @@ const BINARY_ASSET: &str = "katago-v1.16.4-cuda12.1-cudnn8.9.7-linux-x64.zip";
 /// Built via .github/workflows/build-katago.yml and uploaded to GoSensei releases.
 #[cfg(target_os = "macos")]
 const MACOS_BINARY_URL: &str =
-    "https://github.com/jlewis/gosensei/releases/download/katago-builds/katago";
+    "https://github.com/JoelLewis/teach-go/releases/download/katago-builds/katago";
 
 const MODEL_URL: &str = "https://media.katagotraining.org/uploaded/networks/models/kata1/kata1-b18c384nbt-s9996604416-d4316597426.bin.gz";
 const MODEL_FILENAME: &str = "kata1-b18c384nbt-s9996604416-d4316597426.bin.gz";

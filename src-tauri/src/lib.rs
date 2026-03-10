@@ -46,7 +46,7 @@ pub fn run() {
 
             // Spawn background downloads for KataGo + LLM
             let handle = app.handle().clone();
-            tokio::spawn(async move {
+            tauri::async_runtime::spawn(async move {
                 download_manager::run_initial_downloads(handle).await;
             });
 

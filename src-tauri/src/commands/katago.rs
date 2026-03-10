@@ -91,6 +91,20 @@ fn resolve_model_path(app: &AppHandle) -> Result<PathBuf, AppError> {
         }
     }
 
+    // Homebrew model path (macOS)
+    #[cfg(target_os = "macos")]
+    {
+        let homebrew_dir = PathBuf::from("/opt/homebrew/share/katago");
+        if let Ok(entries) = std::fs::read_dir(&homebrew_dir) {
+            for entry in entries.flatten() {
+                let name = entry.file_name();
+                if name.to_string_lossy().ends_with(".bin.gz") {
+                    return Ok(entry.path());
+                }
+            }
+        }
+    }
+
     // Dev path — look for any .bin.gz model file
     if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
         let binaries_dir = PathBuf::from(manifest_dir).join("binaries");
@@ -112,9 +126,11 @@ fn resolve_model_path(app: &AppHandle) -> Result<PathBuf, AppError> {
 
 #[tauri::command]
 pub async fn start_engine(state: State<'_, AppState>, app: AppHandle) -> Result<setup::KataGoStatus, AppError> {
+    info!("start_engine command invoked");
     let mut katago = state.katago.lock().await;
 
     if katago.is_some() {
+        info!("Engine already running");
         return Ok(setup::KataGoStatus::Ready);
     }
 
@@ -122,7 +138,9 @@ pub async fn start_engine(state: State<'_, AppState>, app: AppHandle) -> Result<
     info!("Starting KataGo engine...");
 
     let binary_path = resolve_binary_path(&app)?;
+    info!("Resolved binary: {}", binary_path.display());
     let model_path = resolve_model_path(&app)?;
+    info!("Resolved model: {}", model_path.display());
     let config_path = resolve_config_path(&app);
 
     info!("KataGo binary: {}", binary_path.display());

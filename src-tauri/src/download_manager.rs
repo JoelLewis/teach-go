@@ -57,8 +57,11 @@ pub async fn run_initial_downloads(app_handle: tauri::AppHandle) {
     let katago_dir = app_data_dir.join("katago");
 
     // --- KataGo ---
+    // If system katago exists on PATH, we still need the model, but treat binary as present
+    let has_system_binary = which::which("katago").is_ok();
     let katago_status = crate::setup::setup_status(&katago_dir);
-    if katago_status != KataGoStatus::Ready {
+    let needs_download = katago_status != KataGoStatus::Ready && !has_system_binary;
+    if needs_download {
         info!("KataGo not installed, starting download…");
         {
             let mut s = global_status().lock().unwrap();

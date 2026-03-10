@@ -54,6 +54,7 @@ pub fn new_game(
     komi: Option<f32>,
     player_color: Option<String>,
 ) -> Result<GameState, AppError> {
+    tracing::info!("new_game: board_size={board_size}, komi={komi:?}, player_color={player_color:?}");
     let size = BoardSize::try_from(board_size).map_err(AppError::Other)?;
     let game = Game::new(size, komi.unwrap_or(6.5));
     let game_state = game.to_state();
@@ -77,6 +78,7 @@ pub fn new_game(
 
 #[tauri::command]
 pub fn play_move(state: State<'_, AppState>, row: u8, col: u8) -> Result<GameState, AppError> {
+    tracing::info!("play_move: row={row}, col={col}");
     let mut game_lock = state.game.lock().unwrap();
     let game = game_lock
         .as_mut()

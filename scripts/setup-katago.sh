@@ -21,7 +21,7 @@ case "$PLATFORM" in
     ;;
   darwin|macos)
     # Self-hosted Metal build (no official macOS release exists)
-    KATAGO_URL="https://github.com/jlewis/gosensei/releases/download/katago-builds/katago"
+    KATAGO_URL="https://github.com/JoelLewis/teach-go/releases/download/katago-builds/katago"
     BINARY_NAME="katago"
     DIRECT_BINARY=true
     ;;
