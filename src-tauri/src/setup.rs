@@ -34,6 +34,7 @@ const MODEL_SHA256: Option<&str> = option_env!("KATAGO_MODEL_SHA256");
 const BINARY_NAME: &str = "katago";
 
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct SetupProgress {
     pub phase: String,
     pub downloaded: u64,
@@ -103,7 +104,7 @@ pub fn ensure_katago(katago_dir: &Path, on_progress: impl Fn(SetupProgress)) -> 
         #[cfg(target_os = "macos")]
         {
             let output = std::process::Command::new("codesign")
-                .args(["--sign", "-", "--force", &binary_path.to_string_lossy()])
+                .args(["--sign", "-", "--force", "--options", "runtime", &binary_path.to_string_lossy()])
                 .output();
             match output {
                 Ok(o) if o.status.success() => info!("Ad-hoc codesigned KataGo binary"),

@@ -4,6 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GoSensei</title>
+    <script>
+      (function () {
+        var theme = localStorage.getItem("gosensei-theme") || "study";
+        document.documentElement.dataset.theme = theme;
+      })();
+    </script>
     <link rel="stylesheet" href="/src/app.css" />
   </head>
   <body>

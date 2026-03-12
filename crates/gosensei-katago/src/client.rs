@@ -1,10 +1,13 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 
 use tokio::sync::{Mutex, mpsc, oneshot};
 
 use crate::process::{KataGoProcess, ProcessError};
 use crate::protocol::{AnalysisQuery, AnalysisResponse};
+
+const DEFAULT_QUERY_TIMEOUT: Duration = Duration::from_secs(30);
 
 #[derive(Debug, thiserror::Error)]
 pub enum ClientError {
@@ -48,11 +51,28 @@ impl KataGoClient {
         Self { stdin_tx, pending }
     }
 
-    /// Send a query and wait for the response.
+    /// Send a query and wait for the response with a default 30s timeout.
     pub async fn query(&self, query: AnalysisQuery) -> Result<AnalysisResponse, ClientError> {
+        self.query_with_timeout(query, DEFAULT_QUERY_TIMEOUT).await
+    }
+
+    /// Send a query and wait for the response with a custom timeout.
+    pub async fn query_with_timeout(
+        &self,
+        query: AnalysisQuery,
+        timeout: Duration,
+    ) -> Result<AnalysisResponse, ClientError> {
         let id = query.id.clone();
         let rx = self.query_fire(query).await?;
-        rx.await.map_err(|_| ClientError::Timeout(id))
+        match tokio::time::timeout(timeout, rx).await {
+            Ok(Ok(resp)) => Ok(resp),
+            Ok(Err(_)) => Err(ClientError::Timeout(id)),
+            Err(_) => {
+                // Remove the pending entry so it doesn't leak
+                self.pending.lock().await.remove(&id);
+                Err(ClientError::Timeout(id))
+            }
+        }
     }
 
     /// Send a query and return the receiver for later collection.
@@ -67,13 +87,13 @@ impl KataGoClient {
         let (tx, rx) = oneshot::channel();
         {
             let mut pending = self.pending.lock().await;
-            pending.insert(id, tx);
+            pending.insert(id.clone(), tx);
         }
 
-        self.stdin_tx
-            .send(json)
-            .await
-            .map_err(|e| ClientError::Process(ProcessError::Communication(e.to_string())))?;
+        if let Err(e) = self.stdin_tx.send(json).await {
+            self.pending.lock().await.remove(&id);
+            return Err(ClientError::Process(ProcessError::Communication(e.to_string())));
+        }
 
         Ok(rx)
     }

@@ -138,6 +138,7 @@ pub fn get_game_position(
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct SavedGame {
     pub id: i64,
     pub board_size: u8,
@@ -179,6 +180,7 @@ pub fn load_saved_game(state: State<'_, AppState>, game_id: i64) -> Result<GameS
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct DifficultySuggestion {
     pub direction: String, // "up" or "down"
     pub message: String,

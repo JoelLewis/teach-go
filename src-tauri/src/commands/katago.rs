@@ -13,6 +13,11 @@ use crate::state::AppState;
 
 const MAX_VISITS: u32 = 200;
 
+// Architecture note: KataGo is downloaded at runtime (see setup.rs) rather than
+// bundled via Tauri's externalBin. This keeps the app binary small (~15MB vs ~80MB)
+// and allows engine updates independent of app releases. The trade-off is a first-run
+// download step, handled by the setup/download_manager modules.
+
 fn katago_dir(app: &AppHandle) -> Result<PathBuf, AppError> {
     Ok(app
         .path()
@@ -220,7 +225,7 @@ pub async fn request_ai_move(
     // Build and send query (async — no std mutex held)
     let query_id = format!("ai-move-{}", history.len());
     let query = convert::build_query(
-        query_id, &history, board_size, komi, MAX_VISITS, profile, None,
+        query_id.clone(), &history, board_size, komi, MAX_VISITS, profile.clone(), None,
     );
 
     let response = {
@@ -239,10 +244,44 @@ pub async fn request_ai_move(
                 return Err(AppError::KataGo("Engine response cancelled".into()));
             }
             Err(_) => {
-                let _ = app.emit("ai-thinking", false);
-                return Err(AppError::KataGo(
-                    "AI move timed out after 30 seconds. The engine may be overloaded.".into(),
-                ));
+                // Engine may be hung — reset and retry once
+                warn!("AI move timed out, restarting engine for retry");
+                {
+                    let mut katago = state.katago.lock().await;
+                    *katago = None;
+                }
+                if let Err(e) = start_engine(state.clone(), app.clone()).await {
+                    let _ = app.emit("ai-thinking", false);
+                    return Err(AppError::KataGo(format!(
+                        "AI move timed out and engine restart failed: {e}"
+                    )));
+                }
+                // Retry the query once
+                let retry_query = convert::build_query(
+                    format!("{query_id}-retry"),
+                    &history,
+                    board_size,
+                    komi,
+                    MAX_VISITS,
+                    profile,
+                    None,
+                );
+                let retry_rx = {
+                    let katago = state.katago.lock().await;
+                    let client = katago
+                        .as_ref()
+                        .ok_or(AppError::KataGo("Engine not available after restart".into()))?;
+                    client.query_fire(retry_query).await?
+                };
+                match tokio::time::timeout(std::time::Duration::from_secs(30), retry_rx).await {
+                    Ok(Ok(resp)) => resp,
+                    _ => {
+                        let _ = app.emit("ai-thinking", false);
+                        return Err(AppError::KataGo(
+                            "AI move timed out after retry. The engine may be overloaded.".into(),
+                        ));
+                    }
+                }
             }
         }
     };

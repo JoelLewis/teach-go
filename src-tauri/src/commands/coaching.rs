@@ -117,9 +117,16 @@ pub async fn get_coaching_feedback(
         }
     };
 
-    let response = standard_rx
-        .await
-        .map_err(|_| AppError::KataGo("coaching query dropped".into()))?;
+    let response = match tokio::time::timeout(
+        std::time::Duration::from_secs(30),
+        standard_rx,
+    )
+    .await
+    {
+        Ok(Ok(resp)) => resp,
+        Ok(Err(_)) => return Err(AppError::KataGo("coaching query dropped".into())),
+        Err(_) => return Err(AppError::KataGo("coaching analysis timed out after 30s".into())),
+    };
 
     // Await Human SL responses concurrently (non-fatal)
     #[cfg(feature = "llm")]
@@ -310,6 +317,7 @@ pub async fn get_coaching_feedback(
 
 #[cfg(feature = "llm")]
 #[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
 struct CoachingStreamChunk {
     move_number: u16,
     text_delta: String,
@@ -393,8 +401,8 @@ async fn try_llm_coaching(
     let app_for_stream = app.clone();
     let mn = move_number;
 
-    // Run generation in blocking task (LlamaContext is !Send)
-    let raw_output = tokio::task::spawn_blocking(move || {
+    // Run generation in blocking task (LlamaContext is !Send) with 30s timeout
+    let generation_future = tokio::task::spawn_blocking(move || {
         manager.generate_streaming(&prompt, 150, |piece| {
             let _ = app_for_stream.emit(
                 "coaching-stream",
@@ -405,10 +413,18 @@ async fn try_llm_coaching(
                 },
             );
         })
-    })
+    });
+    let raw_output = match tokio::time::timeout(
+        std::time::Duration::from_secs(30),
+        generation_future,
+    )
     .await
-    .map_err(|e| AppError::Llm(format!("task join: {e}")))?
-    .map_err(|e| AppError::Llm(e.to_string()))?;
+    {
+        Ok(join_result) => join_result
+            .map_err(|e| AppError::Llm(format!("task join: {e}")))?
+            .map_err(|e| AppError::Llm(e.to_string()))?,
+        Err(_) => return Err(AppError::Llm("LLM generation timed out after 30s".into())),
+    };
 
     // Signal stream completion
     let _ = app.emit(
