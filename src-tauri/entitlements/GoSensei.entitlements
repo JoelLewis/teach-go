@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Required for Mac App Store -->
+    <key>com.apple.security.app-sandbox</key>
+    <true/>
+
+    <!-- Network access for downloading KataGo binary and model on first launch -->
+    <key>com.apple.security.network.client</key>
+    <true/>
+
+    <!-- File access for SGF import/export via open/save dialogs -->
+    <key>com.apple.security.files.user-selected.read-write</key>
+    <true/>
+
+    <!-- Allow spawning the bundled KataGo helper binary -->
+    <key>com.apple.security.temporary-exception.mach-lookup.global-name</key>
+    <string>com.gosensei.app.katago</string>
+</dict>
+</plist>
