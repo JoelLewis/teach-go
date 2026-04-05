@@ -172,11 +172,10 @@ body,
     font-size: 0.875rem;
     font-weight: 500;
     font-family: system-ui, -apple-system, sans-serif;
-    transition: opacity 0.15s ease, background-color 0.15s ease;
+    transition: opacity 0.15s ease, background-color 0.15s ease, filter 0.15s ease;
     min-height: 2.75rem;
     cursor: pointer;
   }
-  .btn:hover { opacity: 0.9; }
   .btn:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
 
   .btn-primary {
@@ -196,6 +195,15 @@ body,
     color: var(--text-secondary);
   }
   .btn-ghost:hover { background-color: var(--surface-secondary); opacity: 1; }
+  .btn-primary:hover {
+    background-color: var(--btn-hover);
+  }
+  .btn-secondary:hover {
+    background-color: var(--surface-card);
+  }
+  .btn-danger:hover {
+    filter: brightness(1.15);
+  }
 
   .btn-sm {
     padding: 0.375rem 0.75rem;
