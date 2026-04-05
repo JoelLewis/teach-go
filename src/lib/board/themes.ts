@@ -51,19 +51,16 @@ export const studyBoardTheme: BoardTheme = {
 };
 
 export const gridBoardTheme: BoardTheme = {
-  boardColor: 0x0a0a0f,
-  lineColor: 0x1e3a5f,
+  boardColor: 0x111318,
+  lineColor: 0x2a3040,
   lineWidth: 1,
   starPointRadius: 2.5,
-  stoneBlack: 0x1a1a2e,
-  stoneWhite: 0xe0e0e8,
-  stoneStroke: 0x00e5ff,
+  stoneBlack: 0x1a1c24,
+  stoneWhite: 0xe2e4e8,
+  stoneStroke: 0xd4764e,
   hoverAlpha: 0.4,
-  coordinateColor: 0x5a5a7a,
-  lastMoveIndicator: 0x00e5ff,
-  glowLines: true,
-  glowColor: 0x00e5ff,
-  pulsingStarPoints: true,
+  coordinateColor: 0x5c6170,
+  lastMoveIndicator: 0xd4764e,
   rimLightStones: true,
 };
 
