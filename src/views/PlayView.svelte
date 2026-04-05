@@ -333,9 +333,9 @@
   }
 </script>
 
-<div class="flex h-full">
+<div class="flex h-full flex-col lg:flex-row">
   <!-- Board area -->
-  <div class="flex flex-1 items-center justify-center p-4">
+  <div class="flex flex-1 min-w-0 min-h-[50vh] lg:min-h-0 items-center justify-center p-4">
     {#if displayState}
       <div class="relative">
         <BoardSvg
@@ -366,7 +366,7 @@
   </div>
 
   <!-- Right panel -->
-  <div class="flex w-80 flex-col gap-4 border-l p-4" style="border-color: var(--panel-border);">
+  <div class="flex w-full lg:w-80 flex-col gap-4 border-t lg:border-t-0 lg:border-l overflow-y-auto max-h-[50vh] lg:max-h-none p-4" style="border-color: var(--panel-border);">
     <div class="flex items-center justify-between">
       <h2 class="text-lg font-semibold" style="color: var(--text-primary);">Game</h2>
       <button
