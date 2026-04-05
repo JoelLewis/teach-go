@@ -207,7 +207,7 @@
   </div>
 
   <!-- Right panel -->
-  <div class="flex w-full lg:w-80 flex-col gap-3 border-t lg:border-t-0 lg:border-l overflow-y-auto max-h-[50vh] lg:max-h-none p-4" style="border-color: var(--panel-border);">
+  <div class="flex w-full lg:w-80 flex-col gap-4 border-t lg:border-t-0 lg:border-l overflow-y-auto max-h-[50vh] lg:max-h-none p-4" style="border-color: var(--panel-border);">
     <div class="flex items-center justify-between">
       <h2 class="text-lg font-semibold" style="color: var(--text-primary);">Game Review</h2>
       <button
@@ -268,76 +268,83 @@
     {/if}
 
     {#if reviewStore.data}
-      <!-- Win-rate chart -->
-      <WinRateChart
-        analyses={reviewStore.data.move_analyses}
-        currentMove={reviewStore.currentMove}
-        topMistakes={reviewStore.data.top_mistakes}
-        onMoveSelect={handleMoveSelect}
-      />
+      <!-- Navigation controls + move analysis (tightly related) -->
+      <div class="flex flex-col gap-2">
+        <ReviewControls
+          currentMove={reviewStore.currentMove}
+          totalMoves={reviewStore.data.total_moves}
+          hasMistakes={reviewStore.data.top_mistakes.length > 0}
+          onFirst={() => reviewStore.goToMove(0)}
+          onPrev={() => reviewStore.prevMove()}
+          onNext={() => reviewStore.nextMove()}
+          onLast={() => reviewStore.goToMove(reviewStore.data!.total_moves)}
+          onPrevMistake={() => reviewStore.prevMistake()}
+          onNextMistake={() => reviewStore.nextMistake()}
+        />
 
-      <!-- Navigation controls -->
-      <ReviewControls
-        currentMove={reviewStore.currentMove}
-        totalMoves={reviewStore.data.total_moves}
-        hasMistakes={reviewStore.data.top_mistakes.length > 0}
-        onFirst={() => reviewStore.goToMove(0)}
-        onPrev={() => reviewStore.prevMove()}
-        onNext={() => reviewStore.nextMove()}
-        onLast={() => reviewStore.goToMove(reviewStore.data!.total_moves)}
-        onPrevMistake={() => reviewStore.prevMistake()}
-        onNextMistake={() => reviewStore.nextMistake()}
-      />
+        <!-- Move annotation panel -->
+        <ReviewMovePanel analysis={reviewStore.currentAnalysis} />
 
-      <!-- Territory toggle -->
-      <button
-        onclick={() => reviewStore.toggleOwnership()}
-        class="btn btn-sm {reviewStore.showOwnership ? 'btn-primary' : 'btn-secondary'}"
-      >
-        {reviewStore.showOwnership ? 'Hide' : 'Show'} Territory
-      </button>
+        <!-- Alternative moves from SGF variations -->
+        {#if reviewStore.variations.length > 0}
+          <div class="rounded p-3 text-sm" style="background: var(--panel-bg);">
+            <h3 class="mb-1 text-xs font-semibold" style="color: var(--text-secondary);">Alternative Moves</h3>
+            {#each reviewStore.variations as v}
+              <div class="flex items-center gap-2" style="color: var(--text-secondary);">
+                <span class="font-mono" style="color: var(--accent-primary);">
+                  {String.fromCharCode(65 + (v.col >= 8 ? v.col + 1 : v.col))}{boardState ? boardState.board_size - v.row : ""}
+                </span>
+                {#if v.comment}
+                  <span class="truncate" style="color: var(--text-secondary);">{v.comment}</span>
+                {/if}
+                <span class="text-xs" style="color: var(--text-dim);">({v.continuation_length} moves)</span>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
 
-      <!-- Move annotation panel -->
-      <ReviewMovePanel analysis={reviewStore.currentAnalysis} />
+      <!-- Win-rate chart (different section — extra breathing room above) -->
+      <div class="flex flex-col gap-4 mt-1">
+        <WinRateChart
+          analyses={reviewStore.data.move_analyses}
+          currentMove={reviewStore.currentMove}
+          topMistakes={reviewStore.data.top_mistakes}
+          onMoveSelect={handleMoveSelect}
+        />
+      </div>
 
-      <!-- Alternative moves from SGF variations -->
-      {#if reviewStore.variations.length > 0}
-        <div class="rounded p-3 text-sm" style="background: var(--panel-bg);">
-          <h3 class="mb-1 text-xs font-semibold" style="color: var(--text-secondary);">Alternative Moves</h3>
-          {#each reviewStore.variations as v}
-            <div class="flex items-center gap-2" style="color: var(--text-secondary);">
-              <span class="font-mono" style="color: var(--accent-primary);">
-                {String.fromCharCode(65 + (v.col >= 8 ? v.col + 1 : v.col))}{boardState ? boardState.board_size - v.row : ""}
-              </span>
-              {#if v.comment}
-                <span class="truncate" style="color: var(--text-secondary);">{v.comment}</span>
-              {/if}
-              <span class="text-xs" style="color: var(--text-dim);">({v.continuation_length} moves)</span>
-            </div>
-          {/each}
-        </div>
-      {/if}
-
-      <!-- Summary stats -->
-      {#if reviewStore.data.top_mistakes.length > 0}
-        <div class="rounded p-2 text-xs" style="background: var(--panel-bg); color: var(--text-secondary);">
-          Top mistakes at moves: {reviewStore.data.top_mistakes.join(", ")}
-        </div>
-
-        <!-- Generate problems from mistakes -->
+      <!-- Action buttons (territory + generate) -->
+      <div class="flex flex-col gap-4">
+        <!-- Territory toggle -->
         <button
-          onclick={handleGenerateProblems}
-          disabled={generatingProblems}
-          class="btn btn-sm"
-          style="background-color: var(--accent-secondary); color: white;"
+          onclick={() => reviewStore.toggleOwnership()}
+          class="btn btn-sm {reviewStore.showOwnership ? 'btn-primary' : 'btn-secondary'}"
         >
-          {generatingProblems
-            ? "Generating..."
-            : generatedCount !== null
-              ? `Generated ${generatedCount} problems`
-              : "Generate Practice Problems"}
+          {reviewStore.showOwnership ? 'Hide' : 'Show'} Territory
         </button>
-      {/if}
+
+        <!-- Summary stats + generate -->
+        {#if reviewStore.data.top_mistakes.length > 0}
+          <div class="rounded p-2 text-xs" style="background: var(--panel-bg); color: var(--text-secondary);">
+            Top mistakes at moves: {reviewStore.data.top_mistakes.join(", ")}
+          </div>
+
+          <!-- Generate problems from mistakes -->
+          <button
+            onclick={handleGenerateProblems}
+            disabled={generatingProblems}
+            class="btn btn-sm"
+            style="background-color: var(--accent-secondary); color: white;"
+          >
+            {generatingProblems
+              ? "Generating..."
+              : generatedCount !== null
+                ? `Generated ${generatedCount} problems`
+                : "Generate Practice Problems"}
+          </button>
+        {/if}
+      </div>
     {:else if !isAnalyzing && !error}
       <div class="text-sm" style="color: var(--text-dim);">Starting analysis...</div>
     {/if}

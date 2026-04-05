@@ -334,41 +334,43 @@
     </div>
 
     <!-- Right panel -->
-    <div class="flex w-72 flex-col gap-3 border-l p-4" style="border-color: var(--panel-border);">
+    <div class="flex w-72 flex-col gap-4 border-l p-4" style="border-color: var(--panel-border);">
       <div class="flex items-center justify-between">
         <h2 class="text-sm font-semibold" style="color: var(--text-secondary);">{categoryLabel(problemStore.state.category)}</h2>
         <button
           onclick={handleGoHome}
-          class="text-sm"
+          class="text-sm transition-opacity hover:opacity-70"
           style="color: var(--text-secondary);"
         >
           Home
         </button>
       </div>
 
-      <!-- Prompt -->
-      <p class="text-lg font-medium" style="color: var(--text-primary);">{problemStore.state.prompt}</p>
+      <!-- Problem info: prompt + status + feedback -->
+      <div class="flex flex-col gap-2">
+        <p class="text-lg font-medium" style="color: var(--text-primary);">{problemStore.state.prompt}</p>
 
-      <!-- Status badge -->
-      {#if problemStore.state.status === "Solved"}
-        <div class="rounded px-3 py-1.5 text-center text-sm font-semibold" style="background-color: color-mix(in srgb, var(--success) 20%, transparent); color: var(--success);">
-          Solved!
-        </div>
-      {:else if problemStore.state.status === "Failed"}
-        <div class="rounded px-3 py-1.5 text-center text-sm font-semibold" style="background-color: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger);">
-          Failed
-        </div>
-      {/if}
+        <!-- Status badge -->
+        {#if problemStore.state.status === "Solved"}
+          <div class="rounded px-3 py-1.5 text-center text-sm font-semibold" style="background-color: color-mix(in srgb, var(--success) 20%, transparent); color: var(--success);">
+            Solved!
+          </div>
+        {:else if problemStore.state.status === "Failed"}
+          <div class="rounded px-3 py-1.5 text-center text-sm font-semibold" style="background-color: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger);">
+            Failed
+          </div>
+        {/if}
 
-      <!-- Feedback -->
-      {#if problemStore.feedback}
-        <p class="text-sm font-medium" style="color: {feedbackColor};">
-          {problemStore.feedback}
-        </p>
-      {/if}
+        <!-- Feedback -->
+        {#if problemStore.feedback}
+          <p class="text-sm font-medium" style="color: {feedbackColor};">
+            {problemStore.feedback}
+          </p>
+        {/if}
+      </div>
 
-      <!-- Hints -->
       {#if problemStore.state.status === "InProgress"}
+        <!-- Hints section (gap-4 from problem info via parent gap-4) -->
         <div class="flex flex-col gap-1.5">
           <p class="text-xs font-semibold" style="color: var(--text-dim);">Hints</p>
           <div class="flex gap-2">
@@ -391,36 +393,37 @@
               Answer
             </button>
           </div>
+
+          <!-- Hint display -->
+          {#if problemStore.hintData && problemStore.hintData.type !== "None"}
+            <div class="rounded px-3 py-2 text-xs" style="background-color: color-mix(in srgb, var(--accent-primary) 20%, transparent); color: var(--accent-primary);">
+              {#if problemStore.hintData.type === "Area"}
+                Look in rows {problemStore.hintData.min_row + 1}-{problemStore.hintData.max_row + 1},
+                columns {problemStore.hintData.min_col + 1}-{problemStore.hintData.max_col + 1}
+              {:else if problemStore.hintData.type === "Candidates"}
+                Candidate points: {problemStore.hintData.points.map(([r, c]) => `(${r + 1},${c + 1})`).join(", ")}
+              {:else if problemStore.hintData.type === "Answer"}
+                {problemStore.hintData.message}
+                {#if problemStore.hintData.point}
+                  — ({problemStore.hintData.point[0] + 1},{problemStore.hintData.point[1] + 1})
+                {/if}
+              {/if}
+            </div>
+          {/if}
         </div>
 
-        <!-- Hint display -->
-        {#if problemStore.hintData && problemStore.hintData.type !== "None"}
-          <div class="rounded px-3 py-2 text-xs" style="background-color: color-mix(in srgb, var(--accent-primary) 20%, transparent); color: var(--accent-primary);">
-            {#if problemStore.hintData.type === "Area"}
-              Look in rows {problemStore.hintData.min_row + 1}-{problemStore.hintData.max_row + 1},
-              columns {problemStore.hintData.min_col + 1}-{problemStore.hintData.max_col + 1}
-            {:else if problemStore.hintData.type === "Candidates"}
-              Candidate points: {problemStore.hintData.points.map(([r, c]) => `(${r + 1},${c + 1})`).join(", ")}
-            {:else if problemStore.hintData.type === "Answer"}
-              {problemStore.hintData.message}
-              {#if problemStore.hintData.point}
-                — ({problemStore.hintData.point[0] + 1},{problemStore.hintData.point[1] + 1})
-              {/if}
-            {/if}
-          </div>
-        {/if}
-
+        <!-- Skip action (gap-5 from hints: outer gap-4 + mt-1) -->
         <button
           onclick={handleSkip}
-          class="btn btn-secondary btn-sm mt-2"
+          class="btn btn-secondary btn-sm mt-1"
         >
           Skip
         </button>
       {:else}
-        <!-- Problem finished — show next button -->
+        <!-- Problem finished — next action (gap-5 from problem info: outer gap-4 + mt-1) -->
         <button
           onclick={handleNextProblem}
-          class="btn mt-2"
+          class="btn mt-1"
           style="background-color: var(--accent-secondary); color: white;"
         >
           Next Problem
