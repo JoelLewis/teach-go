@@ -55,7 +55,7 @@
     <h1 class="text-2xl font-bold" style="color: var(--text-primary);">Progress</h1>
     <button
       onclick={onGoHome}
-      class="text-sm"
+      class="text-sm transition-opacity hover:opacity-70"
       style="color: var(--text-secondary);"
     >
       Home
@@ -74,8 +74,7 @@
       </p>
       <button
         onclick={onGoHome}
-        class="mt-6 rounded-lg px-6 py-3 text-sm font-semibold"
-        style="background: var(--btn-bg); color: var(--btn-text);"
+        class="btn btn-primary mt-6"
       >
         Start Playing
       </button>

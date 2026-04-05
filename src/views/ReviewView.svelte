@@ -212,7 +212,8 @@
       <h2 class="text-lg font-semibold" style="color: var(--text-primary);">Game Review</h2>
       <button
         onclick={handleGoHome}
-        class="text-sm" style="color: var(--text-secondary);"
+        class="text-sm transition-opacity hover:opacity-70"
+        style="color: var(--text-secondary);"
       >
         Home
       </button>
@@ -230,8 +231,7 @@
           <div style="color: var(--danger);">Download failed: {downloadStore.katagoError}</div>
           <button
             onclick={() => downloadStore.retry()}
-            class="mt-2 rounded px-3 py-1 text-xs font-semibold"
-            style="background-color: var(--btn-bg); color: var(--btn-text);"
+            class="btn btn-primary btn-sm mt-2"
           >
             Retry
           </button>
@@ -292,8 +292,7 @@
       <!-- Territory toggle -->
       <button
         onclick={() => reviewStore.toggleOwnership()}
-        class="rounded px-3 py-1.5 text-sm font-medium"
-        style="background: {reviewStore.showOwnership ? 'var(--success)' : 'var(--surface-secondary)'}; color: {reviewStore.showOwnership ? 'var(--text-primary)' : 'var(--text-secondary)'};"
+        class="btn btn-sm {reviewStore.showOwnership ? 'btn-primary' : 'btn-secondary'}"
       >
         {reviewStore.showOwnership ? 'Hide' : 'Show'} Territory
       </button>
@@ -329,8 +328,8 @@
         <button
           onclick={handleGenerateProblems}
           disabled={generatingProblems}
-          class="rounded px-3 py-1.5 text-sm font-medium transition disabled:opacity-50"
-          style="background: var(--accent-secondary); color: var(--text-primary);"
+          class="btn btn-sm"
+          style="background-color: var(--accent-secondary); color: white;"
         >
           {generatingProblems
             ? "Generating..."

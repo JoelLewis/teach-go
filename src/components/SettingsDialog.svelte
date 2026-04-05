@@ -116,7 +116,7 @@
           style="background-color: var(--surface-input); color: var(--text-heading);"
         >
           <option value="study">Study (warm wood)</option>
-          <option value="grid">Grid (cyberpunk)</option>
+          <option value="grid">Grid (deep ink)</option>
         </select>
       </label>
     </div>
@@ -177,7 +177,7 @@
             {/if}
             <button
               onclick={() => llmStore.startDownload()}
-              class="rounded px-3 py-1.5 text-sm hover:opacity-90"
+              class="btn btn-sm"
               style="background-color: var(--info); color: var(--text-heading);"
             >
               Download AI Coach Model

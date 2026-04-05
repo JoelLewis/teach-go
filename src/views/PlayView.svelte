@@ -354,8 +354,7 @@
           <div class="absolute bottom-3 left-1/2 -translate-x-1/2">
             <button
               onclick={returnToCurrent}
-              class="rounded px-3 py-1 text-xs font-semibold shadow-lg"
-              style="background-color: var(--panel-bg); color: var(--text-primary);"
+              class="btn btn-secondary btn-sm shadow-md"
             >
               Return to current (move {gameStore.state?.move_number ?? 0})
             </button>
@@ -366,12 +365,12 @@
   </div>
 
   <!-- Right panel -->
-  <div class="flex w-full lg:w-80 flex-col gap-4 border-t lg:border-t-0 lg:border-l overflow-y-auto max-h-[50vh] lg:max-h-none p-4" style="border-color: var(--panel-border);">
+  <div class="flex w-full lg:w-80 flex-col gap-3 border-t lg:border-t-0 lg:border-l overflow-y-auto max-h-[50vh] lg:max-h-none p-4" style="border-color: var(--panel-border);">
     <div class="flex items-center justify-between">
       <h2 class="text-lg font-semibold" style="color: var(--text-primary);">Game</h2>
       <button
         onclick={onGoHome}
-        class="text-sm"
+        class="text-sm transition-opacity hover:opacity-70"
         style="color: var(--text-secondary);"
       >
         Home
@@ -390,8 +389,7 @@
           <div style="color: var(--danger);">Download failed: {downloadStore.katagoError}</div>
           <button
             onclick={() => downloadStore.retry()}
-            class="mt-2 rounded px-3 py-1 text-xs font-semibold"
-            style="background-color: var(--btn-bg); color: var(--btn-text);"
+            class="btn btn-primary btn-sm mt-2"
           >
             Retry
           </button>
@@ -448,8 +446,7 @@
       {#if pendingFeedback}
         <button
           onclick={revealPendingFeedback}
-          class="rounded px-3 py-1.5 text-xs"
-          style="background-color: var(--btn-bg); color: var(--btn-text);"
+          class="btn btn-primary btn-sm"
         >
           Show Feedback
         </button>
@@ -478,8 +475,7 @@
           {/if}
           <button
             onclick={onStartReview}
-            class="mt-2 rounded px-4 py-1 text-sm font-semibold"
-            style="background-color: var(--btn-bg); color: var(--btn-text);"
+            class="btn btn-primary btn-sm mt-2"
           >
             Review Game
           </button>

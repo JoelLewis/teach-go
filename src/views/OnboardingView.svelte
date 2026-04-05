@@ -264,8 +264,7 @@
       </p>
       <button
         onclick={() => (step = "welcome2")}
-        class="rounded-lg px-8 py-3 text-lg font-semibold transition hover:opacity-90"
-        style="background-color: var(--btn-bg); color: var(--btn-text);"
+        class="btn btn-primary btn-lg"
       >
         Next
       </button>
@@ -294,8 +293,7 @@
       </div>
       <button
         onclick={() => (step = "experience")}
-        class="rounded-lg px-8 py-3 text-lg font-semibold transition hover:opacity-90"
-        style="background-color: var(--btn-bg); color: var(--btn-text);"
+        class="btn btn-primary btn-lg"
       >
         Let's Begin
       </button>
@@ -317,7 +315,7 @@
         ] as option}
           <button
             onclick={() => selectExperience(option.level)}
-            class="flex flex-col items-center gap-1 rounded-lg border p-4 text-center transition hover:opacity-90"
+            class="flex flex-col items-center gap-1 rounded-lg border p-4 text-center transition-opacity hover:opacity-90"
             style="border-color: var(--panel-border); background-color: var(--panel-bg);"
           >
             <span class="font-semibold" style="color: var(--text-primary);">{option.label}</span>
@@ -383,12 +381,11 @@
         <div class="flex gap-2">
           <button
             onclick={() => downloadStore.retry()}
-            class="rounded px-4 py-2 text-sm font-semibold"
-            style="background-color: var(--btn-bg); color: var(--btn-text);"
+            class="btn btn-primary btn-sm"
           >
             Retry
           </button>
-          <button onclick={finishOnboarding} class="rounded px-4 py-2 text-sm" style="background-color: var(--surface-secondary); color: var(--text-secondary);">
+          <button onclick={finishOnboarding} class="btn btn-secondary btn-sm">
             Skip for now
           </button>
         </div>
@@ -433,16 +430,14 @@
           <button
             onclick={handleCalibrationPass}
             disabled={calibrationBusy}
-            class="rounded px-3 py-1 text-xs disabled:opacity-50"
-            style="background-color: var(--surface-secondary); color: var(--text-secondary);"
+            class="btn btn-secondary btn-sm"
           >
             Pass
           </button>
           {#if calibrationMoveCount >= 10}
             <button
               onclick={endCalibration}
-              class="rounded px-4 py-2 text-sm font-semibold transition hover:opacity-90"
-              style="background-color: var(--btn-bg); color: var(--btn-text);"
+              class="btn btn-primary"
             >
               That's enough — show my profile
             </button>
@@ -467,8 +462,7 @@
       </p>
       <button
         onclick={finishOnboarding}
-        class="rounded-lg px-8 py-3 text-lg font-semibold transition hover:opacity-90"
-        style="background-color: var(--btn-bg); color: var(--btn-text);"
+        class="btn btn-primary btn-lg"
       >
         Start Playing
       </button>

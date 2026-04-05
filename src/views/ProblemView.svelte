@@ -246,7 +246,7 @@
       <h1 class="text-2xl font-bold" style="color: var(--text-primary);">Practice Problems</h1>
       <button
         onclick={handleGoHome}
-        class="text-sm"
+        class="text-sm transition-opacity hover:opacity-70"
         style="color: var(--text-secondary);"
       >
         Home
@@ -258,7 +258,7 @@
       <div class="flex gap-2">
         <button
           onclick={startRecommended}
-          class="flex-1 rounded-lg px-6 py-3 text-sm font-semibold transition"
+          class="btn flex-1"
           style="background-color: var(--accent-secondary); color: white;"
         >
           Recommended Problem
@@ -266,8 +266,7 @@
         <button
           onclick={handleImport}
           disabled={importing}
-          class="rounded-lg px-4 py-3 text-sm transition disabled:opacity-50"
-          style="background-color: var(--panel-bg); color: var(--text-secondary);"
+          class="btn btn-secondary"
         >
           {importing ? "Importing..." : "Import SGF"}
         </button>
@@ -281,7 +280,7 @@
         {#each CATEGORIES as cat}
           <button
             onclick={() => { categoryFilter = cat.value; loadProblems(); }}
-            class="rounded-full px-3 py-1 text-xs font-medium transition"
+            class="rounded-full px-3 py-1 text-xs font-medium transition-opacity hover:opacity-90"
             style="background-color: {categoryFilter === cat.value ? 'var(--accent-secondary)' : 'var(--panel-bg)'}; color: {categoryFilter === cat.value ? 'white' : 'var(--text-secondary)'};"
           >
             {cat.label}
@@ -301,7 +300,7 @@
         {#each problemStore.problems as problem}
           <button
             onclick={() => selectProblem(problem.id)}
-            class="flex items-center justify-between rounded px-4 py-3 text-left text-sm transition"
+            class="flex items-center justify-between rounded px-4 py-3 text-left text-sm transition-opacity hover:opacity-90"
             style="background-color: var(--surface-secondary); color: var(--text-secondary);"
           >
             <div class="flex flex-col gap-0.5">
@@ -375,22 +374,19 @@
           <div class="flex gap-2">
             <button
               onclick={() => handleHint("Area")}
-              class="rounded px-3 py-1.5 text-xs"
-              style="background-color: var(--panel-bg); color: var(--text-secondary);"
+              class="btn btn-ghost btn-sm"
             >
               Area
             </button>
             <button
               onclick={() => handleHint("Candidates")}
-              class="rounded px-3 py-1.5 text-xs"
-              style="background-color: var(--panel-bg); color: var(--text-secondary);"
+              class="btn btn-ghost btn-sm"
             >
               Candidates
             </button>
             <button
               onclick={() => handleHint("Answer")}
-              class="rounded px-3 py-1.5 text-xs"
-              style="background-color: var(--panel-bg); color: var(--text-secondary);"
+              class="btn btn-ghost btn-sm"
             >
               Answer
             </button>
@@ -416,8 +412,7 @@
 
         <button
           onclick={handleSkip}
-          class="mt-2 rounded px-3 py-1.5 text-sm"
-          style="background-color: var(--panel-bg); color: var(--text-secondary);"
+          class="btn btn-secondary btn-sm mt-2"
         >
           Skip
         </button>
@@ -425,7 +420,7 @@
         <!-- Problem finished — show next button -->
         <button
           onclick={handleNextProblem}
-          class="mt-2 rounded px-4 py-2 text-sm font-semibold"
+          class="btn mt-2"
           style="background-color: var(--accent-secondary); color: white;"
         >
           Next Problem

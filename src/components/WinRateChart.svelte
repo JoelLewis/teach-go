@@ -58,7 +58,8 @@
     const totalMoves = analyses.length - 1;
 
     // Background
-    ctx.fillStyle = "#1c1917"; // stone-900
+    const bgColor = getComputedStyle(document.documentElement).getPropertyValue("--surface-primary").trim() || "#1c1917";
+    ctx.fillStyle = bgColor;
     ctx.fillRect(0, 0, w, h);
 
     if (totalMoves <= 0) return;

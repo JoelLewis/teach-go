@@ -45,6 +45,11 @@
     return (30 - dims[index].mu) / 29;
   }
 
+  function getComputedColor(prop: string, fallback: string): string {
+    const val = getComputedStyle(document.documentElement).getPropertyValue(prop).trim();
+    return val || fallback;
+  }
+
   function draw() {
     const dpr = window.devicePixelRatio || 1;
     canvasEl.width = displayWidth * dpr;
@@ -64,12 +69,18 @@
     const angleStep = (Math.PI * 2) / numAxes;
     const startAngle = -Math.PI / 2; // Start at top
 
+    const bgColor = getComputedColor("--surface-primary", "#1c1917");
+    const gridColor = getComputedColor("--border-color", "#44403c");
+    const axisColor = getComputedColor("--border-subtle", "#57534e");
+    const accentColor = getComputedColor("--accent-primary", "#f59e0b");
+    const labelColor = getComputedColor("--text-secondary", "#a8a29e");
+
     // Background
-    ctx.fillStyle = "#1c1917";
+    ctx.fillStyle = bgColor;
     ctx.fillRect(0, 0, w, h);
 
     // Concentric hexagon grid lines (at 25%, 50%, 75%, 100%)
-    ctx.strokeStyle = "#44403c"; // stone-700
+    ctx.strokeStyle = gridColor;
     ctx.lineWidth = 0.5;
     for (const frac of [0.25, 0.5, 0.75, 1.0]) {
       ctx.beginPath();
@@ -84,7 +95,7 @@
     }
 
     // Axis lines
-    ctx.strokeStyle = "#57534e"; // stone-600
+    ctx.strokeStyle = axisColor;
     ctx.lineWidth = 0.5;
     for (let i = 0; i < numAxes; i++) {
       const angle = startAngle + i * angleStep;
@@ -105,14 +116,14 @@
       if (i === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     }
-    ctx.fillStyle = "rgba(245, 158, 11, 0.3)"; // amber-500/0.3
+    ctx.fillStyle = accentColor + "4d"; // ~30% opacity
     ctx.fill();
-    ctx.strokeStyle = "#f59e0b"; // amber-500
+    ctx.strokeStyle = accentColor;
     ctx.lineWidth = 2;
     ctx.stroke();
 
     // Vertex dots
-    ctx.fillStyle = "#f59e0b";
+    ctx.fillStyle = accentColor;
     for (let i = 0; i < numAxes; i++) {
       const angle = startAngle + i * angleStep;
       const val = Math.max(dimensionValue(i), 0.02);
@@ -124,7 +135,7 @@
     }
 
     // Axis labels
-    ctx.fillStyle = "#a8a29e"; // stone-400
+    ctx.fillStyle = labelColor;
     ctx.font = "11px sans-serif";
     for (let i = 0; i < numAxes; i++) {
       const angle = startAngle + i * angleStep;
