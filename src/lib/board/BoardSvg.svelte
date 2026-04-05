@@ -184,6 +184,84 @@
     onIntersectionClick(row, col);
   }
 
+  // --- Keyboard cursor ---
+  let cursorPoint = $state<{ row: number; col: number } | null>(null);
+  let boardFocused = $state(false);
+
+  let cursorPos = $derived(
+    cursorPoint ? pos(cursorPoint.row, cursorPoint.col) : null
+  );
+
+  function initCursor() {
+    if (!cursorPoint) {
+      const center = Math.floor(boardSize / 2);
+      cursorPoint = { row: center, col: center };
+    }
+  }
+
+  function moveCursor(dRow: number, dCol: number) {
+    if (!cursorPoint) { initCursor(); return; }
+    const newRow = Math.max(0, Math.min(boardSize - 1, cursorPoint.row + dRow));
+    const newCol = Math.max(0, Math.min(boardSize - 1, cursorPoint.col + dCol));
+    cursorPoint = { row: newRow, col: newCol };
+    if (!isOccupied(newRow, newCol)) {
+      hoverPoint = { row: newRow, col: newCol };
+    } else {
+      hoverPoint = null;
+    }
+  }
+
+  function handleBoardKeydown(e: KeyboardEvent) {
+    if (!interactive) return;
+
+    switch (e.key) {
+      case "ArrowUp":
+        e.preventDefault();
+        moveCursor(-1, 0);
+        break;
+      case "ArrowDown":
+        e.preventDefault();
+        moveCursor(1, 0);
+        break;
+      case "ArrowLeft":
+        e.preventDefault();
+        moveCursor(0, -1);
+        break;
+      case "ArrowRight":
+        e.preventDefault();
+        moveCursor(0, 1);
+        break;
+      case "Enter":
+      case " ":
+        e.preventDefault();
+        if (cursorPoint && !isOccupied(cursorPoint.row, cursorPoint.col)) {
+          onIntersectionClick(cursorPoint.row, cursorPoint.col);
+          hoverPoint = null;
+        }
+        break;
+      case "Home":
+        e.preventDefault();
+        cursorPoint = { row: 0, col: 0 };
+        break;
+      case "End":
+        e.preventDefault();
+        cursorPoint = { row: boardSize - 1, col: boardSize - 1 };
+        break;
+      default:
+        return;
+    }
+  }
+
+  function handleBoardFocus() {
+    boardFocused = true;
+    initCursor();
+  }
+
+  function handleBoardBlur() {
+    boardFocused = false;
+    hoverPoint = null;
+  }
+
   // --- Animation tracking ---
   // Track previous stone keys for capture detection
   let previousStoneKeys = $state(new Set<string>());
@@ -230,6 +308,20 @@
     return animatingStones.some((a) => a.row === row && a.col === col && a.kind === kind);
   }
 
+  // Reset cursor when board size changes (new game)
+  $effect(() => {
+    const _size = boardSize;
+    cursorPoint = null;
+  });
+
+  // Clear cursor when board becomes non-interactive
+  $effect(() => {
+    if (!interactive) {
+      cursorPoint = null;
+      boardFocused = false;
+    }
+  });
+
   // --- Stone gradient IDs (unique per theme to avoid collisions) ---
   // Gradient offset for 3D lighting (upper-left highlight)
   let gradientOffset = $derived(stoneRadius * 0.3);
@@ -242,13 +334,20 @@
   }
 </script>
 
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <svg
   viewBox="0 0 {SVG_SIZE} {SVG_SIZE}"
   class="max-w-full max-h-full aspect-square rounded-lg shadow-lg"
   class:cursor-pointer={interactive}
-  aria-label="Go board"
+  aria-label="Go board{cursorPoint && boardFocused ? `, cursor at ${COLUMN_LETTERS[cursorPoint.col]}${boardSize - cursorPoint.row}` : ''}"
+  role="grid"
+  aria-roledescription="game board"
   data-testid="go-board"
   xmlns="http://www.w3.org/2000/svg"
+  tabindex={interactive ? 0 : -1}
+  onkeydown={handleBoardKeydown}
+  onfocus={handleBoardFocus}
+  onblur={handleBoardBlur}
 >
   <!-- ══════════ Definitions ══════════ -->
   <defs>
@@ -486,6 +585,20 @@
     />
   {/if}
 
+  <!-- ══════════ Layer 9b: Keyboard cursor ══════════ -->
+  {#if cursorPos && boardFocused && interactive}
+    <circle
+      cx={cursorPos.x} cy={cursorPos.y} r={cellSize * 0.48}
+      fill="none"
+      stroke={hexColor(activeTheme.lastMoveIndicator)}
+      stroke-width="2"
+      stroke-dasharray="4 3"
+      opacity="0.8"
+      class="pointer-events-none"
+      data-testid="keyboard-cursor"
+    />
+  {/if}
+
   <!-- ══════════ Layer 10: Click targets ══════════ -->
   {#each intersections as pt}
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
@@ -498,7 +611,7 @@
       width={cellSize}
       height={cellSize}
       fill="transparent"
-      role="button"
+      role="gridcell"
       tabindex="-1"
       aria-disabled={!interactive}
       onclick={() => handleClick(pt.row, pt.col)}
@@ -529,5 +642,10 @@
 
   .select-none {
     user-select: none;
+  }
+
+  svg:focus-visible {
+    outline: 2px solid var(--accent-primary, #c9a84c);
+    outline-offset: 2px;
   }
 </style>
