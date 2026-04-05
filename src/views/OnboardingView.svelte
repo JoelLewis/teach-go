@@ -271,7 +271,7 @@
       </button>
       <div class="flex gap-2">
         <div class="h-2 w-8 rounded" style="background-color: var(--accent-primary);"></div>
-        <div class="h-2 w-8 rounded bg-stone-600"></div>
+        <div class="h-2 w-8 rounded" style="background-color: var(--surface-input);"></div>
       </div>
     </div>
 
@@ -300,7 +300,7 @@
         Let's Begin
       </button>
       <div class="flex gap-2">
-        <div class="h-2 w-8 rounded bg-stone-600"></div>
+        <div class="h-2 w-8 rounded" style="background-color: var(--surface-input);"></div>
         <div class="h-2 w-8 rounded" style="background-color: var(--accent-primary);"></div>
       </div>
     </div>

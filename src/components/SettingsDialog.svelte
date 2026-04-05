@@ -41,15 +41,16 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={onClose}>
   <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="w-80 rounded-lg bg-stone-800 p-6 shadow-xl" role="dialog" aria-modal="true" tabindex="-1" onclick={(e) => e.stopPropagation()}>
+  <div class="w-80 rounded-lg p-6 shadow-xl" role="dialog" aria-modal="true" tabindex="-1" onclick={(e) => e.stopPropagation()} style="background-color: var(--surface-card);">
 
-    <h2 class="mb-4 text-lg font-semibold text-stone-100">Settings</h2>
+    <h2 class="mb-4 text-lg font-semibold" style="color: var(--text-heading);">Settings</h2>
 
     <div class="mb-4">
-      <label class="mb-1 block text-sm text-stone-400">Board Size</label>
+      <label class="mb-1 block text-sm" style="color: var(--text-secondary);">Board Size</label>
       <select
         bind:value={boardSize}
-        class="w-full rounded bg-stone-700 px-3 py-2 text-stone-100"
+        class="w-full rounded px-3 py-2"
+        style="background-color: var(--surface-input); color: var(--text-heading);"
       >
         <option value={9}>9x9</option>
         <option value={13}>13x13</option>
@@ -58,10 +59,11 @@
     </div>
 
     <div class="mb-4">
-      <label class="mb-1 block text-sm text-stone-400">AI Strength</label>
+      <label class="mb-1 block text-sm" style="color: var(--text-secondary);">AI Strength</label>
       <select
         bind:value={aiStrength}
-        class="w-full rounded bg-stone-700 px-3 py-2 text-stone-100"
+        class="w-full rounded px-3 py-2"
+        style="background-color: var(--surface-input); color: var(--text-heading);"
       >
         <option value="beginner">Beginner (25-20 kyu)</option>
         <option value="intermediate">Intermediate (19-10 kyu)</option>
@@ -71,24 +73,25 @@
     </div>
 
     <div class="mb-4">
-      <label class="flex items-center gap-2 text-sm text-stone-400">
+      <label class="flex items-center gap-2 text-sm" style="color: var(--text-secondary);">
         <input type="checkbox" bind:checked={showCoordinates} class="rounded" />
         Show coordinates
       </label>
     </div>
 
     <div class="mb-4">
-      <label class="flex items-center gap-2 text-sm text-stone-400">
+      <label class="flex items-center gap-2 text-sm" style="color: var(--text-secondary);">
         <input type="checkbox" bind:checked={soundEnabled} class="rounded" />
         Sound effects
       </label>
     </div>
 
     <div class="mb-4">
-      <label class="mb-1 block text-sm text-stone-400">Theme</label>
+      <label class="mb-1 block text-sm" style="color: var(--text-secondary);">Theme</label>
       <select
         bind:value={theme}
-        class="w-full rounded bg-stone-700 px-3 py-2 text-stone-100"
+        class="w-full rounded px-3 py-2"
+        style="background-color: var(--surface-input); color: var(--text-heading);"
       >
         <option value="study">Study (warm wood)</option>
         <option value="grid">Grid (cyberpunk)</option>
@@ -96,10 +99,11 @@
     </div>
 
     <div class="mb-6">
-      <label class="mb-1 block text-sm text-stone-400">Coaching Feedback</label>
+      <label class="mb-1 block text-sm" style="color: var(--text-secondary);">Coaching Feedback</label>
       <select
         bind:value={feedbackTiming}
-        class="w-full rounded bg-stone-700 px-3 py-2 text-stone-100"
+        class="w-full rounded px-3 py-2"
+        style="background-color: var(--surface-input); color: var(--text-heading);"
       >
         <option value="immediate">Immediate (show after each move)</option>
         <option value="on_demand">On demand (click to reveal)</option>
@@ -108,31 +112,31 @@
     </div>
 
     {#if llmStore.status !== "disabled"}
-      <div class="mb-6 rounded bg-stone-700/50 p-3">
-        <label class="mb-2 block text-sm font-medium text-stone-300"
+      <div class="mb-6 rounded p-3" style="background-color: var(--surface-input); opacity: 0.85;">
+        <label class="mb-2 block text-sm font-medium" style="color: var(--text-on-card);"
           >AI Coach Model</label
         >
         {#if llmStore.status === "ready"}
-          <div class="flex items-center gap-2 text-sm text-emerald-400">
-            <span class="inline-block h-2 w-2 rounded-full bg-emerald-400"
+          <div class="flex items-center gap-2 text-sm" style="color: var(--success);">
+            <span class="inline-block h-2 w-2 rounded-full" style="background-color: var(--success);"
             ></span>
             Model loaded
           </div>
         {:else if llmStore.status === "loading"}
           <div class="space-y-2">
-            <div class="text-sm text-amber-400">
+            <div class="text-sm" style="color: var(--accent-primary);">
               {llmStore.downloadProgress
                 ? "Downloading model..."
                 : "Loading model..."}
             </div>
             {#if llmStore.downloadProgress}
-              <div class="h-2 w-full overflow-hidden rounded-full bg-stone-600">
+              <div class="h-2 w-full overflow-hidden rounded-full" style="background-color: var(--border-subtle);">
                 <div
-                  class="h-full rounded-full bg-amber-500 transition-all"
-                  style="width: {llmStore.downloadPercent}%"
+                  class="h-full rounded-full transition-all"
+                  style="background-color: var(--accent-primary); width: {llmStore.downloadPercent}%"
                 ></div>
               </div>
-              <div class="text-xs text-stone-400">
+              <div class="text-xs" style="color: var(--text-secondary);">
                 {llmStore.downloadPercent}% ({Math.round(
                   llmStore.downloadProgress.downloaded / 1048576,
                 )} / {Math.round(llmStore.downloadProgress.total / 1048576)} MB)
@@ -141,15 +145,16 @@
           </div>
         {:else}
           <div class="space-y-2">
-            <p class="text-xs text-stone-400">
+            <p class="text-xs" style="color: var(--text-secondary);">
               Download Gemma 3 1B for enhanced coaching explanations (~2 GB).
             </p>
             {#if llmStore.error}
-              <p class="text-xs text-red-400">{llmStore.error}</p>
+              <p class="text-xs" style="color: var(--danger);">{llmStore.error}</p>
             {/if}
             <button
               onclick={() => llmStore.startDownload()}
-              class="rounded bg-teal-700 px-3 py-1.5 text-sm text-stone-100 hover:bg-teal-600"
+              class="rounded px-3 py-1.5 text-sm hover:opacity-90"
+              style="background-color: var(--info); color: var(--text-heading);"
             >
               Download AI Coach Model
             </button>
@@ -161,13 +166,15 @@
     <div class="flex justify-end gap-2">
       <button
         onclick={onClose}
-        class="rounded bg-stone-700 px-4 py-2 text-sm text-stone-100 hover:bg-stone-600"
+        class="rounded px-4 py-2 text-sm hover:opacity-90"
+        style="background-color: var(--surface-input); color: var(--text-heading);"
       >
         Cancel
       </button>
       <button
         onclick={handleSave}
-        class="rounded bg-amber-700 px-4 py-2 text-sm text-stone-100 hover:bg-amber-600"
+        class="rounded px-4 py-2 text-sm hover:opacity-90"
+        style="background-color: var(--btn-bg); color: var(--btn-text);"
       >
         Save
       </button>

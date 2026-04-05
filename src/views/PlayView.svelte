@@ -404,7 +404,8 @@
     {#if gameStore.state}
       <div class="text-sm" style="color: var(--text-secondary);">
         <span
-          class="inline-block h-3 w-3 rounded-full {gameStore.state.current_color === 'black' ? 'bg-stone-900 ring-1 ring-stone-500' : 'bg-stone-100'}"
+          class="inline-block h-3 w-3 rounded-full {gameStore.state.current_color === 'black' ? 'bg-stone-900' : 'bg-stone-100'}"
+          style="{gameStore.state.current_color === 'black' ? `box-shadow: 0 0 0 1px var(--border-subtle);` : ''}"
         ></span>
         {gameStore.state.current_color === "black" ? "Black" : "White"} to play
         &mdash; Move {gameStore.state.move_number}

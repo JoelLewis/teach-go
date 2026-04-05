@@ -27,24 +27,25 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={onClose}>
   <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="w-80 rounded-lg bg-stone-800 p-6 shadow-xl" role="dialog" aria-modal="true" tabindex="-1" onclick={(e) => e.stopPropagation()}>
+  <div class="w-80 rounded-lg p-6 shadow-xl" role="dialog" aria-modal="true" tabindex="-1" onclick={(e) => e.stopPropagation()} style="background-color: var(--surface-card);">
 
-    <h2 class="mb-4 text-lg font-semibold text-stone-100">New Game</h2>
+    <h2 class="mb-4 text-lg font-semibold" style="color: var(--text-heading);">New Game</h2>
 
     <div class="mb-4">
-      <label class="mb-1 block text-sm text-stone-400">Board Size</label>
+      <label class="mb-1 block text-sm" style="color: var(--text-secondary);">Board Size</label>
       <select
         bind:value={boardSize}
-        class="w-full rounded bg-stone-700 px-3 py-2 text-stone-100"
+        class="w-full rounded px-3 py-2"
+        style="background-color: var(--surface-input); color: var(--text-heading);"
       >
-        <option value={9}>9×9</option>
-        <option value={13}>13×13</option>
-        <option value={19}>19×19</option>
+        <option value={9}>9x9</option>
+        <option value={13}>13x13</option>
+        <option value={19}>19x19</option>
       </select>
     </div>
 
     <div class="mb-4">
-      <label class="mb-2 block text-sm text-stone-400">Your Color</label>
+      <label class="mb-2 block text-sm" style="color: var(--text-secondary);">Your Color</label>
       <div class="flex gap-2">
         {#each [
           { value: "black", label: "Black" },
@@ -53,10 +54,10 @@
         ] as option}
           <button
             onclick={() => (colorChoice = option.value as "black" | "white" | "auto")}
-            class="flex-1 rounded px-3 py-2 text-sm font-medium transition {colorChoice ===
-            option.value
-              ? 'bg-amber-700 text-white'
-              : 'bg-stone-700 text-stone-300 hover:bg-stone-600'}"
+            class="flex-1 rounded px-3 py-2 text-sm font-medium transition hover:opacity-90"
+            style="{colorChoice === option.value
+              ? `background-color: var(--btn-bg); color: var(--btn-text);`
+              : `background-color: var(--surface-input); color: var(--text-on-card);`}"
           >
             {option.label}
           </button>
@@ -65,10 +66,11 @@
     </div>
 
     <div class="mb-6">
-      <label class="mb-1 block text-sm text-stone-400">AI Strength</label>
+      <label class="mb-1 block text-sm" style="color: var(--text-secondary);">AI Strength</label>
       <select
         bind:value={aiStrength}
-        class="w-full rounded bg-stone-700 px-3 py-2 text-stone-100"
+        class="w-full rounded px-3 py-2"
+        style="background-color: var(--surface-input); color: var(--text-heading);"
       >
         <option value="beginner">Beginner (25-20 kyu)</option>
         <option value="intermediate">Intermediate (19-10 kyu)</option>
@@ -80,13 +82,15 @@
     <div class="flex justify-end gap-2">
       <button
         onclick={onClose}
-        class="rounded bg-stone-700 px-4 py-2 text-sm text-stone-100 hover:bg-stone-600"
+        class="rounded px-4 py-2 text-sm hover:opacity-90"
+        style="background-color: var(--surface-input); color: var(--text-heading);"
       >
         Cancel
       </button>
       <button
         onclick={handleStart}
-        class="rounded bg-amber-700 px-4 py-2 text-sm text-stone-100 hover:bg-amber-600"
+        class="rounded px-4 py-2 text-sm hover:opacity-90"
+        style="background-color: var(--btn-bg); color: var(--btn-text);"
       >
         Start Game
       </button>

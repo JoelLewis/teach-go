@@ -31,18 +31,19 @@
 </script>
 
 <div class="flex flex-col gap-1">
-  <h3 class="text-sm font-semibold text-stone-400">Move History</h3>
-  <div class="max-h-48 overflow-y-auto rounded bg-stone-800 p-2 text-xs font-mono">
+  <h3 class="text-sm font-semibold" style="color: var(--text-secondary);">Move History</h3>
+  <div class="max-h-48 overflow-y-auto rounded p-2 text-xs font-mono" style="background-color: var(--surface-card);">
     {#if game.moves.length === 0}
-      <p class="text-stone-500 italic font-sans">No moves yet</p>
+      <p class="italic font-sans" style="color: var(--text-muted);">No moves yet</p>
     {:else}
       <div class="flex flex-col gap-0.5">
         {#each pairs as pair}
           <div class="flex gap-1 items-baseline">
-            <span class="w-6 text-right text-stone-600 shrink-0">{pair.number}.</span>
+            <span class="w-6 text-right shrink-0" style="color: var(--border-subtle);">{pair.number}.</span>
             {#if pair.black}
               <button
-                class="px-1 rounded hover:bg-stone-700 {viewingMove === pair.black.move_number ? 'bg-stone-600 text-white' : 'text-stone-300'}"
+                class="px-1 rounded hover:opacity-90"
+                style="{viewingMove === pair.black.move_number ? `background-color: var(--accent-primary); color: var(--btn-text);` : `color: var(--text-on-card);`}"
                 onclick={() => onNavigate?.(pair.black!.move_number)}
               >
                 {moveLabel(pair.black)}
@@ -50,7 +51,8 @@
             {/if}
             {#if pair.white}
               <button
-                class="px-1 rounded hover:bg-stone-700 {viewingMove === pair.white.move_number ? 'bg-stone-600 text-white' : 'text-stone-300'}"
+                class="px-1 rounded hover:opacity-90"
+                style="{viewingMove === pair.white.move_number ? `background-color: var(--accent-primary); color: var(--btn-text);` : `color: var(--text-on-card);`}"
                 onclick={() => onNavigate?.(pair.white!.move_number)}
               >
                 {moveLabel(pair.white)}

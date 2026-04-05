@@ -73,7 +73,7 @@
     <button
       onclick={onStartProblems}
       class="rounded-lg px-8 py-4 text-lg font-semibold shadow-lg transition hover:shadow-xl"
-      style="background-color: var(--accent-secondary); color: white;"
+      style="background-color: var(--accent-secondary); color: var(--btn-text);"
     >
       Practice Problems
     </button>
