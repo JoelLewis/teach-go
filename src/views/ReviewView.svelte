@@ -198,6 +198,7 @@
         ownership={reviewStore.showOwnership ? reviewStore.ownership : null}
         highlights={variationHighlights}
         theme={boardThemeForName(themeStore.active)}
+        interactive={false}
         onIntersectionClick={noop}
       />
     {:else}
@@ -343,4 +344,3 @@
     {/if}
   </div>
 </div>
-

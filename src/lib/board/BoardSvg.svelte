@@ -21,6 +21,7 @@
     lastMoveSeverity?: Severity | null;
     theme?: BoardTheme;
     animate?: boolean;
+    interactive?: boolean;
     onIntersectionClick: (row: number, col: number) => void;
   };
 
@@ -35,6 +36,7 @@
     lastMoveSeverity = null,
     theme,
     animate = false,
+    interactive = true,
     onIntersectionClick,
   }: Props = $props();
 
@@ -150,6 +152,8 @@
     return pts;
   });
 
+  let occupiedPoints = $derived(new Set(stones.map((stone) => `${stone.row},${stone.col}`)));
+
   // --- Hover state ---
   let hoverPoint = $state<{ row: number; col: number } | null>(null);
 
@@ -162,6 +166,23 @@
       ? hexColor(activeTheme.stoneBlack)
       : hexColor(activeTheme.stoneWhite)
   );
+
+  function isOccupied(row: number, col: number): boolean {
+    return occupiedPoints.has(`${row},${col}`);
+  }
+
+  function handlePointerEnter(row: number, col: number) {
+    if (!interactive || isOccupied(row, col)) {
+      hoverPoint = null;
+      return;
+    }
+    hoverPoint = { row, col };
+  }
+
+  function handleClick(row: number, col: number) {
+    if (!interactive || isOccupied(row, col)) return;
+    onIntersectionClick(row, col);
+  }
 
   // --- Animation tracking ---
   // Track previous stone keys for capture detection
@@ -223,7 +244,8 @@
 
 <svg
   viewBox="0 0 {SVG_SIZE} {SVG_SIZE}"
-  class="max-w-full max-h-full aspect-square cursor-pointer rounded-lg shadow-lg"
+  class="max-w-full max-h-full aspect-square rounded-lg shadow-lg"
+  class:cursor-pointer={interactive}
   aria-label="Go board"
   data-testid="go-board"
   xmlns="http://www.w3.org/2000/svg"
@@ -478,8 +500,9 @@
       fill="transparent"
       role="button"
       tabindex="-1"
-      onclick={() => onIntersectionClick(pt.row, pt.col)}
-      onpointerenter={() => { hoverPoint = { row: pt.row, col: pt.col }; }}
+      aria-disabled={!interactive}
+      onclick={() => handleClick(pt.row, pt.col)}
+      onpointerenter={() => { handlePointerEnter(pt.row, pt.col); }}
       onpointerleave={() => { hoverPoint = null; }}
     />
   {/each}

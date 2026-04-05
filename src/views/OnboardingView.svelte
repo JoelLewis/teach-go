@@ -29,6 +29,7 @@
   let calibrationMoveCount = $state(0);
   let calibrationBusy = $state(false);
   let calibrationError = $state<string | null>(null);
+  let debugLog = $state<string[]>([]);
 
   // Download state tracking for calibration
   let pendingCalibrationLevel = $state("");
@@ -141,43 +142,58 @@
           ? "intermediate"
           : "advanced";
     try {
-      console.log("[CALIBRATION] Starting with strength:", strength);
+      dbg(`starting: strength=${strength}`);
       const settings = { ...settingsStore.value, ai_strength: strength };
       await api.updateSettings(settings);
       settingsStore.update(settings);
-      console.log("[CALIBRATION] Settings updated, starting engine...");
-      await api.startEngine();
-      console.log("[CALIBRATION] Engine started, creating game...");
+
+      // Engine start is best-effort — calibration works without AI
+      try {
+        dbg("starting engine...");
+        await api.startEngine();
+        dbg("engine ready");
+      } catch (engineErr) {
+        dbg(`engine failed: ${engineErr}`);
+        calibrationError = "AI engine unavailable — you can still place stones to calibrate.";
+      }
+
       calibrationState = await api.newGame(9, 6.5, "black");
-      console.log("[CALIBRATION] Game created, phase:", calibrationState?.phase);
+      dbg(`game created: phase=${calibrationState?.phase} color=${calibrationState?.current_color}`);
       calibrationMoveCount = 0;
     } catch (e) {
-      console.error("Failed to start calibration:", e);
+      dbg(`FATAL: ${e}`);
       finishOnboarding();
     }
   }
 
+  function dbg(msg: string) {
+    debugLog = [...debugLog.slice(-9), msg];
+    console.log("[CALIBRATION]", msg);
+  }
+
   async function handleCalibrationMove(row: number, col: number) {
+    dbg(`click (${row},${col}) phase=${calibrationState?.phase} busy=${calibrationBusy}`);
     if (!calibrationState || calibrationState.phase !== "Playing" || calibrationBusy) return;
     calibrationBusy = true;
     calibrationError = null;
     try {
-      console.log("[CALIBRATION] Playing move...");
+      dbg(`playMove(${row},${col})...`);
       calibrationState = await api.playMove(row, col);
       calibrationMoveCount++;
-      console.log("[CALIBRATION] Move played, phase:", calibrationState.phase);
+      dbg(`move ok, phase=${calibrationState.phase} stones=${calibrationState.stones.length}`);
       if (calibrationState.phase === "Playing") {
         try {
+          dbg("requesting AI move...");
           calibrationState = await api.requestAiMove();
-          console.log("[CALIBRATION] AI moved, phase:", calibrationState.phase);
+          dbg(`AI moved, phase=${calibrationState.phase}`);
         } catch (aiErr) {
-          console.error("[CALIBRATION] AI move failed:", aiErr);
+          dbg(`AI error: ${aiErr}`);
           calibrationError = "AI couldn't respond — you can keep playing or end calibration.";
         }
       }
     } catch (e) {
-      console.error("[CALIBRATION] Move failed:", e);
-      calibrationError = "Move failed — try again.";
+      dbg(`move error: ${e}`);
+      calibrationError = `Move failed: ${e}`;
     } finally {
       calibrationBusy = false;
     }
@@ -400,6 +416,13 @@
         {#if calibrationError}
           <div class="rounded px-4 py-2 text-sm" style="background-color: var(--panel-bg); color: var(--danger);">
             {calibrationError}
+          </div>
+        {/if}
+        {#if debugLog.length > 0}
+          <div class="max-w-xs rounded px-3 py-2 text-left font-mono text-xs" style="background-color: #111; color: #0f0; max-height: 120px; overflow-y: auto;">
+            {#each debugLog as line}
+              <div>{line}</div>
+            {/each}
           </div>
         {/if}
         {#if calibrationBusy}

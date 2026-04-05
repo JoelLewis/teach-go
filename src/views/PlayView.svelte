@@ -34,6 +34,9 @@
   let difficultySuggestion = $state<DifficultySuggestion | null>(null);
   let difficultyChecked = $state(false);
   let engineError = $state<string | null>(null);
+  let inputLocked = $state(false);
+  let startingGame = $state(false);
+  let configStrengthApplied = $state(false);
   let pendingUnlisteners: Array<Promise<() => void>> = [];
 
   const noop = () => {};
@@ -41,6 +44,15 @@
   // Whether we're viewing a past position (not the current game state)
   let isViewingHistory = $derived(viewingMove !== null && viewingMove !== (gameStore.state?.move_number ?? 0));
   let displayState = $derived(isViewingHistory && viewingState ? viewingState : gameStore.state);
+  let isPlayerTurn = $derived(gameStore.state?.current_color === playerColor);
+  let canPlayBoard = $derived(
+    !isViewingHistory &&
+    !!gameStore.state &&
+    gameStore.state.phase === "Playing" &&
+    isPlayerTurn &&
+    !engineStore.aiThinking &&
+    !inputLocked,
+  );
 
   // Keep sound state in sync with settings
   $effect(() => {
@@ -79,7 +91,7 @@
 
   // Auto-start game when KataGo becomes ready
   $effect(() => {
-    if (downloadStore.katagoReady && !gameStore.state) {
+    if (downloadStore.katagoReady && !gameStore.state && !startingGame) {
       startNewGame();
     }
   });
@@ -101,7 +113,21 @@
   }
 
   async function startNewGame() {
+    if (startingGame) return;
+
+    startingGame = true;
     try {
+      if (!configStrengthApplied && config?.aiStrength && config.aiStrength !== settingsStore.value.ai_strength) {
+        const nextSettings = await api.updateSettings({
+          ...settingsStore.value,
+          ai_strength: config.aiStrength,
+        });
+        settingsStore.update(nextSettings);
+      }
+      configStrengthApplied = true;
+
+      inputLocked = false;
+      engineError = null;
       const state = await api.newGame(boardSize, settingsStore.value.komi, playerColor);
       gameStore.set(state);
       coachingStore.clear();
@@ -112,6 +138,8 @@
       }
     } catch (e) {
       gameStore.setError(String(e));
+    } finally {
+      startingGame = false;
     }
   }
 
@@ -122,6 +150,7 @@
     if (gameStore.state.current_color !== aiColor) return;
 
     try {
+      inputLocked = true;
       const state = await api.requestAiMove();
       gameStore.set(state);
       engineError = null;
@@ -133,18 +162,20 @@
       } else {
         engineError = `AI engine error: ${msg}`;
       }
+    } finally {
+      inputLocked = false;
     }
   }
 
   async function handleIntersectionClick(row: number, col: number) {
-    if (!gameStore.state || gameStore.state.phase === "Finished") return;
-    if (engineStore.aiThinking) return;
+    if (!canPlayBoard || !gameStore.state) return;
 
     const prevCaptures = gameStore.state
       ? gameStore.state.captures_black + gameStore.state.captures_white
       : 0;
 
     try {
+      inputLocked = true;
       const state = await api.playMove(row, col);
       const newCaptures = state.captures_black + state.captures_white;
       if (newCaptures > prevCaptures) {
@@ -154,21 +185,26 @@
       }
       gameStore.set(state);
       triggerCoaching();
-      triggerAiMove();
+      await triggerAiMove();
     } catch (e) {
       console.warn("Move rejected:", e);
+    } finally {
+      inputLocked = false;
     }
   }
 
   async function handlePass() {
-    if (engineStore.aiThinking) return;
+    if (!gameStore.state || gameStore.state.phase === "Finished" || !isPlayerTurn || inputLocked || engineStore.aiThinking) return;
     try {
+      inputLocked = true;
       const state = await api.passTurn();
       sounds.play("pass");
       gameStore.set(state);
-      triggerAiMove();
+      await triggerAiMove();
     } catch (e) {
       gameStore.setError(String(e));
+    } finally {
+      inputLocked = false;
     }
   }
 
@@ -203,22 +239,28 @@
   }
 
   async function handleResign() {
-    if (engineStore.aiThinking) return;
+    if (!gameStore.state || gameStore.state.phase === "Finished" || inputLocked || engineStore.aiThinking) return;
     try {
+      inputLocked = true;
       const [state] = await api.resign();
       gameStore.set(state);
     } catch (e) {
       gameStore.setError(String(e));
+    } finally {
+      inputLocked = false;
     }
   }
 
   async function handleUndo() {
-    if (engineStore.aiThinking) return;
+    if (inputLocked || engineStore.aiThinking) return;
     try {
+      inputLocked = true;
       const state = await api.undoMove();
       gameStore.set(state);
     } catch (e) {
       gameStore.setError(String(e));
+    } finally {
+      inputLocked = false;
     }
   }
 
@@ -305,6 +347,7 @@
           lastMoveSeverity={isViewingHistory ? null : coachingStore.lastMoveSeverity}
           theme={boardThemeForName(themeStore.active)}
           animate={!isViewingHistory}
+          interactive={canPlayBoard}
           onIntersectionClick={isViewingHistory ? noop : handleIntersectionClick}
         />
         {#if isViewingHistory}
@@ -395,7 +438,8 @@
         onSave={handleSave}
         onLoad={handleLoad}
         disabled={gameStore.state.phase === "Finished" ||
-          engineStore.aiThinking}
+          engineStore.aiThinking ||
+          inputLocked}
       />
 
       <MoveHistory game={gameStore.state} viewingMove={viewingMove} onNavigate={handleNavigate} />
