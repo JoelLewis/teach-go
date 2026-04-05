@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import BoardSvg from "../lib/board/BoardSvg.svelte";
+  import BoardToast from "../components/BoardToast.svelte";
   import GameControls from "../components/GameControls.svelte";
   import MoveHistory from "../components/MoveHistory.svelte";
   import CoachingPanel from "../components/CoachingPanel.svelte";
@@ -42,6 +43,12 @@
   const noop = () => {};
 
   // Whether we're viewing a past position (not the current game state)
+  let latestCoachingMessage = $derived(
+    coachingStore.messages.length > 0
+      ? coachingStore.messages[coachingStore.messages.length - 1]
+      : null
+  );
+
   let isViewingHistory = $derived(viewingMove !== null && viewingMove !== (gameStore.state?.move_number ?? 0));
   let displayState = $derived(isViewingHistory && viewingState ? viewingState : gameStore.state);
   let isPlayerTurn = $derived(gameStore.state?.current_color === playerColor);
@@ -360,12 +367,16 @@
             </button>
           </div>
         {/if}
+        <BoardToast
+          message={latestCoachingMessage}
+          onClickMessage={(moveNumber) => handleNavigate(moveNumber)}
+        />
       </div>
     {/if}
   </div>
 
   <!-- Right panel -->
-  <div class="flex w-full lg:w-80 flex-col gap-3 border-t lg:border-t-0 lg:border-l overflow-y-auto max-h-[50vh] lg:max-h-none p-4" style="border-color: var(--panel-border);">
+  <div class="flex w-full lg:w-80 flex-col gap-4 border-t lg:border-t-0 lg:border-l overflow-y-auto max-h-[50vh] lg:max-h-none p-4" style="border-color: var(--panel-border);">
     <div class="flex items-center justify-between">
       <h2 class="text-lg font-semibold" style="color: var(--text-primary);">Game</h2>
       <button
@@ -424,22 +435,24 @@
         </div>
       {/if}
 
-      <ScoreBar
-        capturesBlack={gameStore.state.captures_black}
-        capturesWhite={gameStore.state.captures_white}
-      />
+      <div class="flex flex-col gap-1.5">
+        <ScoreBar
+          capturesBlack={gameStore.state.captures_black}
+          capturesWhite={gameStore.state.captures_white}
+        />
 
-      <GameControls
-        onPass={handlePass}
-        onResign={handleResign}
-        onUndo={handleUndo}
-        onNewGame={startNewGame}
-        onSave={handleSave}
-        onLoad={handleLoad}
-        disabled={gameStore.state.phase === "Finished" ||
-          engineStore.aiThinking ||
-          inputLocked}
-      />
+        <GameControls
+          onPass={handlePass}
+          onResign={handleResign}
+          onUndo={handleUndo}
+          onNewGame={startNewGame}
+          onSave={handleSave}
+          onLoad={handleLoad}
+          disabled={gameStore.state.phase === "Finished" ||
+            engineStore.aiThinking ||
+            inputLocked}
+        />
+      </div>
 
       <MoveHistory game={gameStore.state} viewingMove={viewingMove} onNavigate={handleNavigate} />
 
@@ -452,7 +465,9 @@
         </button>
       {/if}
 
-      <CoachingPanel messages={coachingStore.messages} streamingMoveNumber={coachingStore.streamingMoveNumber} onNavigate={handleNavigate} />
+      <div class="mt-3">
+        <CoachingPanel messages={coachingStore.messages} streamingMoveNumber={coachingStore.streamingMoveNumber} onNavigate={handleNavigate} />
+      </div>
 
       {#if gameStore.state.phase === "Finished"}
         <div

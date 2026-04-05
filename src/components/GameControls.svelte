@@ -13,7 +13,7 @@
     $props();
 </script>
 
-<div class="flex flex-wrap gap-2">
+<div class="flex flex-wrap gap-1.5">
   <button onclick={onPass} {disabled} class="btn btn-secondary">
     Pass
   </button>

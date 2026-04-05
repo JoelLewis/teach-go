@@ -15,9 +15,9 @@
   }
 </script>
 
-<div class="flex flex-col gap-2">
+<div class="flex flex-col gap-3">
   <h3 class="text-sm font-semibold" style="color: var(--text-secondary);">Coaching</h3>
-  <div class="max-h-64 space-y-2 overflow-y-auto">
+  <div class="max-h-64 space-y-1.5 overflow-y-auto">
     {#if messages.length === 0}
       <p class="text-xs italic" style="color: var(--text-muted);">
         Coaching feedback will appear here during play.
