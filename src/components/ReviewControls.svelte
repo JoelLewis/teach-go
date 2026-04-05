@@ -33,7 +33,7 @@
     <button
       onclick={onFirst}
       disabled={currentMove === 0}
-      class="rounded px-2 py-1 text-sm hover:opacity-90 disabled:opacity-30"
+      class="rounded px-2 py-2 text-sm hover:opacity-90 disabled:opacity-30"
       style="background-color: var(--surface-input); color: var(--text-on-card);"
       title="First move"
       aria-label="First move"
@@ -41,7 +41,7 @@
     <button
       onclick={onPrev}
       disabled={currentMove === 0}
-      class="rounded px-3 py-1 text-sm hover:opacity-90 disabled:opacity-30"
+      class="rounded px-3 py-2 text-sm hover:opacity-90 disabled:opacity-30"
       style="background-color: var(--surface-input); color: var(--text-on-card);"
       title="Previous move"
       aria-label="Previous move"
@@ -49,7 +49,7 @@
     <button
       onclick={onNext}
       disabled={currentMove >= totalMoves}
-      class="rounded px-3 py-1 text-sm hover:opacity-90 disabled:opacity-30"
+      class="rounded px-3 py-2 text-sm hover:opacity-90 disabled:opacity-30"
       style="background-color: var(--surface-input); color: var(--text-on-card);"
       title="Next move"
       aria-label="Next move"
@@ -57,7 +57,7 @@
     <button
       onclick={onLast}
       disabled={currentMove >= totalMoves}
-      class="rounded px-2 py-1 text-sm hover:opacity-90 disabled:opacity-30"
+      class="rounded px-2 py-2 text-sm hover:opacity-90 disabled:opacity-30"
       style="background-color: var(--surface-input); color: var(--text-on-card);"
       title="Last move"
       aria-label="Last move"
@@ -68,14 +68,14 @@
     <div class="flex items-center justify-center gap-2">
       <button
         onclick={onPrevMistake}
-        class="rounded px-2 py-1 text-xs hover:opacity-90"
+        class="rounded px-2 py-1.5 text-xs hover:opacity-90"
         style="background-color: var(--severity-blunder); color: var(--severity-blunder-text);"
         title="Previous mistake"
         aria-label="Previous mistake"
       >&lsaquo; Mistake</button>
       <button
         onclick={onNextMistake}
-        class="rounded px-2 py-1 text-xs hover:opacity-90"
+        class="rounded px-2 py-1.5 text-xs hover:opacity-90"
         style="background-color: var(--severity-blunder); color: var(--severity-blunder-text);"
         title="Next mistake"
         aria-label="Next mistake"

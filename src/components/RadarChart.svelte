@@ -153,5 +153,7 @@
     bind:this={canvasEl}
     class="w-full rounded"
     style="height: {CHART_HEIGHT}px"
+    role="img"
+    aria-label="Skill profile radar chart showing ratings for Reading, Shape, Direction, Endgame, Life and Death, and Fighting"
   ></canvas>
 </div>

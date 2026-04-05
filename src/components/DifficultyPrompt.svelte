@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import type { DifficultySuggestion } from "../lib/api/types";
 
   type Props = {
@@ -8,12 +9,32 @@
   };
 
   let { suggestion, onAccept, onDismiss }: Props = $props();
+
+  let dialogEl: HTMLDivElement;
+
+  onMount(() => {
+    const focusable = dialogEl?.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (!focusable?.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    first?.focus();
+    function handleKeydown(e: KeyboardEvent) {
+      if (e.key === "Escape") { onDismiss(); return; }
+      if (e.key !== "Tab") return;
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+    }
+    dialogEl.addEventListener("keydown", handleKeydown);
+    return () => dialogEl.removeEventListener("keydown", handleKeydown);
+  });
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={onDismiss}>
   <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="w-72 rounded-lg p-5 shadow-xl text-center" role="dialog" aria-modal="true" tabindex="-1" onkeydown={(e) => { if (e.key === 'Escape') onDismiss(); }} onclick={(e) => e.stopPropagation()} style="background-color: var(--surface-card);">
+  <div bind:this={dialogEl} class="w-72 rounded-lg p-5 shadow-xl text-center" role="dialog" aria-modal="true" tabindex="-1" onkeydown={(e) => { if (e.key === 'Escape') onDismiss(); }} onclick={(e) => e.stopPropagation()} style="background-color: var(--surface-card);">
     <div class="mb-3 text-2xl">
       {suggestion.direction === "up" ? "\ud83c\udfaf" : "\ud83d\udcd6"}
     </div>

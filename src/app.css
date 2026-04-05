@@ -202,8 +202,29 @@ select:focus {
   outline-offset: -1px;
 }
 
+/* Global focus indicators for keyboard navigation */
+button:focus-visible,
+[role="button"]:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent-primary, #c9a84c);
+  outline-offset: 2px;
+}
+
 /* Style native select/option for dark backgrounds (WebKit/Blink) */
 select option {
   background-color: var(--surface-card);
   color: var(--text-primary);
+}
+
+/* Respect user preference for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

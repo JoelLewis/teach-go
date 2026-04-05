@@ -192,6 +192,8 @@
       bind:this={canvasEl}
       class="w-full rounded"
       style="height: {CHART_HEIGHT}px"
+      role="img"
+      aria-label="Rank progression chart over time"
     ></canvas>
   </div>
 </div>

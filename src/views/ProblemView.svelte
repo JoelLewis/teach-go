@@ -19,6 +19,7 @@
   let showList = $state(true);
   let categoryFilter = $state<string | null>(null);
   let sourceFilter = $state<"all" | "generated">("all");
+  let loading = $state(true);
   let importing = $state(false);
   let importMessage = $state<string | null>(null);
   let activeTimeouts: ReturnType<typeof setTimeout>[] = [];
@@ -49,6 +50,8 @@
       problemStore.setProblems(list);
     } catch (e) {
       problemStore.setError(String(e));
+    } finally {
+      loading = false;
     }
   }
 
@@ -289,6 +292,8 @@
 
     {#if problemStore.error}
       <div class="rounded p-3 text-sm" style="background-color: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger);">{problemStore.error}</div>
+    {:else if loading && problemStore.problems.length === 0}
+      <p class="mt-8 text-sm" style="color: var(--text-dim);">Loading problems...</p>
     {:else if problemStore.problems.length === 0}
       <p class="mt-8 text-sm" style="color: var(--text-dim);">No problems available.</p>
     {:else}

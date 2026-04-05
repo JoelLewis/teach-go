@@ -199,6 +199,8 @@
     bind:this={canvasEl}
     class="w-full cursor-crosshair rounded"
     style="height: {CHART_HEIGHT}px"
+    role="img"
+    aria-label="Win rate chart showing black and white advantage throughout the game"
     onclick={handleClick}
   ></canvas>
 </div>
