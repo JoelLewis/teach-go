@@ -188,18 +188,10 @@
     {/if}
 
     <div class="flex justify-end gap-2">
-      <button
-        onclick={onClose}
-        class="rounded px-4 py-2 text-sm hover:opacity-90"
-        style="background-color: var(--surface-input); color: var(--text-heading);"
-      >
+      <button onclick={onClose} class="btn btn-secondary">
         Cancel
       </button>
-      <button
-        onclick={handleSave}
-        class="rounded px-4 py-2 text-sm hover:opacity-90"
-        style="background-color: var(--btn-bg); color: var(--btn-text);"
-      >
+      <button onclick={handleSave} class="btn btn-primary">
         Save
       </button>
     </div>

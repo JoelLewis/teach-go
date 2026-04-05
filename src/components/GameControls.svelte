@@ -14,49 +14,22 @@
 </script>
 
 <div class="flex flex-wrap gap-2">
-  <button
-    onclick={onPass}
-    {disabled}
-    class="rounded px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
-    style="background-color: var(--surface-input); color: var(--text-heading);"
-  >
+  <button onclick={onPass} {disabled} class="btn btn-secondary">
     Pass
   </button>
-  <button
-    onclick={onUndo}
-    {disabled}
-    class="rounded px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
-    style="background-color: var(--surface-input); color: var(--text-heading);"
-  >
+  <button onclick={onUndo} {disabled} class="btn btn-secondary">
     Undo
   </button>
-  <button
-    onclick={onResign}
-    {disabled}
-    class="rounded px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
-    style="background-color: var(--danger); color: var(--text-heading);"
-  >
+  <button onclick={onResign} {disabled} class="btn btn-danger">
     Resign
   </button>
-  <button
-    onclick={onNewGame}
-    class="rounded px-4 py-2.5 text-sm font-medium hover:opacity-90"
-    style="background-color: var(--btn-bg); color: var(--btn-text);"
-  >
+  <button onclick={onNewGame} class="btn btn-primary">
     New Game
   </button>
-  <button
-    onclick={onSave}
-    class="rounded px-4 py-2.5 text-sm font-medium hover:opacity-90"
-    style="background-color: var(--surface-input); color: var(--text-heading);"
-  >
+  <button onclick={onSave} class="btn btn-secondary">
     Save
   </button>
-  <button
-    onclick={onLoad}
-    class="rounded px-4 py-2.5 text-sm font-medium hover:opacity-90"
-    style="background-color: var(--surface-input); color: var(--text-heading);"
-  >
+  <button onclick={onLoad} class="btn btn-secondary">
     Load
   </button>
 </div>

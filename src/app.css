@@ -160,6 +160,55 @@ body,
   --severity-blunder-text: #d45a5a;
 }
 
+/* ── Button system ────────────────────────────── */
+@layer components {
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.375rem;
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    font-family: system-ui, -apple-system, sans-serif;
+    transition: opacity 0.15s;
+    min-height: 2.75rem;
+    cursor: pointer;
+  }
+  .btn:hover { opacity: 0.9; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-primary {
+    background-color: var(--btn-bg);
+    color: var(--btn-text);
+  }
+  .btn-secondary {
+    background-color: var(--surface-input);
+    color: var(--text-primary);
+  }
+  .btn-danger {
+    background-color: var(--danger);
+    color: white;
+  }
+  .btn-ghost {
+    background-color: transparent;
+    color: var(--text-secondary);
+  }
+  .btn-ghost:hover { background-color: var(--surface-secondary); opacity: 1; }
+
+  .btn-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+    min-height: 2rem;
+  }
+  .btn-lg {
+    padding: 0.75rem 2rem;
+    font-size: 1.125rem;
+    min-height: 3rem;
+  }
+}
+
 /* ── Base styles ───────────────────────────────── */
 body {
   font-family: var(--font-body, system-ui, sans-serif);

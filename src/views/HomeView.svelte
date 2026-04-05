@@ -65,30 +65,27 @@
   <div class="flex flex-col items-center gap-3">
     <button
       onclick={() => (showNewGameDialog = true)}
-      class="rounded-lg px-8 py-4 text-lg font-semibold shadow-lg transition hover:shadow-xl"
-      style="background-color: var(--btn-bg); color: var(--btn-text);"
+      class="btn btn-primary btn-lg shadow-lg hover:shadow-xl"
     >
       New Game
     </button>
     <button
       onclick={onStartProblems}
-      class="rounded-lg px-8 py-4 text-lg font-semibold shadow-lg transition hover:shadow-xl"
-      style="background-color: var(--accent-secondary); color: var(--btn-text);"
+      class="btn btn-lg shadow-lg hover:shadow-xl"
+      style="background-color: var(--accent-secondary); color: white;"
     >
       Practice Problems
     </button>
     <div class="flex gap-2">
       <button
         onclick={onShowDashboard}
-        class="rounded-lg px-6 py-2 text-sm font-semibold transition"
-        style="background-color: var(--panel-bg); color: var(--text-primary);"
+        class="btn btn-secondary btn-sm"
       >
         Progress
       </button>
       <button
         onclick={() => (showSettingsDialog = true)}
-        class="rounded-lg px-3 py-2 text-sm transition"
-        style="background-color: var(--panel-bg); color: var(--text-primary);"
+        class="btn btn-ghost btn-sm"
         title="Settings"
       >
         ⚙
@@ -125,8 +122,7 @@
       {/if}
       <button
         onclick={() => downloadStore.retry()}
-        class="mt-2 rounded px-3 py-1 text-xs font-semibold"
-        style="background-color: var(--btn-bg); color: var(--btn-text);"
+        class="btn btn-primary btn-sm mt-2"
       >
         Retry
       </button>

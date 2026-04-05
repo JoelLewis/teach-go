@@ -76,10 +76,7 @@
         ] as option}
           <button
             onclick={() => (colorChoice = option.value as "black" | "white" | "auto")}
-            class="flex-1 rounded px-3 py-2 text-sm font-medium transition hover:opacity-90"
-            style="{colorChoice === option.value
-              ? `background-color: var(--btn-bg); color: var(--btn-text);`
-              : `background-color: var(--surface-input); color: var(--text-on-card);`}"
+            class="btn btn-sm flex-1 {colorChoice === option.value ? 'btn-primary' : 'btn-secondary'}"
           >
             {option.label}
           </button>
@@ -103,18 +100,10 @@
     </div>
 
     <div class="flex justify-end gap-2">
-      <button
-        onclick={onClose}
-        class="rounded px-4 py-2 text-sm hover:opacity-90"
-        style="background-color: var(--surface-input); color: var(--text-heading);"
-      >
+      <button onclick={onClose} class="btn btn-secondary">
         Cancel
       </button>
-      <button
-        onclick={handleStart}
-        class="rounded px-4 py-2 text-sm hover:opacity-90"
-        style="background-color: var(--btn-bg); color: var(--btn-text);"
-      >
+      <button onclick={handleStart} class="btn btn-primary">
         Start Game
       </button>
     </div>

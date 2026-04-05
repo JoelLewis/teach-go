@@ -33,32 +33,28 @@
     <button
       onclick={onFirst}
       disabled={currentMove === 0}
-      class="rounded px-2 py-2 text-sm hover:opacity-90 disabled:opacity-30"
-      style="background-color: var(--surface-input); color: var(--text-on-card);"
+      class="btn btn-secondary btn-sm"
       title="First move"
       aria-label="First move"
     >|&laquo;</button>
     <button
       onclick={onPrev}
       disabled={currentMove === 0}
-      class="rounded px-3 py-2 text-sm hover:opacity-90 disabled:opacity-30"
-      style="background-color: var(--surface-input); color: var(--text-on-card);"
+      class="btn btn-secondary btn-sm"
       title="Previous move"
       aria-label="Previous move"
     >&lsaquo;</button>
     <button
       onclick={onNext}
       disabled={currentMove >= totalMoves}
-      class="rounded px-3 py-2 text-sm hover:opacity-90 disabled:opacity-30"
-      style="background-color: var(--surface-input); color: var(--text-on-card);"
+      class="btn btn-secondary btn-sm"
       title="Next move"
       aria-label="Next move"
     >&rsaquo;</button>
     <button
       onclick={onLast}
       disabled={currentMove >= totalMoves}
-      class="rounded px-2 py-2 text-sm hover:opacity-90 disabled:opacity-30"
-      style="background-color: var(--surface-input); color: var(--text-on-card);"
+      class="btn btn-secondary btn-sm"
       title="Last move"
       aria-label="Last move"
     >&raquo;|</button>
@@ -68,15 +64,13 @@
     <div class="flex items-center justify-center gap-2">
       <button
         onclick={onPrevMistake}
-        class="rounded px-2 py-1.5 text-xs hover:opacity-90"
-        style="background-color: var(--severity-blunder); color: var(--severity-blunder-text);"
+        class="btn btn-danger btn-sm"
         title="Previous mistake"
         aria-label="Previous mistake"
       >&lsaquo; Mistake</button>
       <button
         onclick={onNextMistake}
-        class="rounded px-2 py-1.5 text-xs hover:opacity-90"
-        style="background-color: var(--severity-blunder); color: var(--severity-blunder-text);"
+        class="btn btn-danger btn-sm"
         title="Next mistake"
         aria-label="Next mistake"
       >Mistake &rsaquo;</button>

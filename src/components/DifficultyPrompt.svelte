@@ -40,18 +40,10 @@
     </div>
     <p class="mb-4 text-sm" style="color: var(--text-on-card);">{suggestion.message}</p>
     <div class="flex justify-center gap-2">
-      <button
-        onclick={onDismiss}
-        class="rounded px-4 py-1.5 text-sm hover:opacity-90"
-        style="background-color: var(--surface-input); color: var(--text-on-card);"
-      >
+      <button onclick={onDismiss} class="btn btn-secondary">
         Not now
       </button>
-      <button
-        onclick={onAccept}
-        class="rounded px-4 py-1.5 text-sm font-semibold hover:opacity-90"
-        style="background-color: var(--btn-bg); color: var(--btn-text);"
-      >
+      <button onclick={onAccept} class="btn btn-primary">
         {suggestion.direction === "up" ? "Try harder" : "Easier opponent"}
       </button>
     </div>
