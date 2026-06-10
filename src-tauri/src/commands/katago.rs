@@ -248,8 +248,8 @@ pub async fn request_ai_move(
                 [],
                 |row| row.get(0),
             )
-            .unwrap_or_else(|_| "beginner".to_string());
-        convert::strength_to_profile(&strength)
+            .unwrap_or_else(|_| "18k".to_string());
+        convert::rank_token_to_profile(&strength)
     };
 
     // Build and send query (async — no std mutex held)

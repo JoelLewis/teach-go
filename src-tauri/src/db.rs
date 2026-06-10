@@ -146,6 +146,15 @@ fn run_migrations(conn: &Connection) -> Result<(), AppError> {
         CREATE INDEX IF NOT EXISTS idx_skill_history_player_recorded
             ON skill_history (player_id, recorded_at);",
     );
+
+    // Migrate the 4-tier ai_strength values to rank tokens (rank slider update).
+    // Idempotent: each UPDATE only matches the legacy value it rewrites.
+    conn.execute_batch(
+        "UPDATE settings SET value = '18k' WHERE key = 'ai_strength' AND value = 'beginner';
+         UPDATE settings SET value = '9k'  WHERE key = 'ai_strength' AND value = 'intermediate';
+         UPDATE settings SET value = '3k'  WHERE key = 'ai_strength' AND value = 'advanced';
+         UPDATE settings SET value = 'max' WHERE key = 'ai_strength' AND value = 'dan';",
+    )?;
     Ok(())
 }
 
@@ -155,4 +164,70 @@ pub fn init_db(path: &str) -> Result<Connection, AppError> {
     init_schema(&conn)?;
     run_migrations(&conn)?;
     Ok(conn)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn ai_strength(conn: &Connection) -> String {
+        conn.query_row(
+            "SELECT value FROM settings WHERE key = 'ai_strength'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn migrates_legacy_ai_strength_to_rank_token_idempotently() {
+        let conn = Connection::open_in_memory().unwrap();
+        init_schema(&conn).unwrap();
+        conn.execute(
+            "INSERT INTO settings (key, value) VALUES ('ai_strength', 'advanced')",
+            [],
+        )
+        .unwrap();
+
+        run_migrations(&conn).unwrap();
+        assert_eq!(ai_strength(&conn), "3k");
+
+        // Second run must be a no-op
+        run_migrations(&conn).unwrap();
+        assert_eq!(ai_strength(&conn), "3k");
+    }
+
+    #[test]
+    fn migrates_all_legacy_tiers() {
+        let cases = [
+            ("beginner", "18k"),
+            ("intermediate", "9k"),
+            ("advanced", "3k"),
+            ("dan", "max"),
+        ];
+        for (legacy, expected) in cases {
+            let conn = Connection::open_in_memory().unwrap();
+            init_schema(&conn).unwrap();
+            conn.execute(
+                "INSERT INTO settings (key, value) VALUES ('ai_strength', ?1)",
+                [legacy],
+            )
+            .unwrap();
+            run_migrations(&conn).unwrap();
+            assert_eq!(ai_strength(&conn), expected, "legacy value {legacy}");
+        }
+    }
+
+    #[test]
+    fn leaves_rank_token_ai_strength_untouched() {
+        let conn = Connection::open_in_memory().unwrap();
+        init_schema(&conn).unwrap();
+        conn.execute(
+            "INSERT INTO settings (key, value) VALUES ('ai_strength', '5d')",
+            [],
+        )
+        .unwrap();
+        run_migrations(&conn).unwrap();
+        assert_eq!(ai_strength(&conn), "5d");
+    }
 }
