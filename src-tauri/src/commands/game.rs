@@ -180,6 +180,10 @@ pub fn list_games(state: State<'_, AppState>) -> Result<Vec<SavedGame>, AppError
 
 #[tauri::command]
 pub fn load_saved_game(state: State<'_, AppState>, game_id: i64) -> Result<GameState, AppError> {
+    load_saved_game_impl(&state, game_id)
+}
+
+fn load_saved_game_impl(state: &AppState, game_id: i64) -> Result<GameState, AppError> {
     let sgf: String = {
         let db = state.db.lock().unwrap();
         db.query_row("SELECT sgf FROM games WHERE id = ?1", [game_id], |row| {
@@ -189,6 +193,10 @@ pub fn load_saved_game(state: State<'_, AppState>, game_id: i64) -> Result<GameS
     let game = Game::from_sgf(&sgf).map_err(AppError::Other)?;
     let game_state = game.to_state();
     *state.game.lock().unwrap() = Some(game);
+    // Loaded games are review/replay material — no AI opponent. A stale
+    // ai_color from a previous session would corrupt undo semantics and
+    // the player_color recorded on finish.
+    *state.ai_color.lock().unwrap() = None;
     Ok(game_state)
 }
 
@@ -359,6 +367,36 @@ mod tests {
             ("B+3.0".into(), "hotseat".into()),
         ];
         assert!(detect_streak(&results).is_none());
+    }
+
+    #[test]
+    fn load_saved_game_clears_stale_ai_color() {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::init_schema(&conn).unwrap();
+        let state = crate::state::AppState::with_db(conn);
+
+        let sgf = Game::new(BoardSize::try_from(9).unwrap(), 6.5).to_sgf();
+        state
+            .db
+            .lock()
+            .unwrap()
+            .execute(
+                "INSERT INTO games (board_size, sgf, result, player_color) VALUES (9, ?1, 'B+R', 'black')",
+                [&sgf],
+            )
+            .unwrap();
+
+        // Simulate a previous vs-AI session
+        *state.ai_color.lock().unwrap() = Some(Color::White);
+
+        let loaded = load_saved_game_impl(&state, 1).unwrap();
+        assert_eq!(loaded.board_size, 9);
+        assert!(state.game.lock().unwrap().is_some());
+        assert_eq!(
+            *state.ai_color.lock().unwrap(),
+            None,
+            "loading a saved game must not inherit the previous session's AI color"
+        );
     }
 
     #[test]

@@ -27,7 +27,8 @@
 
   let { config, onGoHome, onStartReview }: Props = $props();
 
-  let boardSize = $state(config?.boardSize ?? settingsStore.value.board_size);
+  // A game already in the store (loaded saved game) dictates the board size
+  let boardSize = $state(gameStore.state?.board_size ?? config?.boardSize ?? settingsStore.value.board_size);
   let playerColor = $state<StoneColor>(config?.playerColor ?? "black");
   let viewingMove = $state<number | null>(null);
   let viewingState = $state<GameState | null>(null);
@@ -105,15 +106,19 @@
     }
   });
 
-  // Check for difficulty suggestion when game finishes (once per game)
+  // Check for difficulty suggestion when game finishes (once per game).
+  // Hotseat games say nothing about AI difficulty, so skip the prompt.
   $effect(() => {
-    if (gameStore.state?.phase === "Finished" && !difficultyChecked) {
+    if (!isHotseat && gameStore.state?.phase === "Finished" && !difficultyChecked) {
       difficultyChecked = true;
       checkDifficulty();
     }
   });
 
   async function checkSetupAndStart() {
+    // A game already in the store means we arrived here via "load saved game" —
+    // starting a new game now would wipe it with a fresh board.
+    if (gameStore.state) return;
     if (isHotseat) {
       // Rules engine is pure Rust — no engine or downloads needed
       startNewGame();
@@ -277,6 +282,12 @@
       inputLocked = true;
       const state = await api.undoMove();
       gameStore.set(state);
+      // Self-heal: if undo leaves the AI on move (e.g., undoing the AI's
+      // opening move as White, where the backend can't double-undo at
+      // history length 0), let the AI play so the board doesn't lock up.
+      if (!isHotseat && state.current_color !== playerColor) {
+        await triggerAiMove();
+      }
     } catch (e) {
       gameStore.setError(String(e));
     } finally {
@@ -401,7 +412,7 @@
       </button>
     </div>
 
-    {#if !downloadStore.katagoReady}
+    {#if !isHotseat && !downloadStore.katagoReady}
       <div class="rounded p-3 text-sm" style="background-color: color-mix(in srgb, var(--info) 15%, transparent); color: var(--info);">
         {#if downloadStore.katagoDownloading}
           <div class="mb-1 font-semibold">Downloading KataGo{downloadStore.katagoPhase ? ` (${downloadStore.katagoPhase})` : ""}...</div>
