@@ -33,7 +33,8 @@ fn auto_save_if_finished(state: &AppState, game: &Game) {
     let board_size = game.board().dimension();
     let player_color = match *state.ai_color.lock().unwrap() {
         Some(Color::Black) => "white",
-        _ => "black", // Default: player is Black
+        Some(Color::White) => "black",
+        None => "hotseat", // Local human-vs-human game
     };
 
     let db = state.db.lock().unwrap();
@@ -54,7 +55,9 @@ pub fn new_game(
     komi: Option<f32>,
     player_color: Option<String>,
 ) -> Result<GameState, AppError> {
-    tracing::info!("new_game: board_size={board_size}, komi={komi:?}, player_color={player_color:?}");
+    tracing::info!(
+        "new_game: board_size={board_size}, komi={komi:?}, player_color={player_color:?}"
+    );
     let size = BoardSize::try_from(board_size).map_err(AppError::Other)?;
     let game = Game::new(size, komi.unwrap_or(6.5));
     let game_state = game.to_state();
@@ -113,6 +116,12 @@ pub fn resign(state: State<'_, AppState>) -> Result<(GameState, GameResult), App
     Ok((game_state, result))
 }
 
+/// After one undo in a vs-AI game, undoing can land on the AI's turn,
+/// which locks the board. Undo a second move so it's the human's turn again.
+fn should_undo_again(ai_color: Option<Color>, current_color: Color, history_len: usize) -> bool {
+    ai_color.is_some_and(|ai| current_color == ai && history_len > 0)
+}
+
 #[tauri::command]
 pub fn undo_move(state: State<'_, AppState>) -> Result<GameState, AppError> {
     let mut game_lock = state.game.lock().unwrap();
@@ -120,6 +129,10 @@ pub fn undo_move(state: State<'_, AppState>) -> Result<GameState, AppError> {
         .as_mut()
         .ok_or(AppError::Other("No active game".into()))?;
     game.undo()?;
+    let ai_color = *state.ai_color.lock().unwrap();
+    if should_undo_again(ai_color, game.current_color(), game.move_history().len()) {
+        game.undo()?;
+    }
     Ok(game.to_state())
 }
 
@@ -192,11 +205,16 @@ const RECENT_GAMES_QUERY: usize = 10;
 /// Pure function: detect win/loss streaks from recent game results.
 /// Each entry is (result_string, player_color) — e.g., ("B+R", "black").
 fn detect_streak(results: &[(String, String)]) -> Option<DifficultySuggestion> {
-    if results.len() < STREAK_THRESHOLD {
+    // Hotseat (human-vs-human) games say nothing about AI difficulty.
+    let vs_ai: Vec<&(String, String)> = results
+        .iter()
+        .filter(|(_, color)| color != "hotseat")
+        .collect();
+    if vs_ai.len() < STREAK_THRESHOLD {
         return None;
     }
 
-    let recent = &results[..STREAK_THRESHOLD.min(results.len())];
+    let recent = &vs_ai[..STREAK_THRESHOLD];
     let wins = recent
         .iter()
         .filter(|&(result, color)| {
@@ -315,5 +333,80 @@ mod tests {
     fn empty_results_no_suggestion() {
         let results: Vec<(String, String)> = vec![];
         assert!(detect_streak(&results).is_none());
+    }
+
+    #[test]
+    fn hotseat_rows_ignored_in_streak_detection() {
+        // Three AI wins separated by hotseat games: hotseat rows must not
+        // break the streak, and must not count toward it either.
+        let results: Vec<(String, String)> = vec![
+            ("B+R".into(), "black".into()),
+            ("B+2.0".into(), "hotseat".into()),
+            ("B+3.0".into(), "black".into()),
+            ("B+1.5".into(), "hotseat".into()),
+            ("B+7.0".into(), "black".into()),
+        ];
+        let suggestion = detect_streak(&results);
+        assert!(suggestion.is_some());
+        assert_eq!(suggestion.unwrap().direction, "up");
+    }
+
+    #[test]
+    fn hotseat_only_rows_no_suggestion() {
+        let results: Vec<(String, String)> = vec![
+            ("B+R".into(), "hotseat".into()),
+            ("B+5.5".into(), "hotseat".into()),
+            ("B+3.0".into(), "hotseat".into()),
+        ];
+        assert!(detect_streak(&results).is_none());
+    }
+
+    #[test]
+    fn should_undo_again_cases() {
+        struct Case {
+            name: &'static str,
+            ai_color: Option<Color>,
+            current_color: Color,
+            history_len: usize,
+            expected: bool,
+        }
+        let cases = [
+            Case {
+                name: "vs-AI undo lands on AI turn",
+                ai_color: Some(Color::White),
+                current_color: Color::White,
+                history_len: 3,
+                expected: true,
+            },
+            Case {
+                name: "vs-AI undo lands on human turn",
+                ai_color: Some(Color::White),
+                current_color: Color::Black,
+                history_len: 3,
+                expected: false,
+            },
+            Case {
+                name: "hotseat never double-undoes",
+                ai_color: None,
+                current_color: Color::White,
+                history_len: 3,
+                expected: false,
+            },
+            Case {
+                name: "empty history never double-undoes",
+                ai_color: Some(Color::Black),
+                current_color: Color::Black,
+                history_len: 0,
+                expected: false,
+            },
+        ];
+        for case in cases {
+            assert_eq!(
+                should_undo_again(case.ai_color, case.current_color, case.history_len),
+                case.expected,
+                "case failed: {}",
+                case.name
+            );
+        }
     }
 }

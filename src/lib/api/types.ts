@@ -112,6 +112,7 @@ export type DifficultySuggestion = {
 
 export type NewGameConfig = {
   boardSize: number;
+  opponent: "computer" | "human";
   playerColor: "black" | "white";
   aiStrength: string;
 };

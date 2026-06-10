@@ -49,9 +49,11 @@
       : null
   );
 
+  // Hotseat: two local humans share the board; no AI, no real-time coaching
+  let isHotseat = $derived(config?.opponent === "human");
   let isViewingHistory = $derived(viewingMove !== null && viewingMove !== (gameStore.state?.move_number ?? 0));
   let displayState = $derived(isViewingHistory && viewingState ? viewingState : gameStore.state);
-  let isPlayerTurn = $derived(gameStore.state?.current_color === playerColor);
+  let isPlayerTurn = $derived(isHotseat || gameStore.state?.current_color === playerColor);
   let canPlayBoard = $derived(
     !isViewingHistory &&
     !!gameStore.state &&
@@ -96,9 +98,9 @@
     };
   });
 
-  // Auto-start game when KataGo becomes ready
+  // Auto-start game when KataGo becomes ready (hotseat starts immediately instead)
   $effect(() => {
-    if (downloadStore.katagoReady && !gameStore.state && !startingGame) {
+    if (!isHotseat && downloadStore.katagoReady && !gameStore.state && !startingGame) {
       startNewGame();
     }
   });
@@ -112,6 +114,11 @@
   });
 
   async function checkSetupAndStart() {
+    if (isHotseat) {
+      // Rules engine is pure Rust — no engine or downloads needed
+      startNewGame();
+      return;
+    }
     await downloadStore.refresh();
     if (downloadStore.katagoReady) {
       startNewGame();
@@ -124,7 +131,7 @@
 
     startingGame = true;
     try {
-      if (!configStrengthApplied && config?.aiStrength && config.aiStrength !== settingsStore.value.ai_strength) {
+      if (!isHotseat && !configStrengthApplied && config?.aiStrength && config.aiStrength !== settingsStore.value.ai_strength) {
         const nextSettings = await api.updateSettings({
           ...settingsStore.value,
           ai_strength: config.aiStrength,
@@ -135,12 +142,13 @@
 
       inputLocked = false;
       engineError = null;
-      const state = await api.newGame(boardSize, settingsStore.value.komi, playerColor);
+      // No player color in hotseat → backend sets ai_color to None
+      const state = await api.newGame(boardSize, settingsStore.value.komi, isHotseat ? undefined : playerColor);
       gameStore.set(state);
       coachingStore.clear();
       difficultyChecked = false;
       // If player is white, AI (black) moves first
-      if (playerColor === "white") {
+      if (!isHotseat && playerColor === "white") {
         await triggerAiMove();
       }
     } catch (e) {
@@ -151,6 +159,7 @@
   }
 
   async function triggerAiMove() {
+    if (isHotseat) return;
     if (!gameStore.state || gameStore.state.phase === "Finished") return;
 
     const aiColor = playerColor === "black" ? "white" : "black";
@@ -191,8 +200,10 @@
         sounds.play("stone");
       }
       gameStore.set(state);
-      triggerCoaching();
-      await triggerAiMove();
+      if (!isHotseat) {
+        triggerCoaching();
+        await triggerAiMove();
+      }
     } catch (e) {
       console.warn("Move rejected:", e);
     } finally {
@@ -207,7 +218,9 @@
       const state = await api.passTurn();
       sounds.play("pass");
       gameStore.set(state);
-      await triggerAiMove();
+      if (!isHotseat) {
+        await triggerAiMove();
+      }
     } catch (e) {
       gameStore.setError(String(e));
     } finally {
@@ -411,14 +424,28 @@
     {/if}
 
     {#if gameStore.state}
-      <div class="text-sm" style="color: var(--text-secondary);">
-        <span
-          class="inline-block h-3 w-3 rounded-full {gameStore.state.current_color === 'black' ? 'bg-stone-900' : 'bg-stone-100'}"
-          style="{gameStore.state.current_color === 'black' ? `box-shadow: 0 0 0 1px var(--border-subtle);` : ''}"
-        ></span>
-        {gameStore.state.current_color === "black" ? "Black" : "White"} to play
-        &mdash; Move {gameStore.state.move_number}
-      </div>
+      {#if isHotseat && gameStore.state.phase === "Playing"}
+        <div
+          class="flex items-center gap-2 rounded p-2 text-base font-semibold"
+          style="background-color: var(--surface-secondary); color: var(--text-primary);"
+        >
+          <span
+            class="inline-block h-4 w-4 rounded-full {gameStore.state.current_color === 'black' ? 'bg-stone-900' : 'bg-stone-100'}"
+            style="{gameStore.state.current_color === 'black' ? `box-shadow: 0 0 0 1px var(--border-subtle);` : ''}"
+          ></span>
+          {gameStore.state.current_color === "black" ? "Black's turn" : "White's turn"}
+          <span class="text-sm font-normal" style="color: var(--text-dim);">&mdash; Move {gameStore.state.move_number}</span>
+        </div>
+      {:else}
+        <div class="text-sm" style="color: var(--text-secondary);">
+          <span
+            class="inline-block h-3 w-3 rounded-full {gameStore.state.current_color === 'black' ? 'bg-stone-900' : 'bg-stone-100'}"
+            style="{gameStore.state.current_color === 'black' ? `box-shadow: 0 0 0 1px var(--border-subtle);` : ''}"
+          ></span>
+          {gameStore.state.current_color === "black" ? "Black" : "White"} to play
+          &mdash; Move {gameStore.state.move_number}
+        </div>
+      {/if}
 
       {#if engineError}
         <div class="rounded p-2 text-xs" style="background-color: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger);">
@@ -448,6 +475,9 @@
           onNewGame={startNewGame}
           onSave={handleSave}
           onLoad={handleLoad}
+          resignLabel={isHotseat
+            ? `Resign (${gameStore.state.current_color === "black" ? "Black" : "White"})`
+            : "Resign"}
           disabled={gameStore.state.phase === "Finished" ||
             engineStore.aiThinking ||
             inputLocked}
@@ -465,9 +495,11 @@
         </button>
       {/if}
 
-      <div class="mt-3">
-        <CoachingPanel messages={coachingStore.messages} streamingMoveNumber={coachingStore.streamingMoveNumber} onNavigate={handleNavigate} />
-      </div>
+      {#if !isHotseat}
+        <div class="mt-3">
+          <CoachingPanel messages={coachingStore.messages} streamingMoveNumber={coachingStore.streamingMoveNumber} onNavigate={handleNavigate} />
+        </div>
+      {/if}
 
       {#if gameStore.state.phase === "Finished"}
         <div

@@ -24,6 +24,7 @@
 
   let ghostBoardSize = $state(settingsStore.value.board_size);
   let boardSize = $state(settingsStore.value.board_size);
+  let opponent = $state<"computer" | "human">("computer");
   let colorChoice = $state<"black" | "white" | "auto">("black");
   let aiStrength = $state(settingsStore.value.ai_strength);
 
@@ -79,7 +80,7 @@
         ? (Math.random() < 0.5 ? "black" : "white")
         : colorChoice;
     showNewGameOptions = false;
-    onStartGame({ boardSize, playerColor, aiStrength });
+    onStartGame({ boardSize, opponent, playerColor, aiStrength });
   }
 
   function handleBoardSizeChange(e: Event) {
@@ -178,16 +179,15 @@
         </label>
 
         <div>
-          <span class="mb-1 block text-sm" style="color: var(--text-secondary);">Your Color</span>
+          <span class="mb-1 block text-sm" style="color: var(--text-secondary);">Opponent</span>
           <div class="flex gap-2">
             {#each [
-              { value: "black", label: "Black" },
-              { value: "white", label: "White" },
-              { value: "auto", label: "Auto" },
+              { value: "computer", label: "Computer" },
+              { value: "human", label: "Human" },
             ] as option}
               <button
-                onclick={() => (colorChoice = option.value as "black" | "white" | "auto")}
-                class="btn btn-sm flex-1 {colorChoice === option.value ? 'btn-primary' : 'btn-secondary'}"
+                onclick={() => (opponent = option.value as "computer" | "human")}
+                class="btn btn-sm flex-1 {opponent === option.value ? 'btn-primary' : 'btn-secondary'}"
               >
                 {option.label}
               </button>
@@ -195,18 +195,38 @@
           </div>
         </div>
 
-        <label class="block text-sm" style="color: var(--text-secondary);">AI Strength
-          <select
-            bind:value={aiStrength}
-            class="mt-1 w-full rounded px-3 py-2"
-            style="background-color: var(--surface-input); color: var(--text-heading);"
-          >
-            <option value="beginner">Beginner (25-20 kyu)</option>
-            <option value="intermediate">Intermediate (19-10 kyu)</option>
-            <option value="advanced">Advanced (9-1 kyu)</option>
-            <option value="dan">Dan (1 dan+)</option>
-          </select>
-        </label>
+        {#if opponent === "computer"}
+          <div>
+            <span class="mb-1 block text-sm" style="color: var(--text-secondary);">Your Color</span>
+            <div class="flex gap-2">
+              {#each [
+                { value: "black", label: "Black" },
+                { value: "white", label: "White" },
+                { value: "auto", label: "Auto" },
+              ] as option}
+                <button
+                  onclick={() => (colorChoice = option.value as "black" | "white" | "auto")}
+                  class="btn btn-sm flex-1 {colorChoice === option.value ? 'btn-primary' : 'btn-secondary'}"
+                >
+                  {option.label}
+                </button>
+              {/each}
+            </div>
+          </div>
+
+          <label class="block text-sm" style="color: var(--text-secondary);">AI Strength
+            <select
+              bind:value={aiStrength}
+              class="mt-1 w-full rounded px-3 py-2"
+              style="background-color: var(--surface-input); color: var(--text-heading);"
+            >
+              <option value="beginner">Beginner (25-20 kyu)</option>
+              <option value="intermediate">Intermediate (19-10 kyu)</option>
+              <option value="advanced">Advanced (9-1 kyu)</option>
+              <option value="dan">Dan (1 dan+)</option>
+            </select>
+          </label>
+        {/if}
 
         <div class="flex items-center gap-2">
           <button onclick={handleStart} class="btn btn-primary">
