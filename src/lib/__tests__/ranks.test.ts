@@ -47,8 +47,14 @@ describe("normalizeRank", () => {
   });
 
   it("maps unknown values to the default rank", () => {
-    expect(normalizeRank("intermediate")).toBe(DEFAULT_RANK);
     expect(normalizeRank("")).toBe(DEFAULT_RANK);
+  });
+
+  it("maps legacy tier tokens to their equivalent rank tokens", () => {
+    expect(normalizeRank("beginner")).toBe("18k");
+    expect(normalizeRank("intermediate")).toBe("9k");
+    expect(normalizeRank("advanced")).toBe("3k");
+    expect(normalizeRank("dan")).toBe("max");
   });
 });
 
@@ -77,5 +83,9 @@ describe("stepRank", () => {
   it("clamps at both ends", () => {
     expect(stepRank("20k", "down")).toBe("20k");
     expect(stepRank("max", "up")).toBe("max");
+  });
+
+  it("treats legacy 'dan' token as max (normalizes before stepping)", () => {
+    expect(stepRank("dan", "up")).toBe("max");
   });
 });

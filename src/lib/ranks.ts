@@ -18,9 +18,22 @@ export function isRankToken(value: string): value is RankToken {
   return (RANK_LADDER as readonly string[]).includes(value);
 }
 
-/** Coerce an arbitrary stored value to a ladder token (unknowns → default). */
+/** Coerce an arbitrary stored value to a ladder token.
+ *
+ * Legacy four-tier values are mapped to their nearest rank so the UI
+ * stays consistent with the backend's `rank_token_to_profile` mapping.
+ * Any other unrecognised value falls back to DEFAULT_RANK.
+ */
 export function normalizeRank(value: string): RankToken {
-  return isRankToken(value) ? value : DEFAULT_RANK;
+  if (isRankToken(value)) return value;
+  // Mirror backend legacy-tier mapping (convert.rs rank_token_to_profile)
+  switch (value) {
+    case "beginner": return "18k";
+    case "intermediate": return "9k";
+    case "advanced": return "3k";
+    case "dan": return "max";
+    default: return DEFAULT_RANK;
+  }
 }
 
 /** Ladder index of a token; unknown values map to the default rank's index. */

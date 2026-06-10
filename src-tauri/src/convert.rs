@@ -122,8 +122,8 @@ fn is_rank_token(token: &str) -> bool {
 /// beginner profile ("preaz_18k") rather than silently playing full strength.
 pub fn rank_token_to_profile(token: &str) -> Option<String> {
     match token {
-        "max" | "dan" => None, // Full strength — no profile
-        "beginner" | "intermediate" | "advanced" => strength_to_profile(token),
+        "max" => None, // Full strength — no profile
+        "beginner" | "intermediate" | "advanced" | "dan" => strength_to_profile(token),
         _ if is_rank_token(token) => Some(format!("preaz_{token}")),
         _ => Some("preaz_18k".to_string()),
     }
