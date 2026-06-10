@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import SettingsDialog from "../components/SettingsDialog.svelte";
+  import StrengthSlider from "../components/StrengthSlider.svelte";
   import { settingsStore } from "../lib/stores/settings.svelte";
   import { themeStore } from "../lib/stores/theme.svelte";
   import { downloadStore } from "../lib/stores/download.svelte";
@@ -214,18 +215,11 @@
             </div>
           </div>
 
-          <label class="block text-sm" style="color: var(--text-secondary);">AI Strength
-            <select
-              bind:value={aiStrength}
-              class="mt-1 w-full rounded px-3 py-2"
-              style="background-color: var(--surface-input); color: var(--text-heading);"
-            >
-              <option value="beginner">Beginner (25-20 kyu)</option>
-              <option value="intermediate">Intermediate (19-10 kyu)</option>
-              <option value="advanced">Advanced (9-1 kyu)</option>
-              <option value="dan">Dan (1 dan+)</option>
-            </select>
-          </label>
+          <StrengthSlider
+            id="home-ai-strength"
+            value={aiStrength}
+            onChange={(v) => (aiStrength = v)}
+          />
         {/if}
 
         <div class="flex items-center gap-2">

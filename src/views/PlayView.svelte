@@ -15,6 +15,7 @@
   import { themeStore } from "../lib/stores/theme.svelte";
   import { boardThemeForName } from "../lib/board/themes";
   import * as sounds from "../lib/audio/sounds";
+  import { stepRank } from "../lib/ranks";
   import { onEngineStatus, onAiThinking, onCoachingStream } from "../lib/api/events";
   import * as api from "../lib/api/commands";
   import type { CoachingMessage, DifficultySuggestion, GameState, StoneColor, NewGameConfig } from "../lib/api/types";
@@ -313,14 +314,8 @@
 
   async function acceptDifficulty() {
     if (!difficultySuggestion) return;
-    const strengthMap: Record<string, string[]> = {
-      up: ["beginner", "intermediate", "advanced", "dan"],
-      down: ["dan", "advanced", "intermediate", "beginner"],
-    };
-    const levels = strengthMap[difficultySuggestion.direction] ?? [];
-    const currentIdx = levels.indexOf(settingsStore.value.ai_strength);
-    if (currentIdx >= 0 && currentIdx < levels.length - 1) {
-      const newStrength = levels[currentIdx + 1];
+    const newStrength = stepRank(settingsStore.value.ai_strength, difficultySuggestion.direction);
+    if (newStrength !== settingsStore.value.ai_strength) {
       const updated = await api.updateSettings({
         ...settingsStore.value,
         ai_strength: newStrength,
