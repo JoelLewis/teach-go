@@ -104,7 +104,14 @@ pub fn ensure_katago(katago_dir: &Path, on_progress: impl Fn(SetupProgress)) -> 
         #[cfg(target_os = "macos")]
         {
             let output = std::process::Command::new("codesign")
-                .args(["--sign", "-", "--force", "--options", "runtime", &binary_path.to_string_lossy()])
+                .args([
+                    "--sign",
+                    "-",
+                    "--force",
+                    "--options",
+                    "runtime",
+                    &binary_path.to_string_lossy(),
+                ])
                 .output();
             match output {
                 Ok(o) if o.status.success() => info!("Ad-hoc codesigned KataGo binary"),
