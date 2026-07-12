@@ -214,6 +214,8 @@
 
   function handleBoardKeydown(e: KeyboardEvent) {
     if (!interactive) return;
+    // Modified arrows belong to global view navigation (Alt+Left/Right)
+    if (e.altKey || e.metaKey || e.ctrlKey) return;
 
     switch (e.key) {
       case "ArrowUp":

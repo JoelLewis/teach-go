@@ -7,6 +7,7 @@ import {
   startEngine,
   stopEngine,
   requestAiMove,
+  getAiEngine,
   getCoachingFeedback,
   undoMove,
   resign,
@@ -69,6 +70,13 @@ describe("commands", () => {
     mockInvoke.mockResolvedValue({});
     await requestAiMove();
     expect(mockInvoke).toHaveBeenCalledWith("request_ai_move");
+  });
+
+  it("getAiEngine invokes correct command and returns the engine", async () => {
+    mockInvoke.mockResolvedValue("practice_bot");
+    const engine = await getAiEngine();
+    expect(mockInvoke).toHaveBeenCalledWith("get_ai_engine");
+    expect(engine).toBe("practice_bot");
   });
 
   it("getCoachingFeedback invokes correct command", async () => {

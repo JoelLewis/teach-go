@@ -45,6 +45,7 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::game::load_saved_game,
             commands::game::get_game_position,
             commands::game::check_difficulty_suggestion,
+            commands::game::get_ai_engine,
             commands::katago::start_engine,
             commands::katago::stop_engine,
             commands::katago::request_ai_move,

@@ -16,6 +16,7 @@ export const commands = {
 	direction: string,
 	message: string,
 } | null, string>(__TAURI_INVOKE("check_difficulty_suggestion")),
+	getAiEngine: () => __TAURI_INVOKE<AiEngine>("get_ai_engine"),
 	startEngine: () => typedError<KataGoStatus, string>(__TAURI_INVOKE("start_engine")),
 	stopEngine: () => typedError<null, string>(__TAURI_INVOKE("stop_engine")),
 	requestAiMove: () => typedError<GameState, string>(__TAURI_INVOKE("request_ai_move")).then((v) => ((v.status === "ok" ? { ...v, data: ({...v.data,result:v.data.result==null?v.data.result:v.data.result}) } : v) as typeof v)),
@@ -82,6 +83,9 @@ export const commands = {
 };
 
 /* Types */
+/**  Which opponent drives AI moves for the active game. */
+export type AiEngine = "katago" | "practice_bot";
+
 export type CategoryStat = {
 	category: string,
 	solved: number,
