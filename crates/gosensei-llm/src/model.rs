@@ -12,11 +12,12 @@ use llama_cpp_2::context::params::LlamaContextParams;
 use llama_cpp_2::llama_backend::LlamaBackend;
 use llama_cpp_2::llama_batch::LlamaBatch;
 use llama_cpp_2::model::params::LlamaModelParams;
-use llama_cpp_2::model::{AddBos, LlamaChatMessage, LlamaModel};
+use llama_cpp_2::model::{AddBos, LlamaModel};
 use llama_cpp_2::sampling::LlamaSampler;
 use tracing::{debug, info, warn};
 
 use crate::error::LlmError;
+use crate::grammar::GRAMMAR_ROOT;
 
 /// Inference parameters for coaching text generation.
 const TEMPERATURE: f32 = 0.6;
@@ -66,23 +67,13 @@ impl ModelManager {
         })
     }
 
-    /// Format a system+user message pair using the model's built-in chat template.
+    /// Format a system+user message pair for the model.
+    ///
+    /// Gemma 4's chat template is not recognized by llama.cpp's C-level
+    /// `llama_chat_apply_template`, so this delegates to the hand-built
+    /// Gemma 4 formatter in `prompt::format_chat_prompt`.
     pub fn apply_chat_template(&self, system: &str, user: &str) -> Result<String, LlmError> {
-        let tmpl = self
-            .model
-            .chat_template(None)
-            .map_err(|e| LlmError::InferenceFailed(format!("chat template: {e}")))?;
-
-        let messages = &[
-            LlamaChatMessage::new("system".to_string(), system.to_string())
-                .map_err(|e| LlmError::InferenceFailed(format!("system message: {e}")))?,
-            LlamaChatMessage::new("user".to_string(), user.to_string())
-                .map_err(|e| LlmError::InferenceFailed(format!("user message: {e}")))?,
-        ];
-
-        self.model
-            .apply_chat_template(&tmpl, messages, true)
-            .map_err(|e| LlmError::InferenceFailed(format!("apply template: {e}")))
+        Ok(crate::prompt::format_chat_prompt(system, user))
     }
 
     /// Generate text from a formatted prompt. Blocking — call from `spawn_blocking`.
@@ -96,6 +87,28 @@ impl ModelManager {
         &self,
         prompt: &str,
         max_tokens: u32,
+        on_token: impl FnMut(&str),
+    ) -> Result<String, LlmError> {
+        self.generate_internal(prompt, max_tokens, None, on_token)
+    }
+
+    /// Generate with GBNF grammar-constrained sampling and per-token streaming.
+    /// The grammar must define a `root` rule (see `grammar::coaching_grammar`).
+    pub fn generate_streaming_with_grammar(
+        &self,
+        prompt: &str,
+        max_tokens: u32,
+        grammar: &str,
+        on_token: impl FnMut(&str),
+    ) -> Result<String, LlmError> {
+        self.generate_internal(prompt, max_tokens, Some(grammar), on_token)
+    }
+
+    fn generate_internal(
+        &self,
+        prompt: &str,
+        max_tokens: u32,
+        grammar: Option<&str>,
         mut on_token: impl FnMut(&str),
     ) -> Result<String, LlmError> {
         let ctx_params =
@@ -133,14 +146,24 @@ impl ModelManager {
         ctx.decode(&mut batch)
             .map_err(|e| LlmError::InferenceFailed(format!("prompt decode: {e}")))?;
 
-        // Set up sampler chain: temp → min_p → top_p → penalties → dist
-        let mut sampler = LlamaSampler::chain_simple([
+        // Set up sampler chain: [grammar →] temp → min_p → top_p → penalties → dist.
+        // The grammar sampler runs first so truncation samplers only ever see
+        // grammar-legal tokens and can never empty the candidate set.
+        let mut samplers = Vec::with_capacity(6);
+        if let Some(grammar_str) = grammar {
+            samplers.push(
+                LlamaSampler::grammar(&self.model, grammar_str, GRAMMAR_ROOT)
+                    .map_err(|e| LlmError::InferenceFailed(format!("grammar init: {e}")))?,
+            );
+        }
+        samplers.extend([
             LlamaSampler::temp(TEMPERATURE),
             LlamaSampler::min_p(MIN_P, 1),
             LlamaSampler::top_p(TOP_P, 1),
             LlamaSampler::penalties(REPEAT_PENALTY_LAST_N, REPEAT_PENALTY, 0.0, 0.0),
             LlamaSampler::dist(1234),
         ]);
+        let mut sampler = LlamaSampler::chain_simple(samplers);
 
         let mut output = String::new();
         let mut decoder = encoding_rs::UTF_8.new_decoder();
@@ -191,5 +214,43 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert!(matches!(err, LlmError::ModelNotFound(_)));
+    }
+
+    /// Real-model integration test: downloads Gemma 4 E2B Q4_K_M (~2.9 GiB) on
+    /// first run, loads it, and verifies grammar-constrained generation.
+    ///
+    /// Run explicitly with:
+    /// `cargo test -p gosensei-llm --features llm -- --ignored real_model`
+    /// Set `GOSENSEI_LLM_MODEL_DIR` to reuse an existing model directory.
+    #[test]
+    #[ignore = "downloads and loads the ~2.9 GiB Gemma 4 E2B model"]
+    fn real_model_constrained_generation() {
+        let model_dir = std::env::var_os("GOSENSEI_LLM_MODEL_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| std::env::temp_dir().join("gosensei-llm-real-model"));
+
+        let model_path = crate::download::ensure_model(&model_dir, |_, _| {}).expect("download");
+        let manager = ModelManager::load(&model_path).expect("model load");
+
+        let prompt = crate::prompt::format_chat_prompt(
+            crate::prompt::SYSTEM_PROMPT,
+            "Player rank: 12k. Move 42: played D4 (score loss: 3.5pt, severity: Mistake). \
+             Best/simplest move was Q16.",
+        );
+        let grammar = crate::grammar::coaching_grammar();
+        let output = manager
+            .generate_streaming_with_grammar(&prompt, 200, &grammar, |_| {})
+            .expect("constrained generation");
+
+        assert!(
+            output.starts_with("<classification>{\"error_class\": \""),
+            "grammar should force the tagged prefix, got: {output}"
+        );
+        let parsed = crate::parse::parse_llm_output(&output);
+        assert!(
+            parsed.error_class.is_some(),
+            "classification should be a known class, got: {output}"
+        );
+        assert!(!parsed.coaching_text.is_empty());
     }
 }

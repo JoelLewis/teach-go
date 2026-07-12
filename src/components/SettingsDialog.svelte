@@ -170,7 +170,7 @@
         {:else}
           <div class="space-y-2">
             <p class="text-xs" style="color: var(--text-secondary);">
-              Download Gemma 3 1B for enhanced coaching explanations (~2 GB).
+              Download Gemma 4 E2B for enhanced coaching explanations (~3 GB).
             </p>
             {#if llmStore.error}
               <p class="text-xs" style="color: var(--danger);">{llmStore.error}</p>

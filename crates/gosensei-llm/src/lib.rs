@@ -1,4 +1,5 @@
 pub mod error;
+pub mod grammar;
 pub mod parse;
 pub mod prompt;
 pub mod types;
