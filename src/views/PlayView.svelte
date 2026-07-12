@@ -83,16 +83,11 @@
   // The startup manager downloads the coach model but never loads it into
   // memory; load it here so coached games actually get LLM explanations.
   // Guarded on the file being fully downloaded (llmReady) so this can never
-  // race the startup download; skipped for hotseat (no coaching) and after
-  // a failed attempt (error set) so a broken build can't retry-loop.
+  // race the startup download; skipped for hotseat (no coaching). The store
+  // attempts the load at most once per session, so this effect cannot loop.
   $effect(() => {
-    if (
-      !isHotseat &&
-      downloadStore.llmReady &&
-      llmStore.status === "not_installed" &&
-      !llmStore.error
-    ) {
-      llmStore.startDownload();
+    if (!isHotseat && downloadStore.llmReady) {
+      llmStore.ensureLoaded();
     }
   });
 

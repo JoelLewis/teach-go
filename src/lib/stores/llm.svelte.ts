@@ -4,11 +4,14 @@ import { onLlmDownloadProgress } from "../api/events";
 
 export const llmStore = createLlmStore();
 
-function createLlmStore() {
+export function createLlmStore() {
   let status = $state<LlmStatus>("not_installed");
   let downloadProgress = $state<LlmDownloadProgress | null>(null);
   let error = $state<string | null>(null);
   let unlisten: (() => void) | null = null;
+  // Deliberately not $state: reactive callers (effects) must not re-fire
+  // when the one-shot auto-load guard flips.
+  let autoLoadAttempted = false;
 
   return {
     get status() {
@@ -35,6 +38,18 @@ function createLlmStore() {
         status = "disabled";
         error = String(e);
       }
+    },
+
+    /**
+     * One-shot session load of an already-downloaded model into memory.
+     * At most one attempt per session, whatever the outcome — callers are
+     * reactive effects, so an unconditional retry would loop forever when
+     * the backend reports anything but "ready".
+     */
+    async ensureLoaded() {
+      if (autoLoadAttempted || status === "ready" || status === "loading") return;
+      autoLoadAttempted = true;
+      await this.startDownload();
     },
 
     async startDownload() {
