@@ -6,7 +6,8 @@
   import { themeStore } from "../lib/stores/theme.svelte";
   import { downloadStore } from "../lib/stores/download.svelte";
   import * as api from "../lib/api/commands";
-  import type { SavedGame, NewGameConfig, ThemeName, SkillProfile } from "../lib/api/types";
+  import type { SavedGame, SkillProfile } from "../lib/api/bindings";
+  import type { NewGameConfig, ThemeName } from "../lib/api/types";
 
   type Props = {
     onStartGame: (config: NewGameConfig) => void;

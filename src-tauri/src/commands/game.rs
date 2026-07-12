@@ -49,6 +49,7 @@ fn auto_save_if_finished(state: &AppState, game: &Game) {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn new_game(
     state: State<'_, AppState>,
     board_size: u8,
@@ -80,6 +81,7 @@ pub fn new_game(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn play_move(state: State<'_, AppState>, row: u8, col: u8) -> Result<GameState, AppError> {
     tracing::info!("play_move: row={row}, col={col}");
     let mut game_lock = state.game.lock().unwrap();
@@ -93,6 +95,7 @@ pub fn play_move(state: State<'_, AppState>, row: u8, col: u8) -> Result<GameSta
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn pass_turn(state: State<'_, AppState>) -> Result<GameState, AppError> {
     let mut game_lock = state.game.lock().unwrap();
     let game = game_lock
@@ -105,6 +108,7 @@ pub fn pass_turn(state: State<'_, AppState>) -> Result<GameState, AppError> {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn resign(state: State<'_, AppState>) -> Result<(GameState, GameResult), AppError> {
     let mut game_lock = state.game.lock().unwrap();
     let game = game_lock
@@ -123,6 +127,7 @@ fn should_undo_again(ai_color: Option<Color>, current_color: Color, history_len:
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn undo_move(state: State<'_, AppState>) -> Result<GameState, AppError> {
     let mut game_lock = state.game.lock().unwrap();
     let game = game_lock
@@ -137,6 +142,7 @@ pub fn undo_move(state: State<'_, AppState>) -> Result<GameState, AppError> {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn get_game_position(
     state: State<'_, AppState>,
     move_number: u16,
@@ -150,7 +156,7 @@ pub fn get_game_position(
         .ok_or_else(|| AppError::Other(format!("Move {move_number} out of range")))
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "snake_case")]
 pub struct SavedGame {
     pub id: i64,
@@ -160,6 +166,7 @@ pub struct SavedGame {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn list_games(state: State<'_, AppState>) -> Result<Vec<SavedGame>, AppError> {
     let db = state.db.lock().unwrap();
     let mut stmt = db.prepare(
@@ -179,6 +186,7 @@ pub fn list_games(state: State<'_, AppState>) -> Result<Vec<SavedGame>, AppError
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn load_saved_game(state: State<'_, AppState>, game_id: i64) -> Result<GameState, AppError> {
     load_saved_game_impl(&state, game_id)
 }
@@ -200,7 +208,7 @@ fn load_saved_game_impl(state: &AppState, game_id: i64) -> Result<GameState, App
     Ok(game_state)
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "snake_case")]
 pub struct DifficultySuggestion {
     pub direction: String, // "up" or "down"
@@ -254,6 +262,7 @@ fn detect_streak(results: &[(String, String)]) -> Option<DifficultySuggestion> {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn check_difficulty_suggestion(
     state: State<'_, AppState>,
 ) -> Result<Option<DifficultySuggestion>, AppError> {

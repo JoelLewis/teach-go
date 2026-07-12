@@ -89,9 +89,6 @@ pub fn init_schema(conn: &Connection) -> Result<(), AppError> {
             last_review TEXT NOT NULL DEFAULT (datetime('now'))
         );
 
-        -- Migration: add player_color to games (idempotent for existing DBs)
-        -- New installs get it from CREATE TABLE; ALTER is for upgrades.
-
         CREATE TABLE IF NOT EXISTS coaching_events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             move_number INTEGER NOT NULL,
@@ -124,28 +121,11 @@ pub fn init_schema(conn: &Connection) -> Result<(), AppError> {
 
 /// Run idempotent migrations for schema changes on existing databases.
 fn run_migrations(conn: &Connection) -> Result<(), AppError> {
-    // Add player_color column to games table (added in coaching update)
+    // Add player_color column to games table (added in coaching update).
+    // skill_history needs no entry here: init_schema runs on every open and
+    // its CREATE TABLE IF NOT EXISTS covers pre-beta databases.
     let _ = conn
         .execute_batch("ALTER TABLE games ADD COLUMN player_color TEXT NOT NULL DEFAULT 'black'");
-
-    // Add skill_history table (added in beta)
-    let _ = conn.execute_batch(
-        "CREATE TABLE IF NOT EXISTS skill_history (
-            id            INTEGER PRIMARY KEY AUTOINCREMENT,
-            player_id     INTEGER NOT NULL DEFAULT 1,
-            recorded_at   TEXT NOT NULL DEFAULT (datetime('now')),
-            source        TEXT NOT NULL DEFAULT 'game',
-            overall_rank  REAL NOT NULL,
-            reading_mu    REAL NOT NULL,
-            shape_mu      REAL NOT NULL,
-            direction_mu  REAL NOT NULL,
-            endgame_mu    REAL NOT NULL,
-            life_death_mu REAL NOT NULL,
-            fighting_mu   REAL NOT NULL
-        );
-        CREATE INDEX IF NOT EXISTS idx_skill_history_player_recorded
-            ON skill_history (player_id, recorded_at);",
-    );
 
     // Migrate the 4-tier ai_strength values to rank tokens (rank slider update).
     // Idempotent: each UPDATE only matches the legacy value it rewrites.

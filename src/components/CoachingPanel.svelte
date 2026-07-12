@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { CoachingMessage } from "../lib/api/types";
+  import type { CoachingMessage } from "../lib/api/bindings";
   import { severityColor, severityLabel } from "../lib/utils/colors";
 
   type Props = {

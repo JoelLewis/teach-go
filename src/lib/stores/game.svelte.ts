@@ -1,4 +1,4 @@
-import type { GameState } from "../api/types";
+import type { GameState } from "../api/bindings";
 
 export const gameStore = createGameStore();
 

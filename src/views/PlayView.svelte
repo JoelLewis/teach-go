@@ -18,7 +18,8 @@
   import { stepRank } from "../lib/ranks";
   import { onEngineStatus, onAiThinking, onCoachingStream } from "../lib/api/events";
   import * as api from "../lib/api/commands";
-  import type { CoachingMessage, DifficultySuggestion, GameState, StoneColor, NewGameConfig } from "../lib/api/types";
+  import type { CoachingMessage, DifficultySuggestion, GameState } from "../lib/api/bindings";
+  import type { StoneColor, NewGameConfig } from "../lib/api/types";
 
   type Props = {
     config?: NewGameConfig;
@@ -314,7 +315,9 @@
 
   async function acceptDifficulty() {
     if (!difficultySuggestion) return;
-    const newStrength = stepRank(settingsStore.value.ai_strength, difficultySuggestion.direction);
+    // Bindings type direction as string; the backend only emits "up" | "down".
+    const direction = difficultySuggestion.direction === "up" ? "up" : "down";
+    const newStrength = stepRank(settingsStore.value.ai_strength, direction);
     if (newStrength !== settingsStore.value.ai_strength) {
       const updated = await api.updateSettings({
         ...settingsStore.value,
@@ -517,11 +520,11 @@
             {#if gameStore.state.result === "Draw"}
               &mdash; Draw
             {:else if typeof gameStore.state.result === "object" && "Resignation" in gameStore.state.result}
-              &mdash; {gameStore.state.result.Resignation.winner === "black"
+              &mdash; {gameStore.state.result.Resignation?.winner === "Black"
                 ? "Black"
                 : "White"} wins by resignation
             {:else if typeof gameStore.state.result === "object" && "Score" in gameStore.state.result}
-              &mdash; {gameStore.state.result.Score.winner === "black"
+              &mdash; {gameStore.state.result.Score.winner === "Black"
                 ? "Black"
                 : "White"} wins by {gameStore.state.result.Score.margin} points
             {/if}

@@ -1,11 +1,16 @@
-import { invoke } from "@tauri-apps/api/core";
+// Thin wrappers around the generated tauri-specta bindings (./bindings.ts).
+// Unwraps the Result envelope so callers keep plain promise semantics:
+// resolved with data, rejected with the serialized backend error.
+import { commands } from "./bindings";
 import type {
   CoachingMessage,
   DifficultySuggestion,
+  DownloadStatus,
   GameResult,
   GameState,
   HintData,
-  LlmStatus,
+  ImportProblemResult,
+  KataGoStatus,
   ProblemState,
   ProblemStats,
   ProblemSummary,
@@ -17,110 +22,119 @@ import type {
   SkillSnapshot,
   SolveMoveResult,
   VariationMove,
-} from "./types";
+} from "./bindings";
+import type { LlmStatus } from "./types";
+
+type CommandResult<T> = { status: "ok"; data: T } | { status: "error"; error: string };
+
+async function unwrap<T>(result: Promise<CommandResult<T>>): Promise<T> {
+  const r = await result;
+  if (r.status === "error") throw r.error;
+  return r.data;
+}
 
 export async function newGame(
   boardSize: number,
   komi?: number,
   playerColor?: "black" | "white",
 ): Promise<GameState> {
-  return invoke("new_game", { boardSize, komi, playerColor });
+  return unwrap(commands.newGame(boardSize, komi ?? null, playerColor ?? null));
 }
 
 export async function playMove(row: number, col: number): Promise<GameState> {
-  return invoke("play_move", { row, col });
+  return unwrap(commands.playMove(row, col));
 }
 
 export async function passTurn(): Promise<GameState> {
-  return invoke("pass_turn");
+  return unwrap(commands.passTurn());
 }
 
 export async function resign(): Promise<[GameState, GameResult]> {
-  return invoke("resign");
+  return unwrap(commands.resign());
 }
 
 export async function undoMove(): Promise<GameState> {
-  return invoke("undo_move");
+  return unwrap(commands.undoMove());
 }
 
 export async function checkDifficultySuggestion(): Promise<DifficultySuggestion | null> {
-  return invoke("check_difficulty_suggestion");
+  return unwrap(commands.checkDifficultySuggestion());
 }
 
 export async function getGamePosition(moveNumber: number): Promise<GameState> {
-  return invoke("get_game_position", { moveNumber });
+  return unwrap(commands.getGamePosition(moveNumber));
 }
 
-export async function startEngine(): Promise<string> {
-  return invoke("start_engine");
+export async function startEngine(): Promise<KataGoStatus> {
+  return unwrap(commands.startEngine());
 }
 
 export async function stopEngine(): Promise<void> {
-  return invoke("stop_engine");
+  await unwrap(commands.stopEngine());
 }
 
 export async function requestAiMove(): Promise<GameState> {
-  return invoke("request_ai_move");
+  return unwrap(commands.requestAiMove());
 }
 
 export async function getCoachingFeedback(): Promise<CoachingMessage | null> {
-  return invoke("get_coaching_feedback");
+  return unwrap(commands.getCoachingFeedback());
 }
 
 export async function saveGameSgf(): Promise<string | null> {
-  return invoke("save_game_sgf");
+  return unwrap(commands.saveGameSgf());
 }
 
 export async function loadGameSgf(): Promise<GameState | null> {
-  return invoke("load_game_sgf");
+  return unwrap(commands.loadGameSgf());
 }
 
 export async function listGames(): Promise<SavedGame[]> {
-  return invoke("list_games");
+  return unwrap(commands.listGames());
 }
 
 export async function loadSavedGame(gameId: number): Promise<GameState> {
-  return invoke("load_saved_game", { gameId });
+  return unwrap(commands.loadSavedGame(gameId));
 }
 
 export async function getSettings(): Promise<Settings> {
-  return invoke("get_settings");
+  return unwrap(commands.getSettings());
 }
 
 export async function updateSettings(settings: Settings): Promise<Settings> {
-  return invoke("update_settings", { settings });
+  return unwrap(commands.updateSettings(settings));
 }
 
 export async function startReview(gameId?: number): Promise<void> {
-  return invoke("start_review", { gameId: gameId ?? null });
+  await unwrap(commands.startReview(gameId ?? null));
 }
 
 export async function getReviewProgress(): Promise<ReviewProgress> {
-  return invoke("get_review_progress");
+  return unwrap(commands.getReviewProgress());
 }
 
 export async function getReviewData(): Promise<ReviewData> {
-  return invoke("get_review_data");
+  return unwrap(commands.getReviewData());
 }
 
 export async function getReviewPosition(moveNumber: number): Promise<GameState> {
-  return invoke("get_review_position", { moveNumber });
+  return unwrap(commands.getReviewPosition(moveNumber));
 }
 
 export async function getOwnershipAt(moveNumber: number): Promise<number[] | null> {
-  return invoke("get_ownership_at", { moveNumber });
+  return unwrap(commands.getOwnershipAt(moveNumber));
 }
 
 export async function getReviewVariations(moveNumber: number): Promise<VariationMove[]> {
-  return invoke("get_review_variations", { moveNumber });
+  return unwrap(commands.getReviewVariations(moveNumber));
 }
 
 export async function getSkillProfile(): Promise<SkillProfile> {
-  return invoke("get_skill_profile");
+  return unwrap(commands.getSkillProfile());
 }
 
 export async function getSkillHistory(windowDays?: number): Promise<SkillSnapshot[]> {
-  return invoke("get_skill_history", { windowDays: windowDays ?? null });
+  return unwrap(commands.getSkillHistory(windowDays ?? null));
 }
 
 // --- Problem Training ---
@@ -129,68 +143,61 @@ export async function listProblems(
   category?: string,
   limit?: number,
 ): Promise<ProblemSummary[]> {
-  return invoke("list_problems", { category: category ?? null, limit: limit ?? null });
+  return unwrap(commands.listProblems(category ?? null, limit ?? null));
 }
 
 export async function startProblem(problemId: number): Promise<ProblemState> {
-  return invoke("start_problem", { problemId });
+  return unwrap(commands.startProblem(problemId));
 }
 
 export async function solveMove(row: number, col: number): Promise<SolveMoveResult> {
-  return invoke("solve_move", { row, col });
+  return unwrap(commands.solveMove(row, col));
 }
 
 export async function getHint(level: string): Promise<HintData> {
-  return invoke("get_hint", { level });
+  return unwrap(commands.getHint(level));
 }
 
 export async function skipProblem(): Promise<void> {
-  return invoke("skip_problem");
+  await unwrap(commands.skipProblem());
 }
 
 export async function getProblemState(): Promise<ProblemState | null> {
-  return invoke("get_problem_state");
+  return unwrap(commands.getProblemState());
 }
 
 export async function getRecommendedProblem(): Promise<ProblemState> {
-  return invoke("get_recommended_problem");
+  return unwrap(commands.getRecommendedProblem());
 }
 
 export async function getProblemStats(): Promise<ProblemStats> {
-  return invoke("get_problem_stats");
+  return unwrap(commands.getProblemStats());
 }
 
 export async function generateProblemsFromGame(threshold?: number): Promise<number> {
-  return invoke("generate_problems_from_game", { threshold: threshold ?? null });
+  return unwrap(commands.generateProblemsFromGame(threshold ?? null));
 }
 
-export type ImportProblemResult = {
-  imported: number;
-  errors: string[];
-};
-
 export async function importProblemsFromSgf(): Promise<ImportProblemResult | null> {
-  return invoke("import_problems_from_sgf");
+  return unwrap(commands.importProblemsFromSgf());
 }
 
 // --- LLM Coaching ---
 
 export async function initLlmModel(): Promise<string> {
-  return invoke("init_llm_model");
+  return unwrap(commands.initLlmModel());
 }
 
 export async function getLlmStatus(): Promise<LlmStatus> {
-  return invoke("get_llm_status");
+  return (await unwrap(commands.getLlmStatus())) as LlmStatus;
 }
 
 // --- Download Manager ---
 
-import type { DownloadStatus } from "./types";
-
 export async function getDownloadStatus(): Promise<DownloadStatus> {
-  return invoke("get_download_status");
+  return commands.getDownloadStatus();
 }
 
 export async function retryDownloads(): Promise<void> {
-  return invoke("retry_downloads");
+  return commands.retryDownloads();
 }

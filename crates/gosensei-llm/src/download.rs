@@ -1,11 +1,47 @@
 use std::path::{Path, PathBuf};
 
-use tracing::info;
+use tracing::{info, warn};
 
 use crate::error::LlmError;
 
-pub const DEFAULT_HF_REPO: &str = "ggml-org/gemma-3-1b-it-GGUF";
-pub const DEFAULT_MODEL_FILENAME: &str = "gemma-3-1b-it-Q4_K_M.gguf";
+pub const DEFAULT_HF_REPO: &str = "unsloth/gemma-4-E2B-it-GGUF";
+pub const DEFAULT_MODEL_FILENAME: &str = "gemma-4-E2B-it-Q4_K_M.gguf";
+
+/// Size in bytes of `DEFAULT_MODEL_FILENAME` as published on HuggingFace.
+/// Used to report a download total before the server responds and to sanity
+/// check the downloaded file.
+pub const EXPECTED_MODEL_SIZE_BYTES: u64 = 3_106_736_256;
+
+/// Report at most every 8 MiB to avoid flooding progress event channels.
+const PROGRESS_GRANULARITY_BYTES: u64 = 8 * 1024 * 1024;
+
+/// Forwards hf-hub download progress to a `(downloaded, total)` callback,
+/// throttled to `PROGRESS_GRANULARITY_BYTES`.
+struct ProgressForwarder<F: Fn(u64, u64)> {
+    on_progress: F,
+    downloaded: u64,
+    total: u64,
+    last_reported: u64,
+}
+
+impl<F: Fn(u64, u64)> hf_hub::api::Progress for ProgressForwarder<F> {
+    fn init(&mut self, size: usize, _filename: &str) {
+        self.total = size as u64;
+        (self.on_progress)(0, self.total);
+    }
+
+    fn update(&mut self, size: usize) {
+        self.downloaded += size as u64;
+        if self.downloaded - self.last_reported >= PROGRESS_GRANULARITY_BYTES {
+            self.last_reported = self.downloaded;
+            (self.on_progress)(self.downloaded, self.total);
+        }
+    }
+
+    fn finish(&mut self) {
+        (self.on_progress)(self.total.max(self.downloaded), self.total);
+    }
+}
 
 /// Ensure the model file exists locally, downloading from HuggingFace if needed.
 ///
@@ -37,14 +73,32 @@ pub fn ensure_model(model_dir: &Path, on_progress: impl Fn(u64, u64)) -> Result<
 
     let repo = api.model(DEFAULT_HF_REPO.to_string());
 
-    // Signal download start (0/0 means "starting")
-    on_progress(0, 0);
+    // Signal download start with the published size until the server tells us more
+    on_progress(0, EXPECTED_MODEL_SIZE_BYTES);
 
+    let forwarder = ProgressForwarder {
+        on_progress: &on_progress,
+        downloaded: 0,
+        total: EXPECTED_MODEL_SIZE_BYTES,
+        last_reported: 0,
+    };
     let downloaded_path = repo
-        .get(DEFAULT_MODEL_FILENAME)
+        .download_with_progress(DEFAULT_MODEL_FILENAME, forwarder)
         .map_err(|e| LlmError::DownloadFailed(format!("download: {e}")))?;
 
     info!("Model downloaded to {}", downloaded_path.display());
+
+    // Sanity check: llama.cpp validates GGUF integrity at load time, so a size
+    // mismatch (e.g. upstream requantization) is only worth a warning here.
+    if let Ok(meta) = std::fs::metadata(&downloaded_path)
+        && meta.len() != EXPECTED_MODEL_SIZE_BYTES
+    {
+        warn!(
+            "Downloaded model size {} differs from expected {}",
+            meta.len(),
+            EXPECTED_MODEL_SIZE_BYTES
+        );
+    }
 
     // hf-hub caches files in its own structure; copy or symlink to our expected path
     if downloaded_path != model_path {
@@ -82,5 +136,12 @@ mod tests {
 
         // Cleanup
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn default_model_is_gemma_4_e2b_q4() {
+        assert_eq!(DEFAULT_HF_REPO, "unsloth/gemma-4-E2B-it-GGUF");
+        assert!(DEFAULT_MODEL_FILENAME.contains("gemma-4-E2B-it"));
+        assert!(DEFAULT_MODEL_FILENAME.ends_with("Q4_K_M.gguf"));
     }
 }

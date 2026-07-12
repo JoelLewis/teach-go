@@ -1,4 +1,4 @@
-import type { Severity } from "../api/types";
+import type { Severity } from "../api/bindings";
 
 export function severityColor(severity: Severity): number {
   switch (severity) {

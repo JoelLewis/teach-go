@@ -1,5 +1,6 @@
 <script lang="ts">
-  import type { Severity, StoneColor, StonePosition } from "../api/types";
+  import type { Severity, StonePosition } from "../api/bindings";
+  import type { StoneColor } from "../api/types";
   import { type BoardTheme, defaultTheme, starPoints } from "./themes";
 
   const COLUMN_LETTERS = "ABCDEFGHJKLMNOPQRST";

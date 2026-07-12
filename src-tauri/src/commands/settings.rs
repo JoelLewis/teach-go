@@ -4,7 +4,7 @@ use tauri::State;
 use crate::error::AppError;
 use crate::state::AppState;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct Settings {
     pub board_size: u8,
     pub komi: f32,
@@ -36,6 +36,7 @@ impl Default for Settings {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn get_settings(state: State<'_, AppState>) -> Result<Settings, AppError> {
     let db = state.db.lock().unwrap();
     let mut settings = Settings::default();
@@ -74,6 +75,7 @@ pub fn get_settings(state: State<'_, AppState>) -> Result<Settings, AppError> {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn update_settings(
     state: State<'_, AppState>,
     settings: Settings,
