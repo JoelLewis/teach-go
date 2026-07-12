@@ -394,17 +394,18 @@ async fn try_llm_coaching(
 
     let user_prompt = gosensei_llm::prompt::build_user_prompt(&payload);
 
-    // Apply chat template and generate
+    // Apply chat template and generate with grammar-constrained sampling
     let prompt = manager
         .apply_chat_template(gosensei_llm::prompt::SYSTEM_PROMPT, &user_prompt)
         .map_err(|e| AppError::Llm(e.to_string()))?;
+    let grammar = gosensei_llm::grammar::coaching_grammar();
 
     let app_for_stream = app.clone();
     let mn = move_number;
 
     // Run generation in blocking task (LlamaContext is !Send) with 30s timeout
     let generation_future = tokio::task::spawn_blocking(move || {
-        manager.generate_streaming(&prompt, 150, |piece| {
+        manager.generate_streaming_with_grammar(&prompt, 150, &grammar, |piece| {
             let _ = app_for_stream.emit(
                 "coaching-stream",
                 CoachingStreamChunk {

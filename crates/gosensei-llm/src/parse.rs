@@ -1,7 +1,7 @@
 use crate::types::LlmCoachingOutput;
 
 /// Known error classes that the LLM might return.
-const KNOWN_ERROR_CLASSES: &[&str] = &[
+pub const KNOWN_ERROR_CLASSES: &[&str] = &[
     "Direction",
     "Shape",
     "Reading",
