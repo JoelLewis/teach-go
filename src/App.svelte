@@ -62,6 +62,7 @@
     try {
       const state = await api.loadSavedGame(gameId);
       gameStore.set(state);
+      gameConfig = undefined; // PlayView must not start a fresh game over the loaded one
       currentView = "play";
     } catch (e) {
       console.error("Failed to load game:", e);

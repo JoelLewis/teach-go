@@ -4,10 +4,11 @@ use serde::{Deserialize, Serialize};
 use tauri::State;
 use tracing::info;
 
+use crate::download_manager::DownloadState;
 use crate::error::AppError;
-use crate::state::AppState;
+use crate::state::{AiEngine, AppState, select_engine};
 
-fn auto_save_if_finished(state: &AppState, game: &Game) {
+pub(crate) fn auto_save_if_finished(state: &AppState, game: &Game) {
     if *game.phase() != GamePhase::Finished {
         return;
     }
@@ -76,7 +77,27 @@ pub fn new_game(
     });
     *state.ai_color.lock().unwrap() = ai_color;
 
+    // Pick the AI opponent for this game once, up front. It stays fixed for
+    // the whole game even if KataGo finishes downloading mid-game.
+    let katago_ready = matches!(
+        crate::download_manager::get_status().katago,
+        DownloadState::Ready
+    );
+    let engine = select_engine(katago_ready);
+    *state.ai_engine.lock().unwrap() = engine;
+    *state.bot_seed.lock().unwrap() = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos() as u64)
+        .unwrap_or(0);
+    tracing::info!("new_game: ai engine = {engine:?}");
+
     Ok(game_state)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn get_ai_engine(state: State<'_, AppState>) -> AiEngine {
+    *state.ai_engine.lock().unwrap()
 }
 
 #[tauri::command]

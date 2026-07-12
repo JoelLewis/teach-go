@@ -17,7 +17,7 @@
   import * as sounds from "../lib/audio/sounds";
   import { onEngineStatus, onAiThinking, onCoachingStream } from "../lib/api/events";
   import * as api from "../lib/api/commands";
-  import type { CoachingMessage, DifficultySuggestion, GameState } from "../lib/api/bindings";
+  import type { AiEngine, CoachingMessage, DifficultySuggestion, GameState } from "../lib/api/bindings";
   import type { StoneColor, NewGameConfig } from "../lib/api/types";
 
   type Props = {
@@ -36,6 +36,8 @@
   let difficultySuggestion = $state<DifficultySuggestion | null>(null);
   let difficultyChecked = $state(false);
   let engineError = $state<string | null>(null);
+  let aiEngine = $state<AiEngine | null>(null);
+  let engineReadyNoticeDismissed = $state(false);
   let inputLocked = $state(false);
   let startingGame = $state(false);
   let configStrengthApplied = $state(false);
@@ -87,7 +89,12 @@
 
     downloadStore.startListening();
     downloadStore.refresh();
-    checkSetupAndStart();
+    // A game starts immediately either way: KataGo when it's installed,
+    // the built-in Practice Bot while the download is still in progress.
+    // Skip when mounting into an already-loaded game (no config passed).
+    if (config || !gameStore.state) {
+      startNewGame();
+    }
 
     return () => {
       for (const p of pendingUnlisteners) {
@@ -97,13 +104,6 @@
     };
   });
 
-  // Auto-start game when KataGo becomes ready
-  $effect(() => {
-    if (downloadStore.katagoReady && !gameStore.state && !startingGame) {
-      startNewGame();
-    }
-  });
-
   // Check for difficulty suggestion when game finishes (once per game)
   $effect(() => {
     if (gameStore.state?.phase === "Finished" && !difficultyChecked) {
@@ -111,14 +111,6 @@
       checkDifficulty();
     }
   });
-
-  async function checkSetupAndStart() {
-    await downloadStore.refresh();
-    if (downloadStore.katagoReady) {
-      startNewGame();
-    }
-    // If not ready, the $effect above will start the game when KataGo finishes downloading
-  }
 
   async function startNewGame() {
     if (startingGame) return;
@@ -138,6 +130,8 @@
       engineError = null;
       const state = await api.newGame(boardSize, settingsStore.value.komi, playerColor);
       gameStore.set(state);
+      aiEngine = await api.getAiEngine();
+      engineReadyNoticeDismissed = false;
       coachingStore.clear();
       difficultyChecked = false;
       // If player is white, AI (black) moves first
@@ -389,26 +383,42 @@
       </button>
     </div>
 
-    {#if !downloadStore.katagoReady}
-      <div class="rounded p-3 text-sm" style="background-color: color-mix(in srgb, var(--info) 15%, transparent); color: var(--info);">
-        {#if downloadStore.katagoDownloading}
-          <div class="mb-1 font-semibold">Downloading KataGo{downloadStore.katagoPhase ? ` (${downloadStore.katagoPhase})` : ""}...</div>
-          <div class="h-2 w-full overflow-hidden rounded" style="background-color: var(--surface-secondary);">
-            <div class="h-full rounded transition-all duration-300" style="width: {downloadStore.katagoProgress}%; background-color: var(--accent-primary);"></div>
+    {#if aiEngine === "practice_bot"}
+      {#if !downloadStore.katagoReady}
+        <div class="rounded p-3 text-sm" style="background-color: color-mix(in srgb, var(--info) 15%, transparent); color: var(--info);">
+          <div class="mb-1 font-semibold">Playing the Practice Bot</div>
+          <div class="text-xs" style="color: var(--text-secondary);">
+            The full engine is still downloading, so this game uses a lightweight
+            built-in opponent. Move coaching is off until KataGo is ready.
           </div>
-          <div class="mt-1 text-xs" style="color: var(--text-dim);">{Math.round(downloadStore.katagoProgress)}%</div>
-        {:else if downloadStore.katagoError}
-          <div style="color: var(--danger);">Download failed: {downloadStore.katagoError}</div>
+          {#if downloadStore.katagoDownloading}
+            <div class="mt-2 h-2 w-full overflow-hidden rounded" style="background-color: var(--surface-secondary);">
+              <div class="h-full rounded transition-all duration-300" style="width: {downloadStore.katagoProgress}%; background-color: var(--accent-primary);"></div>
+            </div>
+            <div class="mt-1 text-xs" style="color: var(--text-dim);">Downloading KataGo{downloadStore.katagoPhase ? ` (${downloadStore.katagoPhase})` : ""}... {Math.round(downloadStore.katagoProgress)}%</div>
+          {:else if downloadStore.katagoError}
+            <div class="mt-2" style="color: var(--danger);">Download failed: {downloadStore.katagoError}</div>
+            <button
+              onclick={() => downloadStore.retry()}
+              class="btn btn-primary btn-sm mt-2"
+            >
+              Retry
+            </button>
+          {/if}
+        </div>
+      {:else if !engineReadyNoticeDismissed}
+        <div class="flex items-start justify-between gap-2 rounded p-2 text-xs" style="background-color: color-mix(in srgb, var(--success) 12%, transparent); color: var(--text-secondary);">
+          <span>KataGo is ready — this game stays with the Practice Bot, and your next game will use the full engine.</span>
           <button
-            onclick={() => downloadStore.retry()}
-            class="btn btn-primary btn-sm mt-2"
+            onclick={() => (engineReadyNoticeDismissed = true)}
+            class="shrink-0 transition-opacity hover:opacity-70"
+            style="color: var(--text-dim);"
+            aria-label="Dismiss"
           >
-            Retry
+            ✕
           </button>
-        {:else}
-          <div>Waiting for KataGo download...</div>
-        {/if}
-      </div>
+        </div>
+      {/if}
     {/if}
 
     {#if gameStore.state}

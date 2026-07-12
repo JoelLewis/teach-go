@@ -104,6 +104,11 @@ impl Game {
         &self.captures
     }
 
+    /// The point currently forbidden by simple ko, if any.
+    pub fn ko_point(&self) -> Option<Point> {
+        self.ko_point
+    }
+
     pub fn result(&self) -> Option<&GameResult> {
         self.result.as_ref()
     }

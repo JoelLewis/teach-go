@@ -9,9 +9,13 @@ use tracing::{info, warn};
 use crate::convert;
 use crate::error::AppError;
 use crate::setup;
-use crate::state::AppState;
+use crate::state::{AiEngine, AppState};
 
 const MAX_VISITS: u32 = 200;
+
+/// Minimum "thinking" pause for the practice bot so its replies don't land
+/// jarringly on the same frame as the player's stone.
+const PRACTICE_BOT_DELAY_MS: u64 = 350;
 
 // Architecture note: KataGo is downloaded at runtime (see setup.rs) rather than
 // bundled via Tauri's externalBin. This keeps the app binary small (~15MB vs ~80MB)
@@ -218,6 +222,12 @@ pub async fn request_ai_move(
     state: State<'_, AppState>,
     app: AppHandle,
 ) -> Result<GameState, AppError> {
+    // Games started before KataGo finished downloading use the built-in
+    // practice bot for their whole duration (no mid-game engine swap).
+    if *state.ai_engine.lock().unwrap() == AiEngine::PracticeBot {
+        return practice_bot_move(&state, &app).await;
+    }
+
     let _ = app.emit("ai-thinking", true);
 
     // Ensure engine is started (lazy init) and healthy
@@ -357,4 +367,41 @@ pub async fn request_ai_move(
 
     let _ = app.emit("ai-thinking", false);
     Ok(game_state)
+}
+
+/// Play one move with the built-in heuristic bot (no KataGo required).
+async fn practice_bot_move(
+    state: &State<'_, AppState>,
+    app: &AppHandle,
+) -> Result<GameState, AppError> {
+    let _ = app.emit("ai-thinking", true);
+    tokio::time::sleep(std::time::Duration::from_millis(PRACTICE_BOT_DELAY_MS)).await;
+
+    let base_seed = *state.bot_seed.lock().unwrap();
+    let result = (|| {
+        let mut game_lock = state.game.lock().unwrap();
+        let game = game_lock
+            .as_mut()
+            .ok_or(AppError::Other("No active game".into()))?;
+
+        let color = game.current_color();
+        let seed = base_seed ^ (game.move_history().len() as u64 + 1);
+        match gosensei_core::bot::suggest_move(game, color, seed) {
+            Some(point) => {
+                info!("Practice bot plays ({}, {})", point.row, point.col);
+                game.play(point)?;
+            }
+            None => {
+                info!("Practice bot passes");
+                game.pass()?;
+            }
+        }
+
+        let game_state = game.to_state();
+        crate::commands::game::auto_save_if_finished(state, game);
+        Ok(game_state)
+    })();
+
+    let _ = app.emit("ai-thinking", false);
+    result
 }

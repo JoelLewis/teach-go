@@ -272,6 +272,11 @@
         <div class="mt-1 h-1.5 w-full overflow-hidden rounded" style="background-color: var(--surface-secondary);">
           <div class="h-full rounded transition-all duration-300" style="width: {downloadStore.katagoDownloading ? downloadStore.katagoProgress : downloadStore.llmProgress}%; background-color: var(--accent-primary);"></div>
         </div>
+        {#if downloadStore.katagoDownloading}
+          <div class="mt-1 text-xs" style="color: var(--text-dim);">
+            You can start playing right away — games use the built-in Practice Bot until the engine is ready.
+          </div>
+        {/if}
       </div>
     {/if}
 
