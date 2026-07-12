@@ -44,12 +44,15 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 which = "7"
 zip = "2"
 
-tauri-plugin-mcp = { git = "https://github.com/P3GLEG/tauri-plugin-mcp", optional = true }
+tauri-plugin-mcp = { git = "https://github.com/P3GLEG/tauri-plugin-mcp", rev = "49fbecb2dcfac7f5739a79ae22bcf9452dd8d228", optional = true }
 
 [dev-dependencies]
 tempfile = "3"
 
 [features]
-default = ["mcp", "llm"]
+# mcp stays OUT of default: release builds (tauri-action uses default
+# features) must never ship the unauthenticated playtest socket server.
+# Use `pnpm playtest` for an mcp-enabled dev build.
+default = ["llm"]
 mcp = ["tauri-plugin-mcp"]
 llm = ["dep:gosensei-llm", "dep:sensei-llm"]
