@@ -382,37 +382,39 @@
 </script>
 
 <div class="flex h-full flex-col lg:flex-row">
-  <!-- Board area -->
-  <div class="flex flex-1 min-w-0 min-h-[50vh] lg:min-h-0 items-center justify-center p-4">
+  <!-- Board area. BoardSvg must be a direct flex item (like ProblemView /
+       ReviewView): its max-w-full/max-h-full only resolve against the
+       definite-sized flex container, and wrapping it in a plain
+       shrink-to-fit <div> collapses it to zero size in WKWebView
+       (invisible board). Overlays anchor to the board area instead. -->
+  <div class="relative flex flex-1 min-w-0 min-h-[50vh] lg:min-h-0 items-center justify-center p-4">
     {#if displayState}
-      <div class="relative">
-        <BoardSvg
-          {boardSize}
-          stones={displayState.stones}
-          currentColor={displayState.current_color as StoneColor}
-          lastMove={displayState.last_move}
-          showCoordinates={settingsStore.value.show_coordinates}
-          lastMoveSeverity={isViewingHistory ? null : coachingStore.lastMoveSeverity}
-          theme={boardThemeForName(themeStore.active)}
-          animate={!isViewingHistory}
-          interactive={canPlayBoard}
-          onIntersectionClick={isViewingHistory ? noop : handleIntersectionClick}
-        />
-        {#if isViewingHistory}
-          <div class="absolute bottom-3 left-1/2 -translate-x-1/2">
-            <button
-              onclick={returnToCurrent}
-              class="btn btn-secondary btn-sm shadow-md"
-            >
-              Return to current (move {gameStore.state?.move_number ?? 0})
-            </button>
-          </div>
-        {/if}
-        <BoardToast
-          message={latestCoachingMessage}
-          onClickMessage={(moveNumber) => handleNavigate(moveNumber)}
-        />
-      </div>
+      <BoardSvg
+        {boardSize}
+        stones={displayState.stones}
+        currentColor={displayState.current_color as StoneColor}
+        lastMove={displayState.last_move}
+        showCoordinates={settingsStore.value.show_coordinates}
+        lastMoveSeverity={isViewingHistory ? null : coachingStore.lastMoveSeverity}
+        theme={boardThemeForName(themeStore.active)}
+        animate={!isViewingHistory}
+        interactive={canPlayBoard}
+        onIntersectionClick={isViewingHistory ? noop : handleIntersectionClick}
+      />
+      {#if isViewingHistory}
+        <div class="absolute bottom-3 left-1/2 -translate-x-1/2">
+          <button
+            onclick={returnToCurrent}
+            class="btn btn-secondary btn-sm shadow-md"
+          >
+            Return to current (move {gameStore.state?.move_number ?? 0})
+          </button>
+        </div>
+      {/if}
+      <BoardToast
+        message={latestCoachingMessage}
+        onClickMessage={(moveNumber) => handleNavigate(moveNumber)}
+      />
     {/if}
   </div>
 
