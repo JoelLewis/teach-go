@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicobatista/tauri-v2-schemas/refs/heads/main/tauri.conf.json",
   "productName": "GoSensei",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "identifier": "com.gosensei.app",
   "build": {
     "frontendDist": "../dist",
