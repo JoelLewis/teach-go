@@ -2,6 +2,7 @@
   import type { Settings } from "../lib/api/bindings";
   import type { ThemeName } from "../lib/api/types";
   import { llmStore } from "../lib/stores/llm.svelte";
+  import StrengthSlider from "./StrengthSlider.svelte";
   import { onMount } from "svelte";
 
   type Props = {
@@ -81,18 +82,11 @@
     </div>
 
     <div class="mb-4">
-      <label class="mb-1 block text-sm" style="color: var(--text-secondary);">AI Strength
-        <select
-          bind:value={aiStrength}
-          class="w-full rounded px-3 py-2"
-          style="background-color: var(--surface-input); color: var(--text-heading);"
-        >
-          <option value="beginner">Beginner (25-20 kyu)</option>
-          <option value="intermediate">Intermediate (19-10 kyu)</option>
-          <option value="advanced">Advanced (9-1 kyu)</option>
-          <option value="dan">Dan (1 dan+)</option>
-        </select>
-      </label>
+      <StrengthSlider
+        id="settings-ai-strength"
+        value={aiStrength}
+        onChange={(v) => (aiStrength = v)}
+      />
     </div>
 
     <div class="mb-4">

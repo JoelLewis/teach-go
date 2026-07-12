@@ -7,10 +7,19 @@
     onSave: () => void;
     onLoad: () => void;
     disabled: boolean;
+    resignLabel?: string;
   };
 
-  let { onPass, onResign, onUndo, onNewGame, onSave, onLoad, disabled }: Props =
-    $props();
+  let {
+    onPass,
+    onResign,
+    onUndo,
+    onNewGame,
+    onSave,
+    onLoad,
+    disabled,
+    resignLabel = "Resign",
+  }: Props = $props();
 </script>
 
 <div class="flex flex-wrap gap-1.5">
@@ -21,7 +30,7 @@
     Undo
   </button>
   <button onclick={onResign} {disabled} class="btn btn-danger">
-    Resign
+    {resignLabel}
   </button>
   <button onclick={onNewGame} class="btn btn-primary">
     New Game

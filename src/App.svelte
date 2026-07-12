@@ -36,6 +36,9 @@
     transitionBoardSize = config.boardSize;
     transitioning = true;
     await new Promise(resolve => setTimeout(resolve, 400));
+    // Clear any previous game so PlayView starts a fresh one for this config
+    // (PlayView skips startNewGame when a game is already in the store).
+    gameStore.clear();
     gameConfig = config;
     currentView = "play";
     setTimeout(() => { transitioning = false; }, 50);
@@ -62,6 +65,9 @@
     try {
       const state = await api.loadSavedGame(gameId);
       gameStore.set(state);
+      // Drop any stale config (hotseat / vs-AI) from a previous session —
+      // a loaded game is review material, not a continuation of that setup.
+      gameConfig = undefined;
       currentView = "play";
     } catch (e) {
       console.error("Failed to load game:", e);

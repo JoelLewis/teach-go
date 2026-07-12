@@ -5,7 +5,7 @@ const DEFAULT_SETTINGS: Settings = {
   komi: 6.5,
   show_coordinates: true,
   show_move_numbers: false,
-  ai_strength: "beginner",
+  ai_strength: "18k",
   sound_enabled: true,
   feedback_timing: "immediate",
   theme: "study",

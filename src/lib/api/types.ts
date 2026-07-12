@@ -7,6 +7,7 @@ export type ThemeName = "study" | "grid";
 
 export type NewGameConfig = {
   boardSize: number;
+  opponent: "computer" | "human";
   playerColor: StoneColor;
   aiStrength: string;
 };

@@ -15,6 +15,7 @@
   import { themeStore } from "../lib/stores/theme.svelte";
   import { boardThemeForName } from "../lib/board/themes";
   import * as sounds from "../lib/audio/sounds";
+  import { stepRank } from "../lib/ranks";
   import { onEngineStatus, onAiThinking, onCoachingStream } from "../lib/api/events";
   import * as api from "../lib/api/commands";
   import type { CoachingMessage, DifficultySuggestion, GameState } from "../lib/api/bindings";
@@ -28,7 +29,8 @@
 
   let { config, onGoHome, onStartReview }: Props = $props();
 
-  let boardSize = $state(config?.boardSize ?? settingsStore.value.board_size);
+  // A game already in the store (loaded saved game) dictates the board size
+  let boardSize = $state(gameStore.state?.board_size ?? config?.boardSize ?? settingsStore.value.board_size);
   let playerColor = $state<StoneColor>(config?.playerColor ?? "black");
   let viewingMove = $state<number | null>(null);
   let viewingState = $state<GameState | null>(null);
@@ -50,9 +52,11 @@
       : null
   );
 
+  // Hotseat: two local humans share the board; no AI, no real-time coaching
+  let isHotseat = $derived(config?.opponent === "human");
   let isViewingHistory = $derived(viewingMove !== null && viewingMove !== (gameStore.state?.move_number ?? 0));
   let displayState = $derived(isViewingHistory && viewingState ? viewingState : gameStore.state);
-  let isPlayerTurn = $derived(gameStore.state?.current_color === playerColor);
+  let isPlayerTurn = $derived(isHotseat || gameStore.state?.current_color === playerColor);
   let canPlayBoard = $derived(
     !isViewingHistory &&
     !!gameStore.state &&
@@ -97,22 +101,31 @@
     };
   });
 
-  // Auto-start game when KataGo becomes ready
+  // Auto-start game when KataGo becomes ready (hotseat starts immediately instead)
   $effect(() => {
-    if (downloadStore.katagoReady && !gameStore.state && !startingGame) {
+    if (!isHotseat && downloadStore.katagoReady && !gameStore.state && !startingGame) {
       startNewGame();
     }
   });
 
-  // Check for difficulty suggestion when game finishes (once per game)
+  // Check for difficulty suggestion when game finishes (once per game).
+  // Hotseat games say nothing about AI difficulty, so skip the prompt.
   $effect(() => {
-    if (gameStore.state?.phase === "Finished" && !difficultyChecked) {
+    if (!isHotseat && gameStore.state?.phase === "Finished" && !difficultyChecked) {
       difficultyChecked = true;
       checkDifficulty();
     }
   });
 
   async function checkSetupAndStart() {
+    // A game already in the store means we arrived here via "load saved game" —
+    // starting a new game now would wipe it with a fresh board.
+    if (gameStore.state) return;
+    if (isHotseat) {
+      // Rules engine is pure Rust — no engine or downloads needed
+      startNewGame();
+      return;
+    }
     await downloadStore.refresh();
     if (downloadStore.katagoReady) {
       startNewGame();
@@ -125,7 +138,7 @@
 
     startingGame = true;
     try {
-      if (!configStrengthApplied && config?.aiStrength && config.aiStrength !== settingsStore.value.ai_strength) {
+      if (!isHotseat && !configStrengthApplied && config?.aiStrength && config.aiStrength !== settingsStore.value.ai_strength) {
         const nextSettings = await api.updateSettings({
           ...settingsStore.value,
           ai_strength: config.aiStrength,
@@ -136,12 +149,13 @@
 
       inputLocked = false;
       engineError = null;
-      const state = await api.newGame(boardSize, settingsStore.value.komi, playerColor);
+      // No player color in hotseat → backend sets ai_color to None
+      const state = await api.newGame(boardSize, settingsStore.value.komi, isHotseat ? undefined : playerColor);
       gameStore.set(state);
       coachingStore.clear();
       difficultyChecked = false;
       // If player is white, AI (black) moves first
-      if (playerColor === "white") {
+      if (!isHotseat && playerColor === "white") {
         await triggerAiMove();
       }
     } catch (e) {
@@ -152,6 +166,7 @@
   }
 
   async function triggerAiMove() {
+    if (isHotseat) return;
     if (!gameStore.state || gameStore.state.phase === "Finished") return;
 
     const aiColor = playerColor === "black" ? "white" : "black";
@@ -192,8 +207,10 @@
         sounds.play("stone");
       }
       gameStore.set(state);
-      triggerCoaching();
-      await triggerAiMove();
+      if (!isHotseat) {
+        triggerCoaching();
+        await triggerAiMove();
+      }
     } catch (e) {
       console.warn("Move rejected:", e);
     } finally {
@@ -208,7 +225,9 @@
       const state = await api.passTurn();
       sounds.play("pass");
       gameStore.set(state);
-      await triggerAiMove();
+      if (!isHotseat) {
+        await triggerAiMove();
+      }
     } catch (e) {
       gameStore.setError(String(e));
     } finally {
@@ -265,6 +284,12 @@
       inputLocked = true;
       const state = await api.undoMove();
       gameStore.set(state);
+      // Self-heal: if undo leaves the AI on move (e.g., undoing the AI's
+      // opening move as White, where the backend can't double-undo at
+      // history length 0), let the AI play so the board doesn't lock up.
+      if (!isHotseat && state.current_color !== playerColor) {
+        await triggerAiMove();
+      }
     } catch (e) {
       gameStore.setError(String(e));
     } finally {
@@ -290,14 +315,10 @@
 
   async function acceptDifficulty() {
     if (!difficultySuggestion) return;
-    const strengthMap: Record<string, string[]> = {
-      up: ["beginner", "intermediate", "advanced", "dan"],
-      down: ["dan", "advanced", "intermediate", "beginner"],
-    };
-    const levels = strengthMap[difficultySuggestion.direction] ?? [];
-    const currentIdx = levels.indexOf(settingsStore.value.ai_strength);
-    if (currentIdx >= 0 && currentIdx < levels.length - 1) {
-      const newStrength = levels[currentIdx + 1];
+    // Bindings type direction as string; the backend only emits "up" | "down".
+    const direction = difficultySuggestion.direction === "up" ? "up" : "down";
+    const newStrength = stepRank(settingsStore.value.ai_strength, direction);
+    if (newStrength !== settingsStore.value.ai_strength) {
       const updated = await api.updateSettings({
         ...settingsStore.value,
         ai_strength: newStrength,
@@ -389,7 +410,7 @@
       </button>
     </div>
 
-    {#if !downloadStore.katagoReady}
+    {#if !isHotseat && !downloadStore.katagoReady}
       <div class="rounded p-3 text-sm" style="background-color: color-mix(in srgb, var(--info) 15%, transparent); color: var(--info);">
         {#if downloadStore.katagoDownloading}
           <div class="mb-1 font-semibold">Downloading KataGo{downloadStore.katagoPhase ? ` (${downloadStore.katagoPhase})` : ""}...</div>
@@ -412,14 +433,28 @@
     {/if}
 
     {#if gameStore.state}
-      <div class="text-sm" style="color: var(--text-secondary);">
-        <span
-          class="inline-block h-3 w-3 rounded-full {gameStore.state.current_color === 'black' ? 'bg-stone-900' : 'bg-stone-100'}"
-          style="{gameStore.state.current_color === 'black' ? `box-shadow: 0 0 0 1px var(--border-subtle);` : ''}"
-        ></span>
-        {gameStore.state.current_color === "black" ? "Black" : "White"} to play
-        &mdash; Move {gameStore.state.move_number}
-      </div>
+      {#if isHotseat && gameStore.state.phase === "Playing"}
+        <div
+          class="flex items-center gap-2 rounded p-2 text-base font-semibold"
+          style="background-color: var(--surface-secondary); color: var(--text-primary);"
+        >
+          <span
+            class="inline-block h-4 w-4 rounded-full {gameStore.state.current_color === 'black' ? 'bg-stone-900' : 'bg-stone-100'}"
+            style="{gameStore.state.current_color === 'black' ? `box-shadow: 0 0 0 1px var(--border-subtle);` : ''}"
+          ></span>
+          {gameStore.state.current_color === "black" ? "Black's turn" : "White's turn"}
+          <span class="text-sm font-normal" style="color: var(--text-dim);">&mdash; Move {gameStore.state.move_number}</span>
+        </div>
+      {:else}
+        <div class="text-sm" style="color: var(--text-secondary);">
+          <span
+            class="inline-block h-3 w-3 rounded-full {gameStore.state.current_color === 'black' ? 'bg-stone-900' : 'bg-stone-100'}"
+            style="{gameStore.state.current_color === 'black' ? `box-shadow: 0 0 0 1px var(--border-subtle);` : ''}"
+          ></span>
+          {gameStore.state.current_color === "black" ? "Black" : "White"} to play
+          &mdash; Move {gameStore.state.move_number}
+        </div>
+      {/if}
 
       {#if engineError}
         <div class="rounded p-2 text-xs" style="background-color: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger);">
@@ -449,6 +484,9 @@
           onNewGame={startNewGame}
           onSave={handleSave}
           onLoad={handleLoad}
+          resignLabel={isHotseat
+            ? `Resign (${gameStore.state.current_color === "black" ? "Black" : "White"})`
+            : "Resign"}
           disabled={gameStore.state.phase === "Finished" ||
             engineStore.aiThinking ||
             inputLocked}
@@ -466,9 +504,11 @@
         </button>
       {/if}
 
-      <div class="mt-3">
-        <CoachingPanel messages={coachingStore.messages} streamingMoveNumber={coachingStore.streamingMoveNumber} onNavigate={handleNavigate} />
-      </div>
+      {#if !isHotseat}
+        <div class="mt-3">
+          <CoachingPanel messages={coachingStore.messages} streamingMoveNumber={coachingStore.streamingMoveNumber} onNavigate={handleNavigate} />
+        </div>
+      {/if}
 
       {#if gameStore.state.phase === "Finished"}
         <div
