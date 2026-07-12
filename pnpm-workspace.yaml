@@ -1,0 +1,6 @@
+packages:
+  - tests/e2e
+allowBuilds:
+  edgedriver: true
+  esbuild: true
+  geckodriver: true

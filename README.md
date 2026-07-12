@@ -39,10 +39,10 @@ xcode-select --install
 
 ```bash
 # Install frontend dependencies
-npm install
+pnpm install
 
 # Run in development mode
-npm run tauri dev
+pnpm run tauri dev
 ```
 
 On first launch, GoSensei will prompt you to download KataGo and its neural network model (~300 MB total). This is handled automatically through the in-app setup flow.
@@ -51,7 +51,7 @@ On first launch, GoSensei will prompt you to download KataGo and its neural netw
 
 ```bash
 # Production build (creates platform-specific installer)
-npm run tauri build
+pnpm run tauri build
 ```
 
 ## Project Structure
@@ -77,7 +77,7 @@ cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 
 # Frontend type checking
-npm run check
+pnpm run check
 ```
 
 ## KataGo Backend
