@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { SkillSnapshot } from "../lib/api/types";
+  import type { SkillSnapshot } from "../lib/api/bindings";
 
   type WindowOption = 7 | 30 | null;
 

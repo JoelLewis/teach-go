@@ -1,4 +1,4 @@
-import type { Settings } from "../api/types";
+import type { Settings } from "../api/bindings";
 
 const DEFAULT_SETTINGS: Settings = {
   board_size: 9,

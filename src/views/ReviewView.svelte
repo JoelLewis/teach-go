@@ -11,7 +11,8 @@
   import { boardThemeForName } from "../lib/board/themes";
   import { onReviewProgress } from "../lib/api/events";
   import * as api from "../lib/api/commands";
-  import type { GameState, StoneColor } from "../lib/api/types";
+  import type { GameState } from "../lib/api/bindings";
+  import type { StoneColor } from "../lib/api/types";
   import type { Highlight } from "../lib/board/BoardSvg.svelte";
 
   type Props = {

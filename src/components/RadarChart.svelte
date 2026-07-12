@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { SkillProfile } from "../lib/api/types";
+  import type { SkillProfile } from "../lib/api/bindings";
 
   type Props = {
     profile: SkillProfile;

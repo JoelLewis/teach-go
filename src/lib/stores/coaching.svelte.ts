@@ -1,4 +1,4 @@
-import type { CoachingMessage, Severity } from "../api/types";
+import type { CoachingMessage, Severity } from "../api/bindings";
 
 export const coachingStore = createCoachingStore();
 

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import type { DifficultySuggestion } from "../lib/api/types";
+  import type { DifficultySuggestion } from "../lib/api/bindings";
 
   type Props = {
     suggestion: DifficultySuggestion;

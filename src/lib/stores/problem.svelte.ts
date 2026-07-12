@@ -1,4 +1,4 @@
-import type { HintData, ProblemState, ProblemSummary } from "../api/types";
+import type { HintData, ProblemState, ProblemSummary } from "../api/bindings";
 
 export const problemStore = createProblemStore();
 

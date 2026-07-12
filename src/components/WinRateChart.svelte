@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { MoveAnalysis } from "../lib/api/types";
+  import type { MoveAnalysis } from "../lib/api/bindings";
 
   type Props = {
     analyses: MoveAnalysis[];

@@ -18,6 +18,7 @@ struct DownloadProgress {
 /// Initialize the LLM model — downloads if needed, then loads into memory.
 #[cfg(feature = "llm")]
 #[tauri::command]
+#[specta::specta]
 pub async fn init_llm_model(
     state: State<'_, AppState>,
     app: AppHandle,
@@ -65,6 +66,7 @@ pub async fn init_llm_model(
 /// Check the current LLM status.
 #[cfg(feature = "llm")]
 #[tauri::command]
+#[specta::specta]
 pub fn get_llm_status(state: State<'_, AppState>) -> Result<String, AppError> {
     match state.llm.try_lock() {
         Ok(guard) => {
@@ -78,10 +80,14 @@ pub fn get_llm_status(state: State<'_, AppState>) -> Result<String, AppError> {
     }
 }
 
-// Stubs when LLM feature is not compiled in
+// Stubs when LLM feature is not compiled in.
+// Doc comments must match the real commands: they are exported into the
+// generated bindings, which must be identical across feature configurations.
 
+/// Initialize the LLM model — downloads if needed, then loads into memory.
 #[cfg(not(feature = "llm"))]
 #[tauri::command]
+#[specta::specta]
 pub async fn init_llm_model(
     _state: State<'_, AppState>,
     _app: tauri::AppHandle,
@@ -89,8 +95,10 @@ pub async fn init_llm_model(
     Err(AppError::Llm("LLM feature not enabled".into()))
 }
 
+/// Check the current LLM status.
 #[cfg(not(feature = "llm"))]
 #[tauri::command]
+#[specta::specta]
 pub fn get_llm_status(_state: State<'_, AppState>) -> Result<String, AppError> {
     Ok("disabled".to_string())
 }

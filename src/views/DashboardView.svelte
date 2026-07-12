@@ -3,7 +3,7 @@
   import RadarChart from "../components/RadarChart.svelte";
   import SkillTrendChart from "../components/SkillTrendChart.svelte";
   import * as api from "../lib/api/commands";
-  import type { SkillProfile, SkillSnapshot, ProblemStats } from "../lib/api/types";
+  import type { SkillProfile, SkillSnapshot, ProblemStats } from "../lib/api/bindings";
 
   type WindowOption = 7 | 30 | null;
 

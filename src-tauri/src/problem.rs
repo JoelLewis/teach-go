@@ -111,7 +111,7 @@ pub struct Problem {
     pub tags: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct ProblemSummary {
     pub id: i64,
     pub category: String,

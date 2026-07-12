@@ -1,4 +1,4 @@
-import type { MoveAnalysis, ReviewData, ReviewProgress, VariationMove } from "../api/types";
+import type { MoveAnalysis, ReviewData, ReviewProgress, VariationMove } from "../api/bindings";
 
 export const reviewStore = createReviewStore();
 

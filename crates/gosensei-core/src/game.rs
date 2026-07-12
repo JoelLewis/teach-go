@@ -6,7 +6,7 @@ use crate::scoring;
 use crate::sgf;
 use crate::types::{BoardSize, Color, GameResult, Move, MoveRecord, Point};
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 pub enum GamePhase {
     Playing,
     Finished,
@@ -26,14 +26,14 @@ pub struct Game {
     result: Option<GameResult>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, specta::Type)]
 pub struct Captures {
     pub black: u32,
     pub white: u32,
 }
 
 /// Serializable snapshot of game state for IPC.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct GameState {
     pub board_size: u8,
     pub stones: Vec<StonePosition>,
@@ -47,14 +47,14 @@ pub struct GameState {
     pub moves: Vec<MoveEntry>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct StonePosition {
     pub row: u8,
     pub col: u8,
     pub color: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct MoveEntry {
     pub move_number: u16,
     pub color: String,
