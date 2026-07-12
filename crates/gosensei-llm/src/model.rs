@@ -123,9 +123,10 @@ impl ModelManager {
         // Process prompt tokens in a batch
         let mut batch = LlamaBatch::new(N_CTX as usize, 1);
         let last_idx = (tokens.len() - 1) as i32;
-        for (i, token) in (0_i32..).zip(tokens.into_iter()) {
+        for (i, token) in tokens.into_iter().enumerate() {
+            let pos = i as i32;
             batch
-                .add(token, i, &[0], i == last_idx)
+                .add(token, pos, &[0], pos == last_idx)
                 .map_err(|e| LlmError::InferenceFailed(format!("batch add: {e}")))?;
         }
 
@@ -143,9 +144,9 @@ impl ModelManager {
 
         let mut output = String::new();
         let mut decoder = encoding_rs::UTF_8.new_decoder();
-        let mut n_cur = batch.n_tokens();
+        let n_start = batch.n_tokens();
 
-        for _ in 0..max_tokens {
+        for n_cur in n_start..n_start + max_tokens as i32 {
             let token = sampler.sample(&ctx, batch.n_tokens() - 1);
             sampler.accept(token);
 
@@ -169,8 +170,6 @@ impl ModelManager {
 
             ctx.decode(&mut batch)
                 .map_err(|e| LlmError::InferenceFailed(format!("decode gen: {e}")))?;
-
-            n_cur += 1;
         }
 
         if output.is_empty() {
