@@ -131,7 +131,7 @@
       const state = await api.loadSavedGame(gameId);
       gameStore.set(state);
       // Drop any stale config (hotseat / vs-AI) from a previous session —
-      // a loaded game is review material, not a continuation of that setup.
+      // PlayView must not start a fresh game over the loaded one.
       gameConfig = undefined;
       navigateTo("play");
     } catch (e) {
