@@ -9,6 +9,7 @@ authors.workspace = true
 [dependencies]
 serde = { workspace = true }
 serde_json = { workspace = true }
+specta = { workspace = true }
 thiserror = { workspace = true }
 gosensei-core = { path = "../gosensei-core" }
 gosensei-katago = { path = "../gosensei-katago" }

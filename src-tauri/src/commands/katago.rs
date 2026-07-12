@@ -160,6 +160,7 @@ fn resolve_model_path(app: &AppHandle) -> Result<PathBuf, AppError> {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn start_engine(
     state: State<'_, AppState>,
     app: AppHandle,
@@ -202,6 +203,7 @@ pub async fn start_engine(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn stop_engine(state: State<'_, AppState>, app: AppHandle) -> Result<(), AppError> {
     let mut katago = state.katago.lock().await;
     *katago = None;
@@ -211,6 +213,7 @@ pub async fn stop_engine(state: State<'_, AppState>, app: AppHandle) -> Result<(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn request_ai_move(
     state: State<'_, AppState>,
     app: AppHandle,

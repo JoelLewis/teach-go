@@ -25,6 +25,7 @@ const SIMPLEST_MOVE_SCORE_GAP: f64 = 1.0;
 const SIMPLEST_MOVE_RANK_THRESHOLD: f64 = 10.0;
 
 #[tauri::command]
+#[specta::specta]
 pub async fn get_coaching_feedback(
     state: State<'_, AppState>,
     app: AppHandle,

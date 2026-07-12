@@ -9,7 +9,7 @@ use tracing::info;
 
 use crate::setup::KataGoStatus;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, specta::Type)]
 #[serde(tag = "state", rename_all = "snake_case")]
 pub enum DownloadState {
     NotInstalled,
@@ -18,7 +18,7 @@ pub enum DownloadState {
     Error { message: String },
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, specta::Type)]
 pub struct DownloadStatus {
     pub katago: DownloadState,
     pub llm: DownloadState,
@@ -206,11 +206,13 @@ pub async fn run_initial_downloads(app_handle: tauri::AppHandle) {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn get_download_status() -> DownloadStatus {
     get_status()
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn retry_downloads(app_handle: tauri::AppHandle) {
     // Reset error states so UI shows "starting" immediately
     {

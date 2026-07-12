@@ -1,5 +1,6 @@
 import { listen } from "@tauri-apps/api/event";
-import type { CoachingStreamChunk, DownloadStatus, LlmDownloadProgress, ReviewProgress } from "./types";
+import type { DownloadStatus, ReviewProgress } from "./bindings";
+import type { CoachingStreamChunk, LlmDownloadProgress } from "./types";
 
 export type EngineStatus = "starting" | "ready" | "error" | "stopped";
 

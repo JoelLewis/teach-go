@@ -1,5 +1,6 @@
 <script lang="ts">
-  import type { Settings, ThemeName } from "../lib/api/types";
+  import type { Settings } from "../lib/api/bindings";
+  import type { ThemeName } from "../lib/api/types";
   import { llmStore } from "../lib/stores/llm.svelte";
   import { onMount } from "svelte";
 

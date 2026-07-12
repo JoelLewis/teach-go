@@ -15,7 +15,7 @@ pub fn get_player_rank(state: &AppState) -> f64 {
         .unwrap_or(DEFAULT_RANK)
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct SkillDimension {
     pub mu: f64,
     pub sigma: f64,
@@ -30,7 +30,7 @@ impl Default for SkillDimension {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct SkillProfile {
     pub overall_rank: f64,
     pub reading: SkillDimension,
@@ -212,7 +212,7 @@ pub fn save_skill_profile(conn: &Connection, profile: &SkillProfile) -> Result<(
     Ok(())
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct SkillSnapshot {
     pub recorded_at: String,
     pub source: String,

@@ -5,7 +5,8 @@
   import { settingsStore } from "../lib/stores/settings.svelte";
   import { tutorialExercises } from "../lib/onboarding/exercises";
   import * as api from "../lib/api/commands";
-  import type { StoneColor, StonePosition } from "../lib/api/types";
+  import type { StonePosition } from "../lib/api/bindings";
+  import type { StoneColor } from "../lib/api/types";
 
   type Props = {
     onComplete: () => void;

@@ -8,7 +8,8 @@
   import { play as playSound } from "../lib/audio/sounds";
   import type { Highlight } from "../lib/board/BoardSvg.svelte";
   import * as api from "../lib/api/commands";
-  import type { StoneColor, ProblemSummary } from "../lib/api/types";
+  import type { ProblemSummary } from "../lib/api/bindings";
+  import type { StoneColor } from "../lib/api/types";
 
   type Props = {
     onGoHome: () => void;

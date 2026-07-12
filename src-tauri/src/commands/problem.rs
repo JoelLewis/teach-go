@@ -10,7 +10,7 @@ use crate::solver::{HintData, HintLevel, MoveResult, SolveStatus, SolverSession}
 use crate::srs;
 use crate::state::AppState;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct ProblemState {
     pub problem_id: i64,
     pub board_state: GameState,
@@ -22,7 +22,7 @@ pub struct ProblemState {
     pub elapsed_seconds: u64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct SolveMoveResult {
     pub move_result: MoveResult,
     pub board_state: GameState,
@@ -43,6 +43,7 @@ fn solver_to_problem_state(solver: &SolverSession) -> ProblemState {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn list_problems(
     state: State<'_, AppState>,
     category: Option<String>,
@@ -53,6 +54,7 @@ pub fn list_problems(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn start_problem(
     state: State<'_, AppState>,
     problem_id: i64,
@@ -71,6 +73,7 @@ pub fn start_problem(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn solve_move(
     state: State<'_, AppState>,
     row: u8,
@@ -111,6 +114,7 @@ pub fn solve_move(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn get_hint(state: State<'_, AppState>, level: String) -> Result<HintData, AppError> {
     let mut solver_lock = state.solver.lock().unwrap();
     let solver = solver_lock
@@ -128,6 +132,7 @@ pub fn get_hint(state: State<'_, AppState>, level: String) -> Result<HintData, A
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn skip_problem(state: State<'_, AppState>) -> Result<(), AppError> {
     let mut solver_lock = state.solver.lock().unwrap();
     let solver = solver_lock
@@ -151,12 +156,14 @@ pub fn skip_problem(state: State<'_, AppState>) -> Result<(), AppError> {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn get_problem_state(state: State<'_, AppState>) -> Result<Option<ProblemState>, AppError> {
     let solver_lock = state.solver.lock().unwrap();
     Ok(solver_lock.as_ref().map(solver_to_problem_state))
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn generate_problems_from_game(
     state: State<'_, AppState>,
     threshold: Option<f64>,
@@ -242,6 +249,7 @@ fn record_attempt(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn get_recommended_problem(state: State<'_, AppState>) -> Result<ProblemState, AppError> {
     let conn = state.db.lock().unwrap();
     let profile = crate::skill::get_skill_profile(&conn)?;
@@ -258,7 +266,7 @@ pub fn get_recommended_problem(state: State<'_, AppState>) -> Result<ProblemStat
     Ok(ps)
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct ProblemStats {
     pub total_solved: u32,
     pub total_attempted: u32,
@@ -266,7 +274,7 @@ pub struct ProblemStats {
     pub per_category: Vec<CategoryStat>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct CategoryStat {
     pub category: String,
     pub solved: u32,
@@ -274,6 +282,7 @@ pub struct CategoryStat {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn get_problem_stats(state: State<'_, AppState>) -> Result<ProblemStats, AppError> {
     let conn = state.db.lock().unwrap();
 
@@ -325,13 +334,14 @@ pub fn get_problem_stats(state: State<'_, AppState>) -> Result<ProblemStats, App
     })
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct ImportProblemResult {
     pub imported: u32,
     pub errors: Vec<String>,
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn import_problems_from_sgf(
     state: State<'_, AppState>,
     app: tauri::AppHandle,

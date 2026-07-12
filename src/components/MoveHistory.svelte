@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { GameState, MoveEntry } from "../lib/api/types";
+  import type { GameState, MoveEntry } from "../lib/api/bindings";
   import { toGtp } from "../lib/utils/coordinates";
 
   type Props = {

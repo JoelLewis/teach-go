@@ -28,6 +28,13 @@ impl From<gosensei_katago::client::ClientError> for AppError {
     }
 }
 
+// AppError serializes as a plain string, so its Specta type is `string`.
+impl specta::Type for AppError {
+    fn definition(types: &mut specta::Types) -> specta::datatype::DataType {
+        String::definition(types)
+    }
+}
+
 // Tauri commands need errors to be serializable
 impl Serialize for AppError {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

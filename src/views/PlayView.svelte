@@ -17,7 +17,8 @@
   import * as sounds from "../lib/audio/sounds";
   import { onEngineStatus, onAiThinking, onCoachingStream } from "../lib/api/events";
   import * as api from "../lib/api/commands";
-  import type { CoachingMessage, DifficultySuggestion, GameState, StoneColor, NewGameConfig } from "../lib/api/types";
+  import type { CoachingMessage, DifficultySuggestion, GameState } from "../lib/api/bindings";
+  import type { StoneColor, NewGameConfig } from "../lib/api/types";
 
   type Props = {
     config?: NewGameConfig;
@@ -479,11 +480,11 @@
             {#if gameStore.state.result === "Draw"}
               &mdash; Draw
             {:else if typeof gameStore.state.result === "object" && "Resignation" in gameStore.state.result}
-              &mdash; {gameStore.state.result.Resignation.winner === "black"
+              &mdash; {gameStore.state.result.Resignation?.winner === "Black"
                 ? "Black"
                 : "White"} wins by resignation
             {:else if typeof gameStore.state.result === "object" && "Score" in gameStore.state.result}
-              &mdash; {gameStore.state.result.Score.winner === "black"
+              &mdash; {gameStore.state.result.Score.winner === "Black"
                 ? "Black"
                 : "White"} wins by {gameStore.state.result.Score.margin} points
             {/if}

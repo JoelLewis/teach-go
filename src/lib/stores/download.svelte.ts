@@ -1,4 +1,4 @@
-import type { DownloadStatus, DownloadState } from "../api/types";
+import type { DownloadStatus, DownloadState } from "../api/bindings";
 import { getDownloadStatus, retryDownloads } from "../api/commands";
 import { onDownloadProgress } from "../api/events";
 

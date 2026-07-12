@@ -5,6 +5,7 @@ use crate::error::AppError;
 use crate::state::AppState;
 
 #[tauri::command]
+#[specta::specta]
 pub async fn save_game_sgf(
     state: State<'_, AppState>,
     app: tauri::AppHandle,
@@ -38,6 +39,7 @@ pub async fn save_game_sgf(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn load_game_sgf(
     state: State<'_, AppState>,
     app: tauri::AppHandle,

@@ -18,7 +18,7 @@ const REVIEW_VISITS: u32 = 50;
 const BATCH_SIZE: usize = 20;
 const QUERY_TIMEOUT: Duration = Duration::from_secs(10);
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 pub struct ReviewProgress {
     total_positions: u16,
     analyzed_positions: u16,
@@ -26,6 +26,7 @@ pub struct ReviewProgress {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn start_review(
     state: State<'_, AppState>,
     app: AppHandle,
@@ -320,6 +321,7 @@ fn compute_score_loss_and_severity(session: &mut ReviewSession, board_size: u8, 
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn get_review_progress(state: State<'_, AppState>) -> Result<ReviewProgress, AppError> {
     let review = state.review.lock().await;
     let session = review
@@ -336,6 +338,7 @@ pub async fn get_review_progress(state: State<'_, AppState>) -> Result<ReviewPro
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn get_review_data(state: State<'_, AppState>) -> Result<ReviewData, AppError> {
     let review = state.review.lock().await;
     let session = review
@@ -368,6 +371,7 @@ pub async fn get_review_data(state: State<'_, AppState>) -> Result<ReviewData, A
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn get_review_position(
     state: State<'_, AppState>,
     move_number: u16,
@@ -384,6 +388,7 @@ pub async fn get_review_position(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn get_ownership_at(
     state: State<'_, AppState>,
     move_number: u16,
@@ -400,6 +405,7 @@ pub async fn get_ownership_at(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn get_review_variations(
     state: State<'_, AppState>,
     move_number: u16,

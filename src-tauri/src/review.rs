@@ -2,7 +2,7 @@ use gosensei_coaching::types::Severity;
 use gosensei_core::sgf::tree::SgfNode;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct MoveAnalysis {
     pub move_number: u16,
     /// "black" | "white", None for initial position (move 0)
@@ -23,7 +23,7 @@ pub struct MoveAnalysis {
     pub best_variation: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct ReviewData {
     pub board_size: u8,
     pub total_moves: u16,
@@ -33,7 +33,7 @@ pub struct ReviewData {
     pub top_mistakes: Vec<u16>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct VariationMove {
     pub row: u8,
     pub col: u8,
