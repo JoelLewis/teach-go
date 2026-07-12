@@ -10,33 +10,10 @@ Output format:
 <classification>{\"error_class\": \"Direction|Shape|Reading|LifeAndDeath|Endgame|Opening|Ko\"}</classification>
 <coaching>Your 1-3 sentence coaching message here.</coaching>";
 
-/// Format a system+user exchange in the Gemma 4 chat format.
-///
-/// Gemma 4 replaced Gemma 3's `<start_of_turn>role ... <end_of_turn>` markers
-/// with `<|turn>role ... <turn|>` and gained a native system role. The
-/// llama.cpp C-level `llama_chat_apply_template` does not recognize this
-/// template (its detection only knows `<start_of_turn>`), so we render the
-/// non-thinking, no-tools path of the GGUF's Jinja template by hand:
-///
-/// ```text
-/// <|turn>system
-/// {system}<turn|>
-/// <|turn>user
-/// {user}<turn|>
-/// <|turn>model
-/// ```
-///
-/// The BOS token is intentionally omitted — `ModelManager` tokenizes with
-/// `AddBos::Always`.
-pub fn format_chat_prompt(system: &str, user: &str) -> String {
-    format!(
-        "<|turn>system\n{}<turn|>\n<|turn>user\n{}<turn|>\n<|turn>model\n",
-        system.trim(),
-        user.trim(),
-    )
-}
-
 /// Build the user portion of the chat prompt from a coaching payload.
+///
+/// The full Gemma 4 chat rendering (`<|turn>role ... <turn|>` markers) is
+/// `sensei_llm::format_chat`.
 pub fn build_user_prompt(payload: &CoachingPayload) -> String {
     let mut parts = Vec::new();
 
@@ -169,31 +146,6 @@ mod tests {
         assert!(!prompt.contains("typical"));
         assert!(!prompt.contains("mistakes"));
         assert!(!prompt.contains("continuation"));
-    }
-
-    #[test]
-    fn format_chat_prompt_gemma4_markers() {
-        let prompt = format_chat_prompt("You are a coach.", "What about D4?");
-        assert_eq!(
-            prompt,
-            "<|turn>system\nYou are a coach.<turn|>\n<|turn>user\nWhat about D4?<turn|>\n<|turn>model\n"
-        );
-    }
-
-    #[test]
-    fn format_chat_prompt_trims_content() {
-        let prompt = format_chat_prompt("  system text \n", "\n user text  ");
-        assert!(prompt.contains("<|turn>system\nsystem text<turn|>"));
-        assert!(prompt.contains("<|turn>user\nuser text<turn|>"));
-    }
-
-    #[test]
-    fn format_chat_prompt_ends_with_model_turn() {
-        let prompt = format_chat_prompt("s", "u");
-        assert!(prompt.ends_with("<|turn>model\n"));
-        // No Gemma 3 markers and no BOS — AddBos::Always handles BOS
-        assert!(!prompt.contains("<start_of_turn>"));
-        assert!(!prompt.contains("<bos>"));
     }
 
     #[test]
