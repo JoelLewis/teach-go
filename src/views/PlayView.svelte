@@ -10,6 +10,8 @@
   import { gameStore } from "../lib/stores/game.svelte";
   import { downloadStore } from "../lib/stores/download.svelte";
   import { coachingStore } from "../lib/stores/coaching.svelte";
+  import { coachHintStore } from "../lib/stores/coachHint.svelte";
+  import { llmStore } from "../lib/stores/llm.svelte";
   import { engineStore } from "../lib/stores/engine.svelte";
   import { settingsStore } from "../lib/stores/settings.svelte";
   import { themeStore } from "../lib/stores/theme.svelte";
@@ -71,6 +73,27 @@
   // Keep sound state in sync with settings
   $effect(() => {
     sounds.setEnabled(settingsStore.value.sound_enabled);
+  });
+
+  // Hide the coaching-panel model hint once the download stops running
+  $effect(() => {
+    coachHintStore.noteModelState(downloadStore.status.llm.state);
+  });
+
+  // The startup manager downloads the coach model but never loads it into
+  // memory; load it here so coached games actually get LLM explanations.
+  // Guarded on the file being fully downloaded (llmReady) so this can never
+  // race the startup download; skipped for hotseat (no coaching) and after
+  // a failed attempt (error set) so a broken build can't retry-loop.
+  $effect(() => {
+    if (
+      !isHotseat &&
+      downloadStore.llmReady &&
+      llmStore.status === "not_installed" &&
+      !llmStore.error
+    ) {
+      llmStore.startDownload();
+    }
   });
 
   onMount(() => {
@@ -243,6 +266,7 @@
         // immediate mode
         if (feedback) {
           coachingStore.add(feedback);
+          coachHintStore.noteCoachingMessage(downloadStore.llmDownloading);
         } else {
           coachingStore.setLastMoveSeverity(null);
         }
@@ -255,6 +279,7 @@
   function revealPendingFeedback() {
     if (pendingFeedback) {
       coachingStore.add(pendingFeedback);
+      coachHintStore.noteCoachingMessage(downloadStore.llmDownloading);
       pendingFeedback = null;
     }
   }
@@ -519,7 +544,7 @@
 
       {#if !isHotseat}
         <div class="mt-3">
-          <CoachingPanel messages={coachingStore.messages} streamingMoveNumber={coachingStore.streamingMoveNumber} onNavigate={handleNavigate} />
+          <CoachingPanel messages={coachingStore.messages} streamingMoveNumber={coachingStore.streamingMoveNumber} showModelHint={coachHintStore.visible} onNavigate={handleNavigate} />
         </div>
       {/if}
 

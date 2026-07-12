@@ -2,6 +2,7 @@
   import type { Settings } from "../lib/api/bindings";
   import type { ThemeName } from "../lib/api/types";
   import { llmStore } from "../lib/stores/llm.svelte";
+  import { downloadStore } from "../lib/stores/download.svelte";
   import StrengthSlider from "./StrengthSlider.svelte";
   import { onMount } from "svelte";
 
@@ -24,6 +25,7 @@
 
   onMount(() => {
     llmStore.refresh();
+    downloadStore.refresh();
 
     const focusable = dialogEl?.querySelectorAll<HTMLElement>(
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
@@ -135,11 +137,15 @@
         <label class="mb-2 block text-sm font-medium" style="color: var(--text-on-card);"
           >AI Coach Model</label
         >
+        <p class="mb-2 text-xs" style="color: var(--text-secondary);">
+          An on-device model that writes personalized move explanations. Basic
+          coaching works without it.
+        </p>
         {#if llmStore.status === "ready"}
           <div class="flex items-center gap-2 text-sm" style="color: var(--success);">
             <span class="inline-block h-2 w-2 rounded-full" style="background-color: var(--success);"
             ></span>
-            Model loaded
+            Ready — explanations are personalized
           </div>
         {:else if llmStore.status === "loading"}
           <div class="space-y-2">
@@ -162,10 +168,31 @@
               </div>
             {/if}
           </div>
+        {:else if downloadStore.llmDownloading}
+          <div class="space-y-2">
+            <div class="text-sm" style="color: var(--accent-primary);">
+              Downloading in the background... {Math.round(downloadStore.llmProgress)}%
+            </div>
+            <div class="h-2 w-full overflow-hidden rounded-full" style="background-color: var(--border-subtle);">
+              <div
+                class="h-full rounded-full transition-all"
+                style="background-color: var(--accent-primary); width: {downloadStore.llmProgress}%"
+              ></div>
+            </div>
+            <p class="text-xs" style="color: var(--text-secondary);">
+              One-time ~3 GB download. You can keep playing while it finishes.
+            </p>
+          </div>
+        {:else if downloadStore.llmReady}
+          <div class="flex items-center gap-2 text-sm" style="color: var(--text-secondary);">
+            <span class="inline-block h-2 w-2 rounded-full" style="background-color: var(--success);"
+            ></span>
+            Downloaded — activates when you play
+          </div>
         {:else}
           <div class="space-y-2">
             <p class="text-xs" style="color: var(--text-secondary);">
-              Download Gemma 4 E2B for enhanced coaching explanations (~3 GB).
+              Not downloaded (one-time ~3 GB download).
             </p>
             {#if llmStore.error}
               <p class="text-xs" style="color: var(--danger);">{llmStore.error}</p>

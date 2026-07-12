@@ -6,9 +6,11 @@
     messages: CoachingMessage[];
     streamingMoveNumber?: number | null;
     onNavigate?: (moveNumber: number) => void;
+    /** Show the one-time "model still downloading" note under the messages. */
+    showModelHint?: boolean;
   };
 
-  let { messages, streamingMoveNumber = null, onNavigate }: Props = $props();
+  let { messages, streamingMoveNumber = null, onNavigate, showModelHint = false }: Props = $props();
 
   function hexColor(severity: CoachingMessage["severity"]): string {
     return `#${severityColor(severity).toString(16).padStart(6, "0")}`;
@@ -50,4 +52,9 @@
       {/each}
     {/if}
   </div>
+  {#if showModelHint}
+    <p class="text-xs italic" style="color: var(--text-muted);">
+      AI coach model downloading — explanations will get richer once it's ready.
+    </p>
+  {/if}
 </div>
