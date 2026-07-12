@@ -280,7 +280,7 @@
         {:else if downloadStore.llmDownloading}
           <div class="flex items-center gap-2">
             <span class="inline-block h-3 w-3 animate-spin rounded-full border-2 border-t-transparent" style="border-color: var(--info); border-top-color: transparent;"></span>
-            Downloading AI coach... {Math.round(downloadStore.llmProgress)}%
+            Downloading AI coach model... {Math.round(downloadStore.llmProgress)}%
           </div>
         {/if}
         <div class="mt-1 h-1.5 w-full overflow-hidden rounded" style="background-color: var(--surface-secondary);">
@@ -289,6 +289,10 @@
         {#if downloadStore.katagoDownloading}
           <div class="mt-1 text-xs" style="color: var(--text-dim);">
             You can start playing right away — games use the built-in Practice Bot until the engine is ready.
+          </div>
+        {:else if downloadStore.llmDownloading}
+          <div class="mt-1 text-xs" style="color: var(--text-dim);">
+            A one-time ~3 GB download that powers personalized move explanations. Basic coaching works without it — you can play right away.
           </div>
         {/if}
       </div>
