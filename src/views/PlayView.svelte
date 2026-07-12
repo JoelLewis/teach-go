@@ -96,8 +96,10 @@
     // A game starts immediately in every mode: hotseat needs no engine at
     // all, and vs-AI uses KataGo when it's installed or the built-in
     // Practice Bot while the download is still in progress.
-    // Skip when mounting into an already-loaded game (no config passed).
-    if (config || !gameStore.state) {
+    // Only start when the store is empty: App clears it before handing us a
+    // fresh config, while a loaded game — or an in-progress game re-entered
+    // via back/forward navigation (config is stale then) — must be kept.
+    if (!gameStore.state) {
       startNewGame();
     }
 

@@ -36,6 +36,8 @@
 
     // Keyboard navigation
     function handleKeydown(e: KeyboardEvent) {
+      // Modified arrows belong to global view navigation (Alt+Left/Right)
+      if (e.altKey || e.metaKey || e.ctrlKey) return;
       if (e.key === "ArrowLeft") {
         e.preventDefault();
         reviewStore.prevMove();
