@@ -15,6 +15,12 @@
 
   let currentView = $state<AppView>("home");
   let reviewGameId = $state<number | undefined>(undefined);
+
+  if (import.meta.env.DEV) {
+    // Lets window.__playtest.getView() report the active view (dev builds only).
+    import("./lib/dev/playtest").then((p) => p.registerViewGetter(() => currentView));
+  }
+
   let gameConfig = $state<NewGameConfig | undefined>(undefined);
   let transitioning = $state(false);
   let transitionBoardSize = $state(9);
