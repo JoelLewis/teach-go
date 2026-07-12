@@ -25,7 +25,7 @@ impl Default for Settings {
             komi: 6.5,
             show_coordinates: true,
             show_move_numbers: false,
-            ai_strength: "beginner".to_string(),
+            ai_strength: "18k".to_string(),
             sound_enabled: true,
             feedback_timing: "immediate".to_string(),
             theme: "study".to_string(),

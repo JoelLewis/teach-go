@@ -60,6 +60,8 @@ pub async fn load_game_sgf(
         let game = Game::from_sgf(&sgf_content).map_err(AppError::Other)?;
         let game_state = game.to_state();
         *state.game.lock().unwrap() = Some(game);
+        // Loaded games have no AI opponent — clear any stale AI color.
+        *state.ai_color.lock().unwrap() = None;
         Ok(Some(game_state))
     } else {
         Ok(None) // User cancelled

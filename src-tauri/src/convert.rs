@@ -95,6 +95,40 @@ pub fn strength_to_profile(strength: &str) -> Option<String> {
     }
 }
 
+/// True for canonical rank tokens accepted by the human-SL model:
+/// "20k".."1k" and "1d".."9d" (no leading zeros, so the token can be
+/// embedded verbatim in a `preaz_*` profile name).
+fn is_rank_token(token: &str) -> bool {
+    let in_range = |suffix: char, max: u8| {
+        token
+            .strip_suffix(suffix)
+            .and_then(|digits| {
+                digits
+                    .parse::<u8>()
+                    .ok()
+                    .filter(|n| n.to_string() == digits)
+            })
+            .is_some_and(|n| (1..=max).contains(&n))
+    };
+    in_range('k', 20) || in_range('d', 9)
+}
+
+/// Map an `ai_strength` setting to a KataGo humanSLProfile.
+///
+/// Accepts rank tokens "20k".."1k" / "1d".."9d" (→ `preaz_{token}`) and
+/// "max" (→ None, full strength). Legacy 4-tier values ("beginner",
+/// "intermediate", "advanced", "dan") map via [`strength_to_profile`] so old
+/// databases keep working. Any other value falls back to the default
+/// beginner profile ("preaz_18k") rather than silently playing full strength.
+pub fn rank_token_to_profile(token: &str) -> Option<String> {
+    match token {
+        "max" => None, // Full strength — no profile
+        "beginner" | "intermediate" | "advanced" | "dan" => strength_to_profile(token),
+        _ if is_rank_token(token) => Some(format!("preaz_{token}")),
+        _ => Some("preaz_18k".to_string()),
+    }
+}
+
 /// Map a numeric player rank to the closest KataGo humanSLProfile.
 /// Used for Human SL policy queries to understand what a human at this rank would play.
 #[cfg_attr(not(feature = "llm"), allow(dead_code))]
@@ -368,6 +402,61 @@ mod tests {
         );
         assert_eq!(strength_to_profile("dan"), None);
         assert_eq!(strength_to_profile("unknown"), None);
+    }
+
+    #[test]
+    fn rank_token_kyu_and_dan_round_trips() {
+        let cases = [
+            ("20k", Some("preaz_20k")),
+            ("18k", Some("preaz_18k")),
+            ("9k", Some("preaz_9k")),
+            ("1k", Some("preaz_1k")),
+            ("1d", Some("preaz_1d")),
+            ("5d", Some("preaz_5d")),
+            ("9d", Some("preaz_9d")),
+        ];
+        for (token, expected) in cases {
+            assert_eq!(
+                rank_token_to_profile(token),
+                expected.map(String::from),
+                "token {token}"
+            );
+        }
+    }
+
+    #[test]
+    fn rank_token_max_is_full_strength() {
+        assert_eq!(rank_token_to_profile("max"), None);
+    }
+
+    #[test]
+    fn rank_token_legacy_values_still_map() {
+        let cases = [
+            ("beginner", Some("preaz_18k")),
+            ("intermediate", Some("preaz_9k")),
+            ("advanced", Some("preaz_3k")),
+            ("dan", None),
+        ];
+        for (token, expected) in cases {
+            assert_eq!(
+                rank_token_to_profile(token),
+                expected.map(String::from),
+                "token {token}"
+            );
+        }
+    }
+
+    #[test]
+    fn rank_token_garbage_falls_back_to_default_18k() {
+        // Out-of-range, malformed, and leading-zero tokens all get the sane
+        // default (beginner-level 18k) rather than full strength.
+        for garbage in ["", "21k", "0k", "10d", "05k", "kk", "3 d", "preaz_5k"] {
+            assert_eq!(
+                rank_token_to_profile(garbage),
+                Some("preaz_18k".to_string()),
+                "token {garbage:?}"
+            );
+        }
     }
 
     #[test]
