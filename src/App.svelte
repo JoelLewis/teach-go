@@ -9,10 +9,11 @@
   import { gameStore } from "./lib/stores/game.svelte";
   import { themeStore } from "./lib/stores/theme.svelte";
   import { settingsStore } from "./lib/stores/settings.svelte";
+  import { navHistory, type AppView, type NavEntry } from "./lib/stores/navHistory.svelte";
   import * as api from "./lib/api/commands";
   import type { NewGameConfig, ThemeName } from "./lib/api/types";
 
-  let currentView = $state<"home" | "play" | "review" | "dashboard" | "problem" | "onboarding">("home");
+  let currentView = $state<AppView>("home");
   let reviewGameId = $state<number | undefined>(undefined);
   let gameConfig = $state<NewGameConfig | undefined>(undefined);
   let transitioning = $state(false);
@@ -32,6 +33,71 @@
     }
   });
 
+  function currentNavEntry(): NavEntry | null {
+    if (currentView === "onboarding") return null;
+    return { view: currentView, reviewGameId };
+  }
+
+  function navigateTo(view: NavEntry["view"], gameId?: number) {
+    const from = currentNavEntry();
+    if (from && (from.view !== view || from.reviewGameId !== gameId)) {
+      navHistory.push(from);
+    }
+    reviewGameId = gameId;
+    currentView = view;
+  }
+
+  function goBack() {
+    const current = currentNavEntry();
+    if (!current) return;
+    const entry = navHistory.goBack(current);
+    if (!entry) return;
+    reviewGameId = entry.reviewGameId;
+    currentView = entry.view;
+  }
+
+  function goForward() {
+    const current = currentNavEntry();
+    if (!current) return;
+    const entry = navHistory.goForward(current);
+    if (!entry) return;
+    reviewGameId = entry.reviewGameId;
+    currentView = entry.view;
+  }
+
+  function isTypingTarget(target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) return false;
+    return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
+  }
+
+  function isDialogOpen(): boolean {
+    return document.querySelector('[role="dialog"], dialog[open]') !== null;
+  }
+
+  function handleNavKeydown(e: KeyboardEvent) {
+    if (isTypingTarget(e.target) || isDialogOpen()) return;
+    const cmd = e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey;
+    const alt = e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey;
+    if ((cmd && e.key === "[") || (alt && e.key === "ArrowLeft")) {
+      e.preventDefault();
+      goBack();
+    } else if ((cmd && e.key === "]") || (alt && e.key === "ArrowRight")) {
+      e.preventDefault();
+      goForward();
+    }
+  }
+
+  function handleNavMousedown(e: MouseEvent) {
+    if (isDialogOpen()) return;
+    if (e.button === 3) {
+      e.preventDefault();
+      goBack();
+    } else if (e.button === 4) {
+      e.preventDefault();
+      goForward();
+    }
+  }
+
   async function startGame(config: NewGameConfig) {
     transitionBoardSize = config.boardSize;
     transitioning = true;
@@ -40,25 +106,24 @@
     // (PlayView skips startNewGame when a game is already in the store).
     gameStore.clear();
     gameConfig = config;
-    currentView = "play";
+    navigateTo("play");
     setTimeout(() => { transitioning = false; }, 50);
   }
 
   function goHome() {
-    currentView = "home";
+    navigateTo("home");
   }
 
   function showDashboard() {
-    currentView = "dashboard";
+    navigateTo("dashboard");
   }
 
   function startReview(gameId?: number) {
-    reviewGameId = gameId;
-    currentView = "review";
+    navigateTo("review", gameId);
   }
 
   function startProblems() {
-    currentView = "problem";
+    navigateTo("problem");
   }
 
   async function loadGame(gameId: number) {
@@ -68,12 +133,14 @@
       // Drop any stale config (hotseat / vs-AI) from a previous session —
       // a loaded game is review material, not a continuation of that setup.
       gameConfig = undefined;
-      currentView = "play";
+      navigateTo("play");
     } catch (e) {
       console.error("Failed to load game:", e);
     }
   }
 </script>
+
+<svelte:window onkeydown={handleNavKeydown} onmousedown={handleNavMousedown} />
 
 <main class="h-full" style="background-color: var(--surface-primary, #1c1917); color: var(--text-primary, #f5f5f4);">
   {#if currentView === "onboarding"}
