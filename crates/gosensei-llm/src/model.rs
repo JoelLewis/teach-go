@@ -170,8 +170,10 @@ impl ModelManager {
         let n_start = batch.n_tokens();
 
         for n_cur in n_start..n_start + max_tokens as i32 {
+            // `sample` already accepts the token into the chain's internal state
+            // (grammar, penalties). Accepting again would advance the grammar
+            // twice and abort inside llama.cpp.
             let token = sampler.sample(&ctx, batch.n_tokens() - 1);
-            sampler.accept(token);
 
             if self.model.is_eog_token(token) {
                 debug!("End of generation token reached");
