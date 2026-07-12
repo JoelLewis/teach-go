@@ -266,8 +266,13 @@
   }
 
   // --- Animation tracking ---
-  // Track previous stone keys for capture detection
-  let previousStoneKeys = $state(new Set<string>());
+  // Track previous stone keys for capture detection. Deliberately NOT
+  // $state: the $effect below both reads and reassigns it every run, and
+  // reactive state there makes the effect self-invalidating — Svelte
+  // aborts with effect_update_depth_exceeded and all reactivity dies
+  // (the "stuck ghost board on game start" bug). Plain bookkeeping only
+  // ever used inside the effect needs no reactivity.
+  let previousStoneKeys = new Set<string>();
 
   type AnimatingStone = {
     row: number;
