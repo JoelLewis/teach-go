@@ -3,6 +3,7 @@
 // resolved with data, rejected with the serialized backend error.
 import { commands } from "./bindings";
 import type {
+  AiEngine,
   CoachingMessage,
   DifficultySuggestion,
   DownloadStatus,
@@ -63,6 +64,10 @@ export async function checkDifficultySuggestion(): Promise<DifficultySuggestion 
 
 export async function getGamePosition(moveNumber: number): Promise<GameState> {
   return unwrap(commands.getGamePosition(moveNumber));
+}
+
+export async function getAiEngine(): Promise<AiEngine> {
+  return commands.getAiEngine();
 }
 
 export async function startEngine(): Promise<KataGoStatus> {
