@@ -28,29 +28,28 @@ pub async fn init_llm_model(
         return Ok("ready".to_string());
     }
 
-    // Determine model directory
-    let model_dir = app
+    let app_data_dir = app
         .path()
         .app_data_dir()
-        .map_err(|e| AppError::Llm(format!("app data dir: {e}")))?
-        .join("models");
+        .map_err(|e| AppError::Llm(format!("app data dir: {e}")))?;
 
     let app_clone = app.clone();
 
     // Download + load in a blocking task (both are CPU/IO heavy)
     let manager = tokio::task::spawn_blocking(move || {
         // Ensure model file exists
-        let model_path = gosensei_llm::download::ensure_model(&model_dir, |downloaded, total| {
-            let _ = app_clone.emit(
-                "llm-download-progress",
-                DownloadProgress { downloaded, total },
-            );
-        })
-        .map_err(|e| AppError::Llm(e.to_string()))?;
+        let store = crate::llm_support::model_store(&app_data_dir);
+        let model_path = store
+            .download(&sensei_llm::GEMMA4_E2B_Q4, |downloaded, total| {
+                let _ = app_clone.emit(
+                    "llm-download-progress",
+                    DownloadProgress { downloaded, total },
+                );
+            })
+            .map_err(|e| AppError::Llm(e.to_string()))?;
 
         // Load the model
-        gosensei_llm::model::ModelManager::load(&model_path)
-            .map_err(|e| AppError::Llm(e.to_string()))
+        sensei_llm::ModelManager::load(&model_path).map_err(|e| AppError::Llm(e.to_string()))
     })
     .await
     .map_err(|e| AppError::Llm(format!("task join: {e}")))??;

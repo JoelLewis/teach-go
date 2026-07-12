@@ -6,6 +6,8 @@ mod download_manager;
 mod error;
 mod generate;
 mod import;
+#[cfg(feature = "llm")]
+pub mod llm_support;
 mod problem;
 mod review;
 mod seed_content;

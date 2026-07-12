@@ -30,6 +30,14 @@ gosensei-core = { path = "../crates/gosensei-core" }
 gosensei-katago = { path = "../crates/gosensei-katago" }
 gosensei-coaching = { path = "../crates/gosensei-coaching" }
 gosensei-llm = { path = "../crates/gosensei-llm", optional = true }
+# Shared local-LLM runtime (llama.cpp + Gemma 4), pinned to a rev for
+# reproducible builds. Metal is compiled in automatically on macOS via the
+# crate's target-specific dependency; a Linux/Windows CUDA build would add
+# its "cuda" feature here.
+sensei-llm = { git = "https://github.com/JoelLewis/sensei-kit", rev = "ae29011c9328cff46eb9a0c8866731066c13782f", features = [
+    "download",
+    "llm",
+], optional = true }
 reqwest = { version = "0.12", features = ["blocking"] }
 sha2 = "0.10"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
@@ -38,7 +46,10 @@ zip = "2"
 
 tauri-plugin-mcp = { git = "https://github.com/P3GLEG/tauri-plugin-mcp", optional = true }
 
+[dev-dependencies]
+tempfile = "3"
+
 [features]
 default = ["mcp", "llm"]
 mcp = ["tauri-plugin-mcp"]
-llm = ["gosensei-llm/llm", "gosensei-llm"]
+llm = ["dep:gosensei-llm", "dep:sensei-llm"]

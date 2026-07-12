@@ -129,9 +129,8 @@ pub async fn run_initial_downloads(app_handle: tauri::AppHandle) {
     // --- LLM ---
     #[cfg(feature = "llm")]
     {
-        let model_dir = app_data_dir.join("llm");
-        let model_path = model_dir.join(gosensei_llm::download::DEFAULT_MODEL_FILENAME);
-        if !model_path.exists() {
+        let store = crate::llm_support::model_store(&app_data_dir);
+        if !store.is_available(&sensei_llm::GEMMA4_E2B_Q4) {
             info!("LLM model not found, starting download…");
             {
                 let mut s = global_status().lock().unwrap_or_else(|e| e.into_inner());
@@ -143,9 +142,8 @@ pub async fn run_initial_downloads(app_handle: tauri::AppHandle) {
             emit_status(&app_handle);
 
             let handle = app_handle.clone();
-            let dir = model_dir.clone();
             let result = tokio::task::spawn_blocking(move || {
-                gosensei_llm::download::ensure_model(&dir, |downloaded, total| {
+                store.download(&sensei_llm::GEMMA4_E2B_Q4, |downloaded, total| {
                     let progress = if total > 0 {
                         (downloaded as f64 / total as f64) * 100.0
                     } else {

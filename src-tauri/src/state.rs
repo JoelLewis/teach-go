@@ -18,7 +18,7 @@ pub struct AppState {
     pub game_errors: Mutex<Vec<GameError>>,
     pub solver: Mutex<Option<SolverSession>>,
     #[cfg(feature = "llm")]
-    pub llm: Arc<tokio::sync::Mutex<Option<gosensei_llm::model::ModelManager>>>,
+    pub llm: Arc<tokio::sync::Mutex<Option<sensei_llm::ModelManager>>>,
 }
 
 impl AppState {
