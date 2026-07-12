@@ -139,12 +139,7 @@ impl KataGoProcess {
         let old_tx = std::mem::replace(&mut self.stdin_tx, _closed_tx);
         drop(old_tx);
 
-        match tokio::time::timeout(
-            std::time::Duration::from_secs(3),
-            self.child.wait(),
-        )
-        .await
-        {
+        match tokio::time::timeout(std::time::Duration::from_secs(3), self.child.wait()).await {
             Ok(Ok(_)) => Ok(()),
             _ => self.child.kill().await.map_err(ProcessError::SpawnFailed),
         }

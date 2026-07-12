@@ -54,7 +54,9 @@ pub fn new_game(
     komi: Option<f32>,
     player_color: Option<String>,
 ) -> Result<GameState, AppError> {
-    tracing::info!("new_game: board_size={board_size}, komi={komi:?}, player_color={player_color:?}");
+    tracing::info!(
+        "new_game: board_size={board_size}, komi={komi:?}, player_color={player_color:?}"
+    );
     let size = BoardSize::try_from(board_size).map_err(AppError::Other)?;
     let game = Game::new(size, komi.unwrap_or(6.5));
     let game_state = game.to_state();

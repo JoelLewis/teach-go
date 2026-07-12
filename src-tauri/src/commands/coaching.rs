@@ -117,15 +117,15 @@ pub async fn get_coaching_feedback(
         }
     };
 
-    let response = match tokio::time::timeout(
-        std::time::Duration::from_secs(30),
-        standard_rx,
-    )
-    .await
+    let response = match tokio::time::timeout(std::time::Duration::from_secs(30), standard_rx).await
     {
         Ok(Ok(resp)) => resp,
         Ok(Err(_)) => return Err(AppError::KataGo("coaching query dropped".into())),
-        Err(_) => return Err(AppError::KataGo("coaching analysis timed out after 30s".into())),
+        Err(_) => {
+            return Err(AppError::KataGo(
+                "coaching analysis timed out after 30s".into(),
+            ));
+        }
     };
 
     // Await Human SL responses concurrently (non-fatal)
@@ -414,17 +414,13 @@ async fn try_llm_coaching(
             );
         })
     });
-    let raw_output = match tokio::time::timeout(
-        std::time::Duration::from_secs(30),
-        generation_future,
-    )
-    .await
-    {
-        Ok(join_result) => join_result
-            .map_err(|e| AppError::Llm(format!("task join: {e}")))?
-            .map_err(|e| AppError::Llm(e.to_string()))?,
-        Err(_) => return Err(AppError::Llm("LLM generation timed out after 30s".into())),
-    };
+    let raw_output =
+        match tokio::time::timeout(std::time::Duration::from_secs(30), generation_future).await {
+            Ok(join_result) => join_result
+                .map_err(|e| AppError::Llm(format!("task join: {e}")))?
+                .map_err(|e| AppError::Llm(e.to_string()))?,
+            Err(_) => return Err(AppError::Llm("LLM generation timed out after 30s".into())),
+        };
 
     // Signal stream completion
     let _ = app.emit(

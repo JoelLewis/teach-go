@@ -255,7 +255,13 @@ pub async fn request_ai_move(
     // Build and send query (async — no std mutex held)
     let query_id = format!("ai-move-{}", history.len());
     let query = convert::build_query(
-        query_id.clone(), &history, board_size, komi, MAX_VISITS, profile.clone(), None,
+        query_id.clone(),
+        &history,
+        board_size,
+        komi,
+        MAX_VISITS,
+        profile.clone(),
+        None,
     );
 
     let response = {
@@ -298,9 +304,9 @@ pub async fn request_ai_move(
                 );
                 let retry_rx = {
                     let katago = state.katago.lock().await;
-                    let client = katago
-                        .as_ref()
-                        .ok_or(AppError::KataGo("Engine not available after restart".into()))?;
+                    let client = katago.as_ref().ok_or(AppError::KataGo(
+                        "Engine not available after restart".into(),
+                    ))?;
                     client.query_fire(retry_query).await?
                 };
                 match tokio::time::timeout(std::time::Duration::from_secs(30), retry_rx).await {
