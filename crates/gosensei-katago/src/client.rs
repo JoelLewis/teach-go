@@ -92,7 +92,9 @@ impl KataGoClient {
 
         if let Err(e) = self.stdin_tx.send(json).await {
             self.pending.lock().await.remove(&id);
-            return Err(ClientError::Process(ProcessError::Communication(e.to_string())));
+            return Err(ClientError::Process(ProcessError::Communication(
+                e.to_string(),
+            )));
         }
 
         Ok(rx)
