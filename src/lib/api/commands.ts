@@ -18,6 +18,7 @@ import type {
   ReviewData,
   ReviewProgress,
   SavedGame,
+  SgfLoadResult,
   Settings,
   SkillProfile,
   SkillSnapshot,
@@ -90,8 +91,16 @@ export async function saveGameSgf(): Promise<string | null> {
   return unwrap(commands.saveGameSgf());
 }
 
-export async function loadGameSgf(): Promise<GameState | null> {
+export async function loadGameSgf(): Promise<SgfLoadResult | null> {
   return unwrap(commands.loadGameSgf());
+}
+
+export async function confirmLoadGameSgf(): Promise<GameState> {
+  return unwrap(commands.confirmLoadGameSgf());
+}
+
+export async function cancelLoadGameSgf(): Promise<void> {
+  await unwrap(commands.cancelLoadGameSgf());
 }
 
 export async function listGames(): Promise<SavedGame[]> {

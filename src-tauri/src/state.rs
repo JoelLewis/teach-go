@@ -1,5 +1,5 @@
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::AtomicU64;
+use std::sync::{Arc, Mutex};
 
 use gosensei_core::game::Game;
 use gosensei_core::types::Color;
@@ -33,6 +33,7 @@ pub fn select_engine(katago_ready: bool) -> AiEngine {
 
 pub struct AppState {
     pub game: Mutex<Option<Game>>,
+    pub pending_sgf_game: Mutex<Option<Game>>,
     pub ai_color: Mutex<Option<Color>>,
     pub ai_engine: Mutex<AiEngine>,
     pub bot_seed: Mutex<u64>,
@@ -50,6 +51,7 @@ impl AppState {
     pub fn with_db(conn: Connection) -> Self {
         Self {
             game: Mutex::new(None),
+            pending_sgf_game: Mutex::new(None),
             ai_color: Mutex::new(None),
             ai_engine: Mutex::new(AiEngine::KataGo),
             bot_seed: Mutex::new(0),

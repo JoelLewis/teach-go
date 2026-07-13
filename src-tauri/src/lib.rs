@@ -54,6 +54,8 @@ fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::settings::update_settings,
             commands::sgf::save_game_sgf,
             commands::sgf::load_game_sgf,
+            commands::sgf::confirm_load_game_sgf,
+            commands::sgf::cancel_load_game_sgf,
             commands::review::start_review,
             commands::review::get_review_progress,
             commands::review::get_review_data,
