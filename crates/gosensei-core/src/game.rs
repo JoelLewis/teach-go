@@ -88,9 +88,12 @@ pub struct SgfReplayResult {
     pub dropped_moves: u16,
 }
 
-fn format_sgf_coordinate(point: Point) -> String {
-    let column = (b'A' + point.col) as char;
-    format!("{column}{}", point.row + 1)
+/// Format a point the way the board UI labels it: columns skip 'I'
+/// (GTP convention) and rows are numbered from the bottom.
+fn format_board_coordinate(point: Point, board_size: u8) -> String {
+    const COLUMN_LETTERS: &[u8] = b"ABCDEFGHJKLMNOPQRST";
+    let column = COLUMN_LETTERS[point.col as usize] as char;
+    format!("{column}{}", board_size - point.row)
 }
 
 impl Game {
@@ -336,7 +339,9 @@ impl Game {
                 errors.push(SgfMoveError {
                     move_number: index as u16 + 1,
                     coordinate: match mv {
-                        Move::Play(point) => format_sgf_coordinate(*point),
+                        Move::Play(point) => {
+                            format_board_coordinate(*point, parsed.board_size.size())
+                        }
                         Move::Pass => "pass".into(),
                         Move::Resign => "resign".into(),
                     },
@@ -762,6 +767,18 @@ mod tests {
         assert_eq!(error.reason, "point (4, 4) is occupied");
         assert_eq!(replay.dropped_moves, 3);
         assert!(Game::from_sgf(sgf).is_err());
+    }
+
+    #[test]
+    fn illegal_move_coordinate_matches_board_labels() {
+        // Col 8 row 0 on 9x9 is labeled J9 by the board UI: columns skip
+        // 'I' and rows count from the bottom.
+        let sgf = "(;SZ[9];B[ia];W[cc];B[ia])";
+
+        let replay = Game::from_sgf_with_report(sgf).unwrap();
+        let error = replay.errors.first().expect("occupied point is illegal");
+
+        assert_eq!(error.coordinate, "J9");
     }
 
     #[test]
