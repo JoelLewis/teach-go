@@ -1,4 +1,5 @@
 use std::time::Duration;
+use std::sync::atomic::Ordering;
 
 use gosensei_coaching::types::Severity;
 use gosensei_coaching::{classify, templates};
@@ -10,19 +11,31 @@ use tracing::{info, warn};
 
 use crate::convert;
 use crate::error::AppError;
-use crate::review::{MoveAnalysis, ReviewData, ReviewSession};
+use crate::review::{MoveAnalysis, ReviewData, ReviewSession, ReviewStatus};
 use crate::skill;
 use crate::state::AppState;
 
 const REVIEW_VISITS: u32 = 50;
 const BATCH_SIZE: usize = 20;
 const QUERY_TIMEOUT: Duration = Duration::from_secs(10);
+const MIN_MISTAKE_SCORE_LOSS: f64 = 0.5;
+
+fn terminal_review_status(analyzed: u16, total: u16, had_failure: bool) -> ReviewStatus {
+    if analyzed == 0 {
+        ReviewStatus::Failed
+    } else if had_failure || analyzed < total {
+        ReviewStatus::Degraded
+    } else {
+        ReviewStatus::Complete
+    }
+}
 
 #[derive(Debug, Clone, Serialize, specta::Type)]
 pub struct ReviewProgress {
     total_positions: u16,
     analyzed_positions: u16,
     is_complete: bool,
+    status: ReviewStatus,
 }
 
 #[tauri::command]
@@ -60,6 +73,7 @@ pub async fn start_review(
     let total_positions = total_moves + 1;
 
     // Initialize review session
+    let generation = state.review_generation.fetch_add(1, Ordering::SeqCst) + 1;
     {
         let mut review = state.review.lock().await;
         *review = Some(ReviewSession {
@@ -70,6 +84,7 @@ pub async fn start_review(
             results: vec![None; total_positions as usize],
             ownership: vec![None; total_positions as usize],
             is_complete: false,
+            status: ReviewStatus::Analyzing,
             variation_tree,
         });
     }
@@ -84,14 +99,20 @@ pub async fn start_review(
     // Clone Arcs for the spawned task
     let katago = state.katago.clone();
     let review_state = state.review.clone();
+    let generation_state = state.review_generation.clone();
 
     // Spawn async analysis task
     tokio::spawn(async move {
         let mut analyzed = 0u16;
+        let mut had_failure = false;
 
         // Process in batches
         for batch_start in (0..total_positions as usize).step_by(BATCH_SIZE) {
             let batch_end = (batch_start + BATCH_SIZE).min(total_positions as usize);
+
+            if generation_state.load(Ordering::SeqCst) != generation {
+                return;
+            }
 
             // Fire all queries in this batch
             let mut receivers = Vec::new();
@@ -102,6 +123,7 @@ pub async fn start_review(
                     Some(c) => c,
                     None => {
                         warn!("KataGo not available for review");
+                        had_failure = true;
                         break;
                     }
                 };
@@ -124,6 +146,7 @@ pub async fn start_review(
                         Ok(rx) => receivers.push((i, rx)),
                         Err(e) => {
                             warn!("Failed to send review query {i}: {e}");
+                            had_failure = true;
                             continue;
                         }
                     }
@@ -136,10 +159,13 @@ pub async fn start_review(
                     Ok(Ok(resp)) => resp,
                     Ok(Err(_)) => {
                         warn!("Review query {i} channel closed");
+                        had_failure = true;
                         continue;
                     }
                     Err(_) => {
                         warn!("Review query {i} timed out");
+                        had_failure = true;
+                        client_cleanup(&katago, &format!("review-{i}")).await;
                         continue;
                     }
                 };
@@ -209,6 +235,9 @@ pub async fn start_review(
                 // Store result and ownership
                 {
                     let mut review = review_state.lock().await;
+                    if generation_state.load(Ordering::SeqCst) != generation {
+                        return;
+                    }
                     if let Some(session) = review.as_mut() {
                         session.results[i] = Some(analysis);
                         if !normalized_ownership.is_empty() {
@@ -225,6 +254,7 @@ pub async fn start_review(
                 total_positions,
                 analyzed_positions: analyzed,
                 is_complete: false,
+                status: if had_failure { ReviewStatus::Degraded } else { ReviewStatus::Analyzing },
             };
             let _ = app.emit("review-progress", &progress);
         }
@@ -232,9 +262,13 @@ pub async fn start_review(
         // Post-processing: compute score loss from consecutive positions
         {
             let mut review = review_state.lock().await;
+            if generation_state.load(Ordering::SeqCst) != generation {
+                return;
+            }
             if let Some(session) = review.as_mut() {
                 compute_score_loss_and_severity(session, board_size, player_rank);
                 session.is_complete = true;
+                session.status = terminal_review_status(analyzed, total_positions, had_failure);
             }
         }
 
@@ -243,15 +277,22 @@ pub async fn start_review(
             "review-progress",
             &ReviewProgress {
                 total_positions,
-                analyzed_positions: total_positions,
+                analyzed_positions: analyzed,
                 is_complete: true,
+                status: terminal_review_status(analyzed, total_positions, had_failure),
             },
         );
 
-        info!("Review analysis complete: {total_positions} positions analyzed");
+        info!("Review analysis finished: {analyzed}/{total_positions} positions analyzed");
     });
 
     Ok(())
+}
+
+async fn client_cleanup(katago: &std::sync::Arc<tokio::sync::Mutex<Option<gosensei_katago::client::KataGoClient>>>, id: &str) {
+    if let Some(client) = katago.lock().await.as_ref() {
+        client.remove_pending(id).await;
+    }
 }
 
 /// Compute score loss by comparing each position to the previous one.
@@ -334,6 +375,7 @@ pub async fn get_review_progress(state: State<'_, AppState>) -> Result<ReviewPro
         total_positions: session.total_positions,
         analyzed_positions: analyzed,
         is_complete: session.is_complete,
+        status: session.status,
     })
 }
 
@@ -355,10 +397,12 @@ pub async fn get_review_data(state: State<'_, AppState>) -> Result<ReviewData, A
     // Find top 5 mistakes sorted by score_loss descending (skip position 0)
     let mut scored: Vec<(u16, f64)> = move_analyses
         .iter()
-        .filter(|a| a.move_number > 0 && a.score_loss > 0.0)
+        .filter(|a| a.move_number > 0
+            && a.score_loss >= MIN_MISTAKE_SCORE_LOSS
+            && !matches!(a.severity, Severity::Excellent | Severity::Good))
         .map(|a| (a.move_number, a.score_loss))
         .collect();
-    scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+    scored.sort_by_key(|a| a.0);
     let top_mistakes: Vec<u16> = scored.into_iter().take(5).map(|(n, _)| n).collect();
 
     Ok(ReviewData {
@@ -367,6 +411,7 @@ pub async fn get_review_data(state: State<'_, AppState>) -> Result<ReviewData, A
         komi: session.komi,
         move_analyses,
         top_mistakes,
+        status: session.status,
     })
 }
 
@@ -519,6 +564,7 @@ mod tests {
                 }),
             ],
             is_complete: false,
+            status: ReviewStatus::Analyzing,
             variation_tree: None,
         };
 
@@ -582,10 +628,18 @@ mod tests {
             (7, 0.0),    // perfect
         ];
 
-        let mut scored = analyses.clone();
-        scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        let top: Vec<u16> = scored.into_iter().take(5).map(|(n, _)| n).collect();
+        let top: Vec<u16> = analyses
+            .into_iter()
+            .filter(|(_, loss)| *loss >= MIN_MISTAKE_SCORE_LOSS)
+            .map(|(n, _)| n)
+            .collect();
+        assert_eq!(top, vec![1, 2, 4, 5, 6]);
+    }
 
-        assert_eq!(top, vec![4, 6, 2, 5, 1]);
+    #[test]
+    fn review_terminal_status_reflects_partial_engine_results() {
+        assert_eq!(terminal_review_status(0, 4, true), ReviewStatus::Failed);
+        assert_eq!(terminal_review_status(3, 4, false), ReviewStatus::Degraded);
+        assert_eq!(terminal_review_status(4, 4, false), ReviewStatus::Complete);
     }
 }

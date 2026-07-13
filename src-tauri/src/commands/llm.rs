@@ -23,8 +23,10 @@ pub async fn init_llm_model(
     state: State<'_, AppState>,
     app: AppHandle,
 ) -> Result<String, AppError> {
-    // Guard: already loaded
-    if state.llm.try_lock().map(|g| g.is_some()).unwrap_or(false) {
+    // Hold the async mutex through download and load so concurrent callers
+    // share one initialization rather than starting duplicate 3 GB downloads.
+    let mut llm_lock = state.llm.lock().await;
+    if llm_lock.is_some() {
         return Ok("ready".to_string());
     }
 
@@ -55,7 +57,6 @@ pub async fn init_llm_model(
     .map_err(|e| AppError::Llm(format!("task join: {e}")))??;
 
     // Store in state
-    let mut llm_lock = state.llm.lock().await;
     *llm_lock = Some(manager);
 
     info!("LLM model initialized successfully");

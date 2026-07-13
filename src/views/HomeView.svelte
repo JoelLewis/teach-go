@@ -249,6 +249,7 @@
         onclick={() => (showSettingsDialog = true)}
         class="btn btn-ghost btn-sm"
         title="Settings"
+        aria-label="Settings"
       >
         ⚙
       </button>

@@ -1,4 +1,5 @@
 use rusqlite::Connection;
+use std::collections::HashMap;
 
 use crate::error::AppError;
 
@@ -116,6 +117,62 @@ pub fn init_schema(conn: &Connection) -> Result<(), AppError> {
             ON skill_history (player_id, recorded_at);
         ",
     )?;
+
+    Ok(())
+}
+
+fn reconcile_existing_problems(conn: &Connection) -> Result<(), AppError> {
+    let tx = conn.unchecked_transaction()?;
+    let mut stmt = tx.prepare(
+        "SELECT id, setup_sgf, player_color, solutions_json, prompt, tags_json
+         FROM problems ORDER BY id ASC",
+    )?;
+    let rows = stmt
+        .query_map([], |row| {
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, String>(4)?,
+                row.get::<_, String>(5)?,
+            ))
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    drop(stmt);
+
+    let mut survivors = HashMap::new();
+    for (position, (id, setup_sgf, player_color, solutions_json, prompt, tags_json)) in
+        rows.into_iter().enumerate()
+    {
+        let clean_prompt = crate::import::clean_existing_prompt(&prompt, position + 1);
+        let mut tags: Vec<String> = serde_json::from_str(&tags_json).unwrap_or_default();
+        if !tags.iter().any(|tag| tag == "category-inferred") {
+            tags.push("category-inferred".to_string());
+        }
+        if !tags.iter().any(|tag| tag == "difficulty-inferred") {
+            tags.push("difficulty-inferred".to_string());
+        }
+        let clean_tags = serde_json::to_string(&tags)
+            .map_err(|error| AppError::Other(format!("serialize reconciled problem tags: {error}")))?;
+        tx.execute(
+            "UPDATE problems SET prompt = ?1, tags_json = ?2 WHERE id = ?3",
+            rusqlite::params![clean_prompt, clean_tags, id],
+        )?;
+
+        let key = crate::import::problem_identity(&setup_sgf, &player_color, &solutions_json);
+        if let Some(&survivor_id) = survivors.get(&key) {
+            tx.execute(
+                "UPDATE problem_attempts SET problem_id = ?1 WHERE problem_id = ?2",
+                rusqlite::params![survivor_id, id],
+            )?;
+            tx.execute("DELETE FROM srs_cards WHERE problem_id = ?1", [id])?;
+            tx.execute("DELETE FROM problems WHERE id = ?1", [id])?;
+        } else {
+            survivors.insert(key, id);
+        }
+    }
+    tx.commit()?;
     Ok(())
 }
 
@@ -124,8 +181,12 @@ fn run_migrations(conn: &Connection) -> Result<(), AppError> {
     // Add player_color column to games table (added in coaching update).
     // skill_history needs no entry here: init_schema runs on every open and
     // its CREATE TABLE IF NOT EXISTS covers pre-beta databases.
-    let _ = conn
-        .execute_batch("ALTER TABLE games ADD COLUMN player_color TEXT NOT NULL DEFAULT 'black'");
+    match conn.execute_batch("ALTER TABLE games ADD COLUMN player_color TEXT NOT NULL DEFAULT 'black'") {
+        Ok(()) => {}
+        Err(rusqlite::Error::SqliteFailure(_, Some(message)))
+            if message.contains("duplicate column name") => {}
+        Err(error) => return Err(error.into()),
+    }
 
     // Migrate the 4-tier ai_strength values to rank tokens (rank slider update).
     // Idempotent: each UPDATE only matches the legacy value it rewrites.
@@ -135,6 +196,7 @@ fn run_migrations(conn: &Connection) -> Result<(), AppError> {
          UPDATE settings SET value = '3k'  WHERE key = 'ai_strength' AND value = 'advanced';
          UPDATE settings SET value = 'max' WHERE key = 'ai_strength' AND value = 'dan';",
     )?;
+    reconcile_existing_problems(conn)?;
     Ok(())
 }
 
@@ -209,5 +271,63 @@ mod tests {
         .unwrap();
         run_migrations(&conn).unwrap();
         assert_eq!(ai_strength(&conn), "5d");
+    }
+
+    #[test]
+    fn migration_propagates_unexpected_schema_errors() {
+        let conn = Connection::open_in_memory().unwrap();
+        let error = run_migrations(&conn).unwrap_err();
+        assert!(error.to_string().contains("no such table: games"));
+    }
+
+    #[test]
+    fn reconciles_dirty_duplicate_problems_and_preserves_attempts() {
+        let conn = Connection::open_in_memory().unwrap();
+        init_schema(&conn).unwrap();
+        conn.execute(
+            "INSERT INTO problems
+             (setup_sgf, board_size, player_color, solutions_json, category, difficulty, prompt, tags_json)
+             VALUES ('(;SZ[9]AB[dd])', 9, 'black', '[]', 'LifeDeath', 1.0,
+                     'GZP1', '[\"imported\"]')",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO problems
+             (setup_sgf, board_size, player_color, solutions_json, category, difficulty, prompt, tags_json)
+             VALUES ('(;SZ[9]AB[dd])', 9, 'black', '[]', 'LifeDeath', 1.0,
+                     'Black to play. https://gogameguru.com/', '[\"imported\"]')",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO problem_attempts (problem_id, status) VALUES (2, 'solved')",
+            [],
+        )
+        .unwrap();
+
+        run_migrations(&conn).unwrap();
+        run_migrations(&conn).unwrap();
+
+        let problems: Vec<(i64, String, String)> = conn
+            .prepare("SELECT id, prompt, tags_json FROM problems")
+            .unwrap()
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap();
+        assert_eq!(problems.len(), 1);
+        assert_eq!(problems[0].0, 1);
+        assert_eq!(problems[0].1, "Life & Death #1");
+        assert!(problems[0].2.contains("category-inferred"));
+        assert_eq!(
+            conn.query_row(
+                "SELECT problem_id FROM problem_attempts",
+                [],
+                |row| row.get::<_, i64>(0),
+            )
+            .unwrap(),
+            1
+        );
     }
 }

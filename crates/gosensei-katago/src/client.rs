@@ -39,10 +39,15 @@ impl KataGoClient {
         let pending_clone = pending.clone();
         tokio::spawn(async move {
             while let Ok(line) = process.recv().await {
-                if let Ok(response) = serde_json::from_str::<AnalysisResponse>(&line) {
-                    let mut pending = pending_clone.lock().await;
-                    if let Some(tx) = pending.remove(&response.id) {
-                        let _ = tx.send(response);
+                match serde_json::from_str::<AnalysisResponse>(&line) {
+                    Ok(response) => {
+                        let mut pending = pending_clone.lock().await;
+                        if let Some(tx) = pending.remove(&response.id) {
+                            let _ = tx.send(response);
+                        }
+                    }
+                    Err(error) => {
+                        tracing::warn!(%error, "Discarding malformed KataGo response");
                     }
                 }
             }
@@ -98,5 +103,9 @@ impl KataGoClient {
         }
 
         Ok(rx)
+    }
+
+    pub async fn remove_pending(&self, id: &str) {
+        self.pending.lock().await.remove(id);
     }
 }

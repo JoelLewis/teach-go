@@ -1,4 +1,5 @@
 use std::sync::{Arc, Mutex};
+use std::sync::atomic::AtomicU64;
 
 use gosensei_core::game::Game;
 use gosensei_core::types::Color;
@@ -38,6 +39,7 @@ pub struct AppState {
     pub katago: Arc<tokio::sync::Mutex<Option<KataGoClient>>>,
     pub db: Mutex<Connection>,
     pub review: Arc<tokio::sync::Mutex<Option<ReviewSession>>>,
+    pub review_generation: Arc<AtomicU64>,
     pub game_errors: Mutex<Vec<GameError>>,
     pub solver: Mutex<Option<SolverSession>>,
     #[cfg(feature = "llm")]
@@ -54,6 +56,7 @@ impl AppState {
             katago: Arc::new(tokio::sync::Mutex::new(None)),
             db: Mutex::new(conn),
             review: Arc::new(tokio::sync::Mutex::new(None)),
+            review_generation: Arc::new(AtomicU64::new(0)),
             game_errors: Mutex::new(Vec::new()),
             solver: Mutex::new(None),
             #[cfg(feature = "llm")]

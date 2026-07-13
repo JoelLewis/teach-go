@@ -32,7 +32,7 @@
   onMount(() => {
     downloadStore.startListening();
     downloadStore.refresh();
-    checkSetupAndReview();
+    downloadStore.refresh();
 
     // Keyboard navigation
     function handleKeydown(e: KeyboardEvent) {
@@ -72,15 +72,10 @@
     }
   });
 
-  async function checkSetupAndReview() {
-    await downloadStore.refresh();
-    if (downloadStore.katagoReady) {
-      startReview();
-    }
-    // If not ready, the $effect above will start when KataGo finishes downloading
-  }
-
+  let reviewStartRequested = false;
   async function startReview() {
+    if (reviewStartRequested) return;
+    reviewStartRequested = true;
     try {
       // Subscribe to progress events
       pendingUnlisteners.push(onReviewProgress((progress) => {
@@ -271,6 +266,13 @@
     {/if}
 
     {#if reviewStore.data}
+      {#if reviewStore.data.status !== "Complete"}
+        <div class="rounded p-3 text-sm" style="background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger);">
+          {reviewStore.data.status === "Failed"
+            ? "Review failed: the engine returned no usable analyses."
+            : "Review completed with missing engine analyses; some positions may be unavailable."}
+        </div>
+      {/if}
       <!-- Navigation controls + move analysis (tightly related) -->
       <div class="flex flex-col gap-2">
         <ReviewControls

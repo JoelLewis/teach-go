@@ -29,8 +29,17 @@ pub struct ReviewData {
     pub total_moves: u16,
     pub komi: f32,
     pub move_analyses: Vec<MoveAnalysis>,
-    /// Up to 5 move numbers with the highest score_loss, sorted descending
+    /// Up to 5 move numbers with significant score loss, sorted by move number.
     pub top_mistakes: Vec<u16>,
+    pub status: ReviewStatus,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+pub enum ReviewStatus {
+    Analyzing,
+    Complete,
+    Degraded,
+    Failed,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
@@ -54,6 +63,7 @@ pub struct ReviewSession {
     /// Values range from -1.0 (White territory) to +1.0 (Black territory).
     pub ownership: Vec<Option<Vec<f32>>>,
     pub is_complete: bool,
+    pub status: ReviewStatus,
     /// Parsed SGF variation tree for exploring alternative lines.
     pub variation_tree: Option<SgfNode>,
 }

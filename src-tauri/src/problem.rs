@@ -114,8 +114,8 @@ pub struct Problem {
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct ProblemSummary {
     pub id: i64,
-    pub category: String,
-    pub difficulty: f64,
+    pub category: Option<String>,
+    pub difficulty: Option<f64>,
     pub prompt: String,
     pub board_size: u8,
 }
@@ -133,7 +133,7 @@ pub fn list_problems(
     {
         (
             format!(
-                "SELECT id, category, difficulty, prompt, board_size \
+                "SELECT id, category, difficulty, prompt, board_size, tags_json \
                  FROM problems WHERE category = ?1 ORDER BY difficulty ASC LIMIT {limit}"
             ),
             vec![Box::new(cat.to_string())],
@@ -141,7 +141,7 @@ pub fn list_problems(
     } else {
         (
             format!(
-                "SELECT id, category, difficulty, prompt, board_size \
+                "SELECT id, category, difficulty, prompt, board_size, tags_json \
                  FROM problems ORDER BY difficulty ASC LIMIT {limit}"
             ),
             vec![],
@@ -151,10 +151,20 @@ pub fn list_problems(
     let mut stmt = conn.prepare(&sql)?;
     let params_refs: Vec<&dyn rusqlite::types::ToSql> = params.iter().map(|p| p.as_ref()).collect();
     let rows = stmt.query_map(params_refs.as_slice(), |row| {
+        let tags_json: String = row.get(5)?;
+        let tags: Vec<String> = serde_json::from_str(&tags_json).unwrap_or_default();
         Ok(ProblemSummary {
             id: row.get(0)?,
-            category: row.get(1)?,
-            difficulty: row.get(2)?,
+            category: if tags.iter().any(|tag| tag == "category-inferred") {
+                None
+            } else {
+                Some(row.get(1)?)
+            },
+            difficulty: if tags.iter().any(|tag| tag == "difficulty-inferred") {
+                None
+            } else {
+                Some(row.get(2)?)
+            },
             prompt: row.get(3)?,
             board_size: row.get(4)?,
         })
@@ -831,7 +841,9 @@ mod tests {
 
         let life_death = list_problems(&conn, Some("LifeDeath"), None).unwrap();
         assert!(!life_death.is_empty());
-        assert!(life_death.iter().all(|p| p.category == "LifeDeath"));
+        assert!(life_death
+            .iter()
+            .all(|p| p.category.as_deref() == Some("LifeDeath")));
     }
 
     #[test]

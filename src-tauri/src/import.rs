@@ -1,5 +1,6 @@
 use gosensei_core::sgf::tree::{SgfNode, SgfTreeRoot, parse_sgf_collection, parse_sgf_tree};
 use gosensei_core::types::{Color, Move};
+use std::collections::HashSet;
 
 use crate::problem::{Problem, ProblemCategory, ProblemSource, ResponseBranch, SolutionNode};
 
@@ -35,9 +36,20 @@ pub fn import_from_sgf(sgf_text: &str, default_difficulty: Option<f64>) -> Impor
         },
     };
 
+    let mut seen = HashSet::new();
     for (i, tree) in trees.into_iter().enumerate() {
         match convert_tree_to_problem(tree, i, default_difficulty) {
-            Ok(problem) => result.problems.push(problem),
+            Ok(problem) => {
+                let solutions_json = serde_json::to_string(&problem.solutions).unwrap_or_default();
+                let key = problem_identity(
+                    &problem.setup_sgf,
+                    problem.player_color.as_str(),
+                    &solutions_json,
+                );
+                if seen.insert(key) {
+                    result.problems.push(problem);
+                }
+            }
             Err(e) => result.errors.push(format!("Tree {}: {e}", i + 1)),
         }
     }
@@ -74,7 +86,7 @@ fn convert_tree_to_problem(
     let category = infer_category(&tree);
 
     // Build prompt from comments and metadata
-    let prompt = build_prompt(&tree, player_color);
+    let prompt = build_prompt(&tree, player_color, index);
 
     // Use DL[] if present (0–5 scale → 1.0–25.0 rank), else caller's default
     let difficulty = if let Some(dl) = tree.root.difficulty_level {
@@ -86,7 +98,7 @@ fn convert_tree_to_problem(
     };
 
     // Extract tags from game name and comments
-    let tags = build_tags(&tree, index);
+    let tags = build_tags(&tree, index, default_difficulty.is_none());
 
     Ok(Problem {
         id: 0, // Will be assigned by DB
@@ -265,34 +277,61 @@ fn infer_category_from_text(text: &str) -> ProblemCategory {
 }
 
 /// Build a human-readable prompt from the tree metadata.
-fn build_prompt(tree: &SgfTreeRoot, player_color: Color) -> String {
+fn build_prompt(tree: &SgfTreeRoot, _player_color: Color, index: usize) -> String {
     // Use root comment if it looks like a prompt
     if let Some(ref comment) = tree.root.comment {
-        let trimmed = comment.trim();
+        let trimmed = clean_metadata(comment);
         if !trimmed.is_empty() && trimmed.len() < 200 {
-            return trimmed.to_string();
+            return trimmed;
         }
     }
 
     // Use game name as prompt if available
     if let Some(ref name) = tree.game_name {
-        let trimmed = name.trim();
+        let trimmed = clean_metadata(name);
         if !trimmed.is_empty() {
-            return trimmed.to_string();
+            return trimmed;
         }
     }
 
     // Default prompt
-    let color_name = match player_color {
-        Color::Black => "Black",
-        Color::White => "White",
-    };
-    format!("{color_name} to play")
+    format!("Life & Death #{}", index + 1)
+}
+
+pub(crate) fn problem_identity(setup_sgf: &str, player_color: &str, solutions_json: &str) -> String {
+    format!("{setup_sgf}:{player_color}:{solutions_json}")
+}
+
+pub(crate) fn clean_metadata(value: &str) -> String {
+    value
+        .split_whitespace()
+        .filter(|word| !word.starts_with("http://") && !word.starts_with("https://"))
+        .collect::<Vec<_>>()
+        .join(" ")
+        .trim_matches(|c: char| c.is_ascii_punctuation() && c != '&' && c != '#')
+        .trim()
+        .to_string()
+}
+
+pub(crate) fn clean_existing_prompt(value: &str, fallback_number: usize) -> String {
+    let cleaned = clean_metadata(value);
+    if cleaned.is_empty() || cleaned.to_ascii_uppercase().starts_with("GZP") {
+        format!("Life & Death #{}", fallback_number)
+    } else {
+        cleaned
+    }
 }
 
 /// Extract tags from metadata.
-fn build_tags(tree: &SgfTreeRoot, index: usize) -> Vec<String> {
+fn build_tags(tree: &SgfTreeRoot, index: usize, mark_missing_metadata: bool) -> Vec<String> {
     let mut tags = vec!["imported".to_string()];
+
+    if mark_missing_metadata && !has_category_metadata(tree) {
+        tags.push("category-inferred".to_string());
+    }
+    if tree.root.difficulty_level.is_none() && mark_missing_metadata {
+        tags.push("difficulty-inferred".to_string());
+    }
 
     if let Some(ref name) = tree.game_name {
         // Add sanitized game name as a tag if it's short
@@ -312,6 +351,22 @@ fn build_tags(tree: &SgfTreeRoot, index: usize) -> Vec<String> {
     }
 
     tags
+}
+
+fn has_category_metadata(tree: &SgfTreeRoot) -> bool {
+    let text = format!(
+        "{} {}",
+        tree.game_name.as_deref().unwrap_or_default(),
+        tree.root.comment.as_deref().unwrap_or_default()
+    )
+    .to_lowercase();
+    [
+        "life", "death", "kill", "live", "dead", "eye", "tsumego", "semeai",
+        "tesuji", "trick", "clever", "endgame", "opening", "ko", "capture",
+        "shape", "direction", "strategy",
+    ]
+    .iter()
+    .any(|keyword| text.contains(keyword))
 }
 
 #[cfg(test)]
@@ -422,7 +477,7 @@ mod tests {
                 children: vec![],
             },
         };
-        assert_eq!(build_prompt(&tree, Color::Black), "Black to play and live");
+        assert_eq!(build_prompt(&tree, Color::Black, 0), "Black to play and live");
     }
 
     #[test]
@@ -439,5 +494,13 @@ mod tests {
         let result = import_from_sgf(sgf, None);
         assert_eq!(result.problems.len(), 1);
         assert_eq!(result.problems[0].category, ProblemCategory::Tesuji);
+    }
+
+    #[test]
+    fn cleans_metadata_and_deduplicates_identical_problems() {
+        let sgf = "(;SZ[9]GN[GZP1]C[Black to play. https://gogameguru.com/];B[ee])(;SZ[9]GN[GZP2]C[Black to play. https://gogameguru.com/];B[ee])";
+        let result = import_from_sgf(sgf, None);
+        assert_eq!(result.problems.len(), 1);
+        assert_eq!(result.problems[0].prompt, "Black to play");
     }
 }

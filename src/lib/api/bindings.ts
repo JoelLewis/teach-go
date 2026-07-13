@@ -52,7 +52,7 @@ export const commands = {
 	getReviewVariations: (moveNumber: number) => typedError<VariationMove[], string>(__TAURI_INVOKE("get_review_variations", { moveNumber })),
 	getSkillProfile: () => typedError<SkillProfile, string>(__TAURI_INVOKE("get_skill_profile")),
 	getSkillHistory: (windowDays: number | null) => typedError<SkillSnapshot[], string>(__TAURI_INVOKE("get_skill_history", { windowDays })).then((v) => ((v.status === "ok" ? { ...v, data: v.data.map(i=>i) } : v) as typeof v)),
-	listProblems: (category: string | null, limit: number | null) => typedError<ProblemSummary[], string>(__TAURI_INVOKE("list_problems", { category, limit })).then((v) => ((v.status === "ok" ? { ...v, data: v.data.map(i=>i) } : v) as typeof v)),
+	listProblems: (category: string | null, limit: number | null) => typedError<ProblemSummary[], string>(__TAURI_INVOKE("list_problems", { category, limit })).then((v) => ((v.status === "ok" ? { ...v, data: v.data.map(i=>({...i,difficulty:i.difficulty==null?i.difficulty:i.difficulty})) } : v) as typeof v)),
 	startProblem: (problemId: number) => typedError<ProblemState, string>(__TAURI_INVOKE("start_problem", { problemId })).then((v) => ((v.status === "ok" ? { ...v, data: ({...v.data,board_state:({...v.data.board_state,result:v.data.board_state.result==null?v.data.board_state.result:v.data.board_state.result})}) } : v) as typeof v)),
 	solveMove: (row: number, col: number) => typedError<SolveMoveResult, string>(__TAURI_INVOKE("solve_move", { row, col })).then((v) => ((v.status === "ok" ? { ...v, data: ({...v.data,board_state:({...v.data.board_state,result:v.data.board_state.result==null?v.data.board_state.result:v.data.board_state.result})}) } : v) as typeof v)),
 	getHint: (level: string) => typedError<HintData, string>(__TAURI_INVOKE("get_hint", { level })),
@@ -200,8 +200,8 @@ export type ProblemStats = {
 
 export type ProblemSummary = {
 	id: number,
-	category: string,
-	difficulty: number,
+	category: string | null,
+	difficulty: number | null,
 	prompt: string,
 	board_size: number,
 };
@@ -211,15 +211,19 @@ export type ReviewData = {
 	total_moves: number,
 	komi: number,
 	move_analyses: MoveAnalysis[],
-	/**  Up to 5 move numbers with the highest score_loss, sorted descending */
+	/**  Up to 5 move numbers with significant score loss, sorted by move number. */
 	top_mistakes: number[],
+	status: ReviewStatus,
 };
 
 export type ReviewProgress = {
 	total_positions: number,
 	analyzed_positions: number,
 	is_complete: boolean,
+	status: ReviewStatus,
 };
+
+export type ReviewStatus = "Analyzing" | "Complete" | "Degraded" | "Failed";
 
 export type SavedGame = {
 	id: number,
