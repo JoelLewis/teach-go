@@ -186,7 +186,8 @@
     onGoHome();
   }
 
-  function difficultyLabel(d: number): string {
+  function difficultyLabel(d: number | null): string {
+    if (d === null) return "";
     const r = Math.round(d);
     if (r <= 1) return "~1 dan";
     return `~${r} kyu`;
@@ -307,10 +308,12 @@
             <div class="flex flex-col gap-0.5">
               <span style="color: var(--text-primary);">{problem.prompt}</span>
               <span class="text-xs" style="color: var(--text-dim);">
-                {categoryLabel(problem.category)} · {problem.board_size}×{problem.board_size}
+                {problem.category ? `${categoryLabel(problem.category)} · ` : ""}{problem.board_size}×{problem.board_size}
               </span>
             </div>
-            <span class="text-xs" style="color: var(--text-secondary);">{difficultyLabel(problem.difficulty)}</span>
+            {#if problem.difficulty !== null}
+              <span class="text-xs" style="color: var(--text-secondary);">{difficultyLabel(problem.difficulty)}</span>
+            {/if}
           </button>
         {/each}
       </div>

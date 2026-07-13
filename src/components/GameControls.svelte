@@ -20,6 +20,8 @@
     disabled,
     resignLabel = "Resign",
   }: Props = $props();
+
+  let confirmingResign = $state(false);
 </script>
 
 <div class="flex flex-wrap gap-1.5">
@@ -29,9 +31,13 @@
   <button onclick={onUndo} {disabled} class="btn btn-secondary">
     Undo
   </button>
-  <button onclick={onResign} {disabled} class="btn btn-danger">
-    {resignLabel}
-  </button>
+  {#if confirmingResign}
+    <span class="flex items-center gap-1 text-sm">Resign this game?</span>
+    <button onclick={() => { confirmingResign = false; onResign(); }} {disabled} class="btn btn-danger">Yes</button>
+    <button onclick={() => (confirmingResign = false)} class="btn btn-secondary">No</button>
+  {:else}
+    <button onclick={() => (confirmingResign = true)} {disabled} class="btn btn-danger">{resignLabel}</button>
+  {/if}
   <button onclick={onNewGame} class="btn btn-primary">
     New Game
   </button>

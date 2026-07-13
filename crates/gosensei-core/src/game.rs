@@ -24,6 +24,17 @@ pub struct Game {
     consecutive_passes: u8,
     komi: f32,
     result: Option<GameResult>,
+    state_history: Vec<GameSnapshot>,
+}
+
+#[derive(Debug, Clone)]
+struct GameSnapshot {
+    current_color: Color,
+    ko_point: Option<Point>,
+    captures: Captures,
+    consecutive_passes: u8,
+    phase: GamePhase,
+    result: Option<GameResult>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, specta::Type)]
@@ -77,6 +88,14 @@ impl Game {
             consecutive_passes: 0,
             komi,
             result: None,
+            state_history: vec![GameSnapshot {
+                current_color: Color::Black,
+                ko_point: None,
+                captures: Captures::default(),
+                consecutive_passes: 0,
+                phase: GamePhase::Playing,
+                result: None,
+            }],
         }
     }
 
@@ -126,6 +145,7 @@ impl Game {
             return Err(MoveError::GameOver);
         }
 
+        let snapshot = self.snapshot();
         let captured =
             rules::apply_move(&mut self.board, point, self.current_color, self.ko_point)?;
 
@@ -147,6 +167,7 @@ impl Game {
             move_number,
         });
         self.board_history.push(self.board.clone());
+        self.state_history.push(snapshot);
 
         self.consecutive_passes = 0;
         self.current_color = self.current_color.opponent();
@@ -159,6 +180,7 @@ impl Game {
             return Err(MoveError::GameOver);
         }
 
+        let snapshot = self.snapshot();
         let move_number = self.move_history.len() as u16 + 1;
         self.move_history.push(MoveRecord {
             color: self.current_color,
@@ -166,6 +188,7 @@ impl Game {
             move_number,
         });
         self.board_history.push(self.board.clone());
+        self.state_history.push(snapshot);
 
         self.consecutive_passes += 1;
         self.ko_point = None;
@@ -185,12 +208,15 @@ impl Game {
             return Err(MoveError::GameOver);
         }
 
+        let snapshot = self.snapshot();
         let move_number = self.move_history.len() as u16 + 1;
         self.move_history.push(MoveRecord {
             color: self.current_color,
             mv: Move::Resign,
             move_number,
         });
+        self.board_history.push(self.board.clone());
+        self.state_history.push(snapshot);
 
         self.phase = GamePhase::Finished;
         let result = GameResult::Resignation {
@@ -207,19 +233,34 @@ impl Game {
 
         self.move_history.pop();
         self.board_history.pop();
+        let previous_state = self.state_history.pop();
 
         // Restore board state
         if let Some(previous) = self.board_history.last() {
             self.board = previous.clone();
         }
 
-        self.current_color = self.current_color.opponent();
-        self.ko_point = None; // Simplified — proper ko tracking on undo is complex
-        self.consecutive_passes = 0;
-        self.phase = GamePhase::Playing;
-        self.result = None;
+        if let Some(snapshot) = previous_state {
+            self.current_color = snapshot.current_color;
+            self.ko_point = snapshot.ko_point;
+            self.captures = snapshot.captures;
+            self.consecutive_passes = snapshot.consecutive_passes;
+            self.phase = snapshot.phase;
+            self.result = snapshot.result;
+        }
 
         Ok(())
+    }
+
+    fn snapshot(&self) -> GameSnapshot {
+        GameSnapshot {
+            current_color: self.current_color,
+            ko_point: self.ko_point,
+            captures: self.captures.clone(),
+            consecutive_passes: self.consecutive_passes,
+            phase: self.phase.clone(),
+            result: self.result.clone(),
+        }
     }
 
     /// Replay an SGF string into a Game. Stops on the first illegal move.
@@ -497,6 +538,36 @@ mod tests {
         game.undo().unwrap();
         assert_eq!(game.current_color(), Color::Black);
         assert!(game.board().is_empty(Point::new(4, 4)));
+    }
+
+    #[test]
+    fn undo_restores_captures_and_pass_state() {
+        let mut game = Game::new(BoardSize::Nine, 6.5);
+        // White atari'd stone at (1, 1); Black captures it at (1, 0).
+        game.board_mut().set(Point::new(1, 1), Some(Color::White));
+        game.board_mut().set(Point::new(0, 1), Some(Color::Black));
+        game.board_mut().set(Point::new(1, 0), Some(Color::Black));
+        game.board_mut().set(Point::new(1, 2), Some(Color::Black));
+        game.board_history[0] = game.board().clone();
+        game.play(Point::new(2, 1)).unwrap();
+        assert_eq!(game.captures().black, 1);
+        game.pass().unwrap();
+        game.undo().unwrap();
+        assert_eq!(game.consecutive_passes, 0);
+        assert_eq!(game.captures().black, 1);
+        game.undo().unwrap();
+        assert_eq!(game.captures().black, 0);
+        assert_eq!(game.current_color(), Color::Black);
+    }
+
+    #[test]
+    fn undo_restores_pre_finished_state_after_resignation() {
+        let mut game = Game::new(BoardSize::Nine, 6.5);
+        game.resign().unwrap();
+        game.undo().unwrap();
+        assert_eq!(*game.phase(), GamePhase::Playing);
+        assert_eq!(game.current_color(), Color::Black);
+        assert_eq!(game.result(), None);
     }
 
     #[test]
