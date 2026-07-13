@@ -841,9 +841,11 @@ mod tests {
 
         let life_death = list_problems(&conn, Some("LifeDeath"), None).unwrap();
         assert!(!life_death.is_empty());
-        assert!(life_death
-            .iter()
-            .all(|p| p.category.as_deref() == Some("LifeDeath")));
+        assert!(
+            life_death
+                .iter()
+                .all(|p| p.category.as_deref() == Some("LifeDeath"))
+        );
     }
 
     #[test]

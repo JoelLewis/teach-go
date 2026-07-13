@@ -20,7 +20,7 @@
   import { stepRank } from "../lib/ranks";
   import { onEngineStatus, onAiThinking, onCoachingStream } from "../lib/api/events";
   import * as api from "../lib/api/commands";
-  import type { AiEngine, CoachingMessage, DifficultySuggestion, GameState } from "../lib/api/bindings";
+  import type { AiEngine, CoachingMessage, DifficultySuggestion, GameState, SgfLoadWarning } from "../lib/api/bindings";
   import type { StoneColor, NewGameConfig } from "../lib/api/types";
 
   type Props = {
@@ -43,6 +43,7 @@
   let aiEngine = $state<AiEngine | null>(null);
   let engineReadyNoticeDismissed = $state(false);
   let inputLocked = $state(false);
+  let pendingSgfWarning = $state<SgfLoadWarning | null>(null);
   let startingGame = $state(false);
   let configStrengthApplied = $state(false);
   let pendingUnlisteners: Array<Promise<() => void>> = [];
@@ -364,12 +365,35 @@
 
   async function handleLoad() {
     try {
-      const state = await api.loadGameSgf();
-      if (state) {
-        gameStore.set(state);
-        boardSize = state.board_size;
+      const result = await api.loadGameSgf();
+      if (result?.warning) {
+        pendingSgfWarning = result.warning;
+      } else if (result) {
+        gameStore.set(result.game_state);
+        boardSize = result.game_state.board_size;
         coachingStore.clear();
       }
+    } catch (e) {
+      gameStore.setError(String(e));
+    }
+  }
+
+  async function proceedWithSgfPrefix() {
+    try {
+      const state = await api.confirmLoadGameSgf();
+      gameStore.set(state);
+      boardSize = state.board_size;
+      pendingSgfWarning = null;
+      coachingStore.clear();
+    } catch (e) {
+      gameStore.setError(String(e));
+    }
+  }
+
+  async function cancelSgfLoad() {
+    try {
+      await api.cancelLoadGameSgf();
+      pendingSgfWarning = null;
     } catch (e) {
       gameStore.setError(String(e));
     }
@@ -377,6 +401,21 @@
 </script>
 
 <div class="flex h-full flex-col lg:flex-row">
+  {#if pendingSgfWarning}
+    <div class="absolute left-1/2 top-4 z-20 w-[min(34rem,calc(100%-2rem))] -translate-x-1/2 rounded-lg border p-4 shadow-lg" style="background-color: var(--surface-primary); border-color: var(--warning);">
+      <h2 class="font-semibold" style="color: var(--warning);">SGF has an illegal move</h2>
+      <p class="mt-2 text-sm" style="color: var(--text-primary);">
+        Loaded {pendingSgfWarning.loaded_moves} of {pendingSgfWarning.total_moves} moves — move {pendingSgfWarning.move_number} ({pendingSgfWarning.coordinate}) is illegal in this position.
+      </p>
+      <p class="mt-1 text-xs" style="color: var(--text-secondary);">
+        {pendingSgfWarning.dropped_moves} later move{pendingSgfWarning.dropped_moves === 1 ? "" : "s"} will be dropped. Reason: {pendingSgfWarning.reason}.
+      </p>
+      <div class="mt-3 flex justify-end gap-2">
+        <button class="btn btn-secondary btn-sm" onclick={cancelSgfLoad}>Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick={proceedWithSgfPrefix}>Proceed with prefix</button>
+      </div>
+    </div>
+  {/if}
   <!-- Board area. BoardSvg must be a direct flex item (like ProblemView /
        ReviewView): its max-w-full/max-h-full only resolve against the
        definite-sized flex container, and wrapping it in a plain

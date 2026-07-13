@@ -1,5 +1,5 @@
-use std::time::Duration;
 use std::sync::atomic::Ordering;
+use std::time::Duration;
 
 use gosensei_coaching::types::Severity;
 use gosensei_coaching::{classify, templates};
@@ -254,7 +254,11 @@ pub async fn start_review(
                 total_positions,
                 analyzed_positions: analyzed,
                 is_complete: false,
-                status: if had_failure { ReviewStatus::Degraded } else { ReviewStatus::Analyzing },
+                status: if had_failure {
+                    ReviewStatus::Degraded
+                } else {
+                    ReviewStatus::Analyzing
+                },
             };
             let _ = app.emit("review-progress", &progress);
         }
@@ -289,7 +293,10 @@ pub async fn start_review(
     Ok(())
 }
 
-async fn client_cleanup(katago: &std::sync::Arc<tokio::sync::Mutex<Option<gosensei_katago::client::KataGoClient>>>, id: &str) {
+async fn client_cleanup(
+    katago: &std::sync::Arc<tokio::sync::Mutex<Option<gosensei_katago::client::KataGoClient>>>,
+    id: &str,
+) {
     if let Some(client) = katago.lock().await.as_ref() {
         client.remove_pending(id).await;
     }
@@ -397,9 +404,11 @@ pub async fn get_review_data(state: State<'_, AppState>) -> Result<ReviewData, A
     // Find top 5 mistakes sorted by score_loss descending (skip position 0)
     let mut scored: Vec<(u16, f64)> = move_analyses
         .iter()
-        .filter(|a| a.move_number > 0
-            && a.score_loss >= MIN_MISTAKE_SCORE_LOSS
-            && !matches!(a.severity, Severity::Excellent | Severity::Good))
+        .filter(|a| {
+            a.move_number > 0
+                && a.score_loss >= MIN_MISTAKE_SCORE_LOSS
+                && !matches!(a.severity, Severity::Excellent | Severity::Good)
+        })
         .map(|a| (a.move_number, a.score_loss))
         .collect();
     scored.sort_by_key(|a| a.0);

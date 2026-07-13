@@ -153,8 +153,9 @@ fn reconcile_existing_problems(conn: &Connection) -> Result<(), AppError> {
         if !tags.iter().any(|tag| tag == "difficulty-inferred") {
             tags.push("difficulty-inferred".to_string());
         }
-        let clean_tags = serde_json::to_string(&tags)
-            .map_err(|error| AppError::Other(format!("serialize reconciled problem tags: {error}")))?;
+        let clean_tags = serde_json::to_string(&tags).map_err(|error| {
+            AppError::Other(format!("serialize reconciled problem tags: {error}"))
+        })?;
         tx.execute(
             "UPDATE problems SET prompt = ?1, tags_json = ?2 WHERE id = ?3",
             rusqlite::params![clean_prompt, clean_tags, id],
@@ -181,7 +182,9 @@ fn run_migrations(conn: &Connection) -> Result<(), AppError> {
     // Add player_color column to games table (added in coaching update).
     // skill_history needs no entry here: init_schema runs on every open and
     // its CREATE TABLE IF NOT EXISTS covers pre-beta databases.
-    match conn.execute_batch("ALTER TABLE games ADD COLUMN player_color TEXT NOT NULL DEFAULT 'black'") {
+    match conn
+        .execute_batch("ALTER TABLE games ADD COLUMN player_color TEXT NOT NULL DEFAULT 'black'")
+    {
         Ok(()) => {}
         Err(rusqlite::Error::SqliteFailure(_, Some(message)))
             if message.contains("duplicate column name") => {}
@@ -321,12 +324,9 @@ mod tests {
         assert_eq!(problems[0].1, "Life & Death #1");
         assert!(problems[0].2.contains("category-inferred"));
         assert_eq!(
-            conn.query_row(
-                "SELECT problem_id FROM problem_attempts",
-                [],
-                |row| row.get::<_, i64>(0),
-            )
-            .unwrap(),
+            conn.query_row("SELECT problem_id FROM problem_attempts", [], |row| row
+                .get::<_, i64>(0),)
+                .unwrap(),
             1
         );
     }

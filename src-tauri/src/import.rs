@@ -298,7 +298,11 @@ fn build_prompt(tree: &SgfTreeRoot, _player_color: Color, index: usize) -> Strin
     format!("Life & Death #{}", index + 1)
 }
 
-pub(crate) fn problem_identity(setup_sgf: &str, player_color: &str, solutions_json: &str) -> String {
+pub(crate) fn problem_identity(
+    setup_sgf: &str,
+    player_color: &str,
+    solutions_json: &str,
+) -> String {
     format!("{setup_sgf}:{player_color}:{solutions_json}")
 }
 
@@ -361,9 +365,24 @@ fn has_category_metadata(tree: &SgfTreeRoot) -> bool {
     )
     .to_lowercase();
     [
-        "life", "death", "kill", "live", "dead", "eye", "tsumego", "semeai",
-        "tesuji", "trick", "clever", "endgame", "opening", "ko", "capture",
-        "shape", "direction", "strategy",
+        "life",
+        "death",
+        "kill",
+        "live",
+        "dead",
+        "eye",
+        "tsumego",
+        "semeai",
+        "tesuji",
+        "trick",
+        "clever",
+        "endgame",
+        "opening",
+        "ko",
+        "capture",
+        "shape",
+        "direction",
+        "strategy",
     ]
     .iter()
     .any(|keyword| text.contains(keyword))
@@ -477,7 +496,10 @@ mod tests {
                 children: vec![],
             },
         };
-        assert_eq!(build_prompt(&tree, Color::Black, 0), "Black to play and live");
+        assert_eq!(
+            build_prompt(&tree, Color::Black, 0),
+            "Black to play and live"
+        );
     }
 
     #[test]

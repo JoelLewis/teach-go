@@ -34,7 +34,7 @@ gosensei-llm = { path = "../crates/gosensei-llm", optional = true }
 # reproducible builds. Metal is compiled in automatically on macOS via the
 # crate's target-specific dependency; a Linux/Windows CUDA build would add
 # its "cuda" feature here.
-sensei-llm = { git = "https://github.com/JoelLewis/sensei-kit", rev = "ae29011c9328cff46eb9a0c8866731066c13782f", features = [
+sensei-llm = { git = "https://github.com/JoelLewis/sensei-kit", rev = "95ef866a28b034c43e3c28dd1226f40e548912c0", features = [
     "download",
     "llm",
 ], optional = true }

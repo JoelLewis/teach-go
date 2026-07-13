@@ -33,17 +33,11 @@ export const commands = {
 	updateSettings: (settings: Settings) => typedError<Settings, string>(__TAURI_INVOKE("update_settings", { settings })),
 	saveGameSgf: () => typedError<string | null, string>(__TAURI_INVOKE("save_game_sgf")),
 	loadGameSgf: () => typedError<{
-	board_size: number,
-	stones: StonePosition[],
-	current_color: string,
-	move_number: number,
-	captures_black: number,
-	captures_white: number,
-	phase: GamePhase,
-	result: GameResult | null,
-	last_move: [number, number] | null,
-	moves: MoveEntry[],
-} | null, string>(__TAURI_INVOKE("load_game_sgf")).then((v) => ((v.status === "ok" ? { ...v, data: v.data==null?v.data:({...v.data,result:v.data.result==null?v.data.result:v.data.result}) } : v) as typeof v)),
+	game_state: GameState,
+	warning: SgfLoadWarning | null,
+} | null, string>(__TAURI_INVOKE("load_game_sgf")).then((v) => ((v.status === "ok" ? { ...v, data: v.data==null?v.data:({...v.data,game_state:({...v.data.game_state,result:v.data.game_state.result==null?v.data.game_state.result:v.data.game_state.result})}) } : v) as typeof v)),
+	confirmLoadGameSgf: () => typedError<GameState, string>(__TAURI_INVOKE("confirm_load_game_sgf")).then((v) => ((v.status === "ok" ? { ...v, data: ({...v.data,result:v.data.result==null?v.data.result:v.data.result}) } : v) as typeof v)),
+	cancelLoadGameSgf: () => typedError<null, string>(__TAURI_INVOKE("cancel_load_game_sgf")),
 	startReview: (gameId: number | null) => typedError<null, string>(__TAURI_INVOKE("start_review", { gameId })),
 	getReviewProgress: () => typedError<ReviewProgress, string>(__TAURI_INVOKE("get_review_progress")),
 	getReviewData: () => typedError<ReviewData, string>(__TAURI_INVOKE("get_review_data")).then((v) => ((v.status === "ok" ? { ...v, data: ({...v.data,move_analyses:v.data.move_analyses.map(i=>i)}) } : v) as typeof v)),
@@ -246,6 +240,20 @@ export type Settings = {
 };
 
 export type Severity = "Excellent" | "Good" | "Inaccuracy" | "Mistake" | "Blunder";
+
+export type SgfLoadResult = {
+	game_state: GameState,
+	warning: SgfLoadWarning | null,
+};
+
+export type SgfLoadWarning = {
+	loaded_moves: number,
+	total_moves: number,
+	move_number: number,
+	coordinate: string,
+	reason: string,
+	dropped_moves: number,
+};
 
 export type SkillDimension = {
 	mu: number,

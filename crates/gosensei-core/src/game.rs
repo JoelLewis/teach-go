@@ -74,6 +74,28 @@ pub struct MoveEntry {
     pub is_pass: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SgfMoveError {
+    pub move_number: u16,
+    pub coordinate: String,
+    pub reason: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct SgfReplayResult {
+    pub game: Game,
+    pub errors: Vec<SgfMoveError>,
+    pub dropped_moves: u16,
+}
+
+/// Format a point the way the board UI labels it: columns skip 'I'
+/// (GTP convention) and rows are numbered from the bottom.
+fn format_board_coordinate(point: Point, board_size: u8) -> String {
+    const COLUMN_LETTERS: &[u8] = b"ABCDEFGHJKLMNOPQRST";
+    let column = COLUMN_LETTERS[point.col as usize] as char;
+    format!("{column}{}", board_size - point.row)
+}
+
 impl Game {
     pub fn new(board_size: BoardSize, komi: f32) -> Self {
         let board = Board::new(board_size);
@@ -263,42 +285,80 @@ impl Game {
         }
     }
 
-    /// Replay an SGF string into a Game. Stops on the first illegal move.
+    /// Replay an SGF string into a Game. Returns an error instead of silently
+    /// accepting a truncated game when replay encounters an illegal move.
     pub fn from_sgf(input: &str) -> Result<Self, String> {
-        Self::from_sgf_partial(input, None)
+        let replay = Self::from_sgf_with_report(input)?;
+        if let Some(error) = replay.errors.first() {
+            return Err(format!(
+                "move {} ({}): {}",
+                error.move_number, error.coordinate, error.reason
+            ));
+        }
+        Ok(replay.game)
     }
 
     /// Replay an SGF string up to `max_moves` moves (or all moves if `None`).
-    /// Stops on the first illegal move or when the limit is reached.
+    /// Returns an error instead of silently accepting a truncated game when
+    /// replay encounters an illegal move.
     pub fn from_sgf_partial(input: &str, max_moves: Option<u16>) -> Result<Self, String> {
+        let replay = Self::replay_sgf(input, max_moves)?;
+        if let Some(error) = replay.errors.first() {
+            return Err(format!(
+                "move {} ({}): {}",
+                error.move_number, error.coordinate, error.reason
+            ));
+        }
+        Ok(replay.game)
+    }
+
+    pub fn from_sgf_with_report(input: &str) -> Result<SgfReplayResult, String> {
+        Self::replay_sgf(input, None)
+    }
+
+    fn replay_sgf(input: &str, max_moves: Option<u16>) -> Result<SgfReplayResult, String> {
         let parsed = sgf::parser::parse(input).map_err(|e| e.to_string())?;
         let mut game = Game::new(parsed.board_size, parsed.komi);
         let limit = max_moves.unwrap_or(u16::MAX) as usize;
+        let replayed_moves = parsed.moves.len().min(limit);
+        let mut errors = Vec::new();
 
-        for (color, mv) in parsed.moves.iter().take(limit) {
+        for (index, (color, mv)) in parsed.moves.iter().take(limit).enumerate() {
             // SGF may have out-of-order colors; force the expected color
             game.current_color = *color;
-            match mv {
+            let result = match mv {
                 Move::Play(point) => {
-                    if game.play(*point).is_err() {
-                        break;
-                    }
+                    game.play(*point).map(|_| ())
                     // play() flips color, but we forced it above, so the
                     // alternation is handled by the next iteration's force.
                 }
-                Move::Pass => {
-                    if game.pass().is_err() {
-                        break;
-                    }
-                }
-                Move::Resign => {
-                    let _ = game.resign();
-                    break;
-                }
+                Move::Pass => game.pass(),
+                Move::Resign => game.resign().map(|_| ()),
+            };
+            if let Err(error) = result {
+                errors.push(SgfMoveError {
+                    move_number: index as u16 + 1,
+                    coordinate: match mv {
+                        Move::Play(point) => {
+                            format_board_coordinate(*point, parsed.board_size.size())
+                        }
+                        Move::Pass => "pass".into(),
+                        Move::Resign => "resign".into(),
+                    },
+                    reason: error.to_string(),
+                });
+                break;
             }
         }
 
-        Ok(game)
+        let dropped_moves = errors
+            .first()
+            .map_or(0, |error| replayed_moves as u16 - error.move_number + 1);
+        Ok(SgfReplayResult {
+            game,
+            errors,
+            dropped_moves,
+        })
     }
 
     /// Parse an SGF with setup stones (AB/AW) into a Game.
@@ -689,5 +749,45 @@ mod tests {
         assert_eq!(state.moves.len(), 2);
         assert_eq!(state.moves[0].color, "black");
         assert_eq!(state.moves[1].color, "white");
+    }
+
+    #[test]
+    fn from_sgf_reports_illegal_move_and_dropped_suffix() {
+        let sgf = "(;SZ[9];B[ee];W[cc];B[ee];W[gg];B[dd])";
+
+        let replay = Game::from_sgf_with_report(sgf).unwrap();
+        let error = replay
+            .errors
+            .first()
+            .expect("illegal move should be reported");
+
+        assert_eq!(replay.game.move_history().len(), 2);
+        assert_eq!(error.move_number, 3);
+        assert_eq!(error.coordinate, "E5");
+        assert_eq!(error.reason, "point (4, 4) is occupied");
+        assert_eq!(replay.dropped_moves, 3);
+        assert!(Game::from_sgf(sgf).is_err());
+    }
+
+    #[test]
+    fn illegal_move_coordinate_matches_board_labels() {
+        // Col 8 row 0 on 9x9 is labeled J9 by the board UI: columns skip
+        // 'I' and rows count from the bottom.
+        let sgf = "(;SZ[9];B[ia];W[cc];B[ia])";
+
+        let replay = Game::from_sgf_with_report(sgf).unwrap();
+        let error = replay.errors.first().expect("occupied point is illegal");
+
+        assert_eq!(error.coordinate, "J9");
+    }
+
+    #[test]
+    fn from_sgf_report_has_no_error_for_well_formed_game() {
+        let sgf = "(;SZ[9]KM[6.5];B[ee];W[cc];B[gg])";
+
+        let replay = Game::from_sgf_with_report(sgf).unwrap();
+
+        assert_eq!(replay.game.move_history().len(), 3);
+        assert!(replay.errors.is_empty());
     }
 }
